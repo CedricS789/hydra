@@ -1,0 +1,91 @@
+HYDRA + LUDUSAVI INTEGRATED — QUICK START
+Hydra with Ludusavi Integrated; shown as "Hydra Ludusavi" in the app.
+Windows game launcher with save backups to storage you control
+
+WHAT IS THIS?
+An unofficial customization of Hydra Launcher by Los Broxas. Hydra remains
+your launcher and keeps its library, playtime, achievement, and theme code.
+The added backup feature uses Ludusavi, a dedicated game-save backup tool.
+Local backups do not require a Hydra Cloud subscription or a Hydra account.
+Online and account features still depend on their respective services.
+
+WHICH SETUP DO YOU HAVE?
+The current source version is 4.4.1-rev.2. New installers use the filename
+hydra-ludusavi-<version>-setup.exe. Check your app version and release notes.
+An installer named hydralauncher-local-4.4.1-local.1-setup.exe is the older
+"Hydra Local" prototype. It has the initial backup panel, but not the newer
+management or game-discovery features described below. Old installers keep
+their original filenames and contents. A source update does not rebuild them.
+
+FIRST BACKUP — ABOUT FIVE MINUTES
+1. Exit any running Hydra instances from their tray icons, then run the setup.
+   This fork uses separate app data from official Hydra; do not expect your
+   existing library and account settings to be copied automatically.
+2. Add your game to the library. In its game options, choose the actual game
+   executable (.exe), especially if the game has a separate launcher.
+3. Open Settings > Save backups. Older builds call this "Ludusavi backups".
+   Choose your own destination: a local folder, a OneDrive folder, or a
+   mounted server share. Each recipient must choose their own folder.
+4. Select the game, check that it is included, and choose how many backup
+   versions to retain and how long to wait after exit. Save the settings.
+5. With the game stopped, run "Preview save detection", then "Back up now".
+   Open the backup folder and check that your progress files were captured.
+   A registry-only result may contain settings rather than actual progress.
+   Add an additional save folder if detection misses the files you need.
+6. Enable automatic backups and save. Launch normally through Hydra, save
+   in-game, then quit. Leave Hydra running in its tray. After the exit delay,
+   check the result and the backup folder to verify the complete workflow.
+7. Once tested, optionally enable "Run at startup" and "Start minimized"
+   in General settings.
+
+WHAT HAPPENS WHILE YOU PLAY?
+The integration watches the configured game processes and waits for them to
+exit before asking Ludusavi to back up. Keep Hydra running while playing.
+Extra tracking executable paths can help with launcher/child-process games.
+Backup operations are queued to prevent overlap. Unchanged saves may not
+produce another version. Automatic operations never restore live saves.
+
+ONEDRIVE SUCCESS IS A SEPARATE STEP
+A successful backup means the local files were written. OneDrive or another
+sync client must finish uploading separately; Hydra does not verify that.
+For protection against a lost PC, check that your files reached your remote
+storage. Merely choosing a local folder does not create an off-device copy.
+
+WHAT ABOUT HYDRA CLOUD AND ACHIEVEMENT POINTS?
+Hydra Cloud is the original developer's subscription service. This fork does
+not include that subscription, unlock its paid services, or replace them.
+The current source hides Hydra Points displays and their locked prompts.
+If an older build shows "Earned points: ??? / ???", it is a subscription
+prompt, not a loading error. Ordinary achievement tracking and Ludusavi
+backups are separate. You do not need to subscribe for the added backups.
+
+FEATURES IN THE CURRENT SOURCE — CHECK YOUR INSTALLED VERSION
+The current source also includes detected-save entries that you can review
+and add/link to My Games, version browsing, explicitly confirmed restores,
+archive validation, advanced rules, and access to the full Ludusavi manager.
+Manual remote transfers require separately configured Rclone. No automatic
+restore is enabled. See the README for details and limitations. A save entry
+alone does not prove a game is installed or identify its executable.
+
+RESULTS, UPDATES, AND REMOVAL
+If a backup fails, expand its result, check the paths, and use "Open logs".
+Newer builds offer "Clear results and logs" without deleting save backups.
+Custom release updates are available only when a compatible installer has
+been published to this fork. New official Hydra releases are not merged or
+rebuilt automatically; maintaining the custom source remains a manual task.
+To stop automation, turn off automatic backups and save the settings. Disable
+"Run at startup" in General settings if desired. Uninstall through Windows
+Settings > Apps > Installed apps. Your chosen backup folder is managed
+separately; keep its contents until you are sure you no longer need them.
+
+PROJECT, HELP, AND UPDATES
+Public README and setup guide:
+https://github.com/CedricS789/hydra/blob/custom/ludusavi-backups/README.md
+Available installers and their release notes:
+https://github.com/CedricS789/hydra/releases
+Report a problem (include your app version and relevant error; redact secrets):
+https://github.com/CedricS789/hydra/issues
+Original Hydra project:
+https://github.com/hydralauncher/hydra
+Ludusavi project:
+https://github.com/mtkennerly/ludusavi

@@ -1,3 +1,4 @@
+import localEdition from "../../../../../../shared/local-edition.json";
 import {
   ClockIcon,
   LockIcon,
@@ -151,22 +152,24 @@ export function GameAchievementsToolbar({
           onValueChange={onSortChange}
         />
 
-        <div className="game-achievements-page__toolbar-points">
-          <span className="game-achievements-page__toolbar-points-label">
-            {t("earned_points")}
-          </span>
-          <MedalIcon size={18} weight="fill" />
-          {points ? (
-            <span>
-              {numberFormatter.format(points.earned)} /{" "}
-              {numberFormatter.format(points.total)}
+        {!localEdition.hideHydraPoints && (
+          <div className="game-achievements-page__toolbar-points">
+            <span className="game-achievements-page__toolbar-points-label">
+              {t("earned_points")}
             </span>
-          ) : (
-            <span className="game-achievements-page__toolbar-points-locked">
-              ??? / ???
-            </span>
-          )}
-        </div>
+            <MedalIcon size={18} weight="fill" />
+            {points ? (
+              <span>
+                {numberFormatter.format(points.earned)} /{" "}
+                {numberFormatter.format(points.total)}
+              </span>
+            ) : (
+              <span className="game-achievements-page__toolbar-points-locked">
+                ??? / ???
+              </span>
+            )}
+          </div>
+        )}
       </HorizontalFocusGroup>
     </div>
   );

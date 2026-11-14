@@ -1,4 +1,4 @@
-name: Build Hydra Custom installer
+name: Build Hydra Ludusavi installer
 
 on:
   workflow_dispatch:
@@ -48,11 +48,12 @@ jobs:
         run: node scripts/build-local.cjs
       - uses: actions/upload-artifact@v4
         with:
-          name: Hydra-Local-Windows
+          name: Hydra-Ludusavi-Windows
           path: |
-            dist/*-setup-customized-by-cédric.exe
-            dist/*-setup-customized-by-cédric.exe.blockmap
+            dist/*-setup.exe
+            dist/*-setup.exe.blockmap
             dist/latest.yml
+            dist/START-HERE.txt
           if-no-files-found: error
       - name: Create a reviewable release draft
         if: inputs.create_draft_release
@@ -63,6 +64,6 @@ jobs:
           $releaseTag = node -p "require('./src/shared/local-edition.json').releaseTag"
           gh release view $releaseTag --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) { throw 'A release with this tag already exists; bump the custom version first.' }
-          gh release create $releaseTag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --title "Hydra Custom $releaseTag" --notes-file docs/LOCAL-RELEASE-NOTES.md
+          gh release create $releaseTag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --title "Hydra Ludusavi $releaseTag" --notes-file docs/LOCAL-RELEASE-NOTES.md
           if ($LASTEXITCODE -ne 0) { throw 'Could not create the release draft.' }
-          Get-ChildItem dist/*-setup-customized-by-cédric.exe,dist/*-setup-customized-by-cédric.exe.blockmap,dist/latest.yml | ForEach-Object { gh release upload $releaseTag $_.FullName --repo $env:GITHUB_REPOSITORY; if ($LASTEXITCODE -ne 0) { throw 'Release upload failed.' } }
+          Get-ChildItem dist/*-setup.exe,dist/*-setup.exe.blockmap,dist/latest.yml,dist/START-HERE.txt | ForEach-Object { gh release upload $releaseTag $_.FullName --repo $env:GITHUB_REPOSITORY; if ($LASTEXITCODE -ne 0) { throw 'Release upload failed.' } }

@@ -4,6 +4,8 @@
   "upstreamTag": "v4.4.1",
   "releaseTag": "v4.4.1-rev.2",
   "hideCloudPromotions": true,
-  "displayName": "Hydra Custom",
-  "fullName": "Hydra Custom by Cédric"
+  "displayName": "Hydra Ludusavi",
+  "fullName": "Hydra + Ludusavi Integrated",
+  "descriptiveName": "Hydra with Ludusavi Integrated",
+  "hideHydraPoints": true
 }

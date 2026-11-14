@@ -200,8 +200,12 @@ async function main() {
     ]);
     run(process.execPath, ["scripts/verify-local-package.cjs"]);
     const pkg = require("../package.json");
-    const installer = `hydra-custom-${pkg.version}-setup-customized-by-cédric.exe`;
+    const installer = `hydra-ludusavi-${pkg.version}-setup.exe`;
     fs.mkdirSync(path.join(root, "dist"), { recursive: true });
+    fs.copyFileSync(
+      path.join(root, "docs", "START-HERE.txt"),
+      path.join(root, "dist", "START-HERE.txt")
+    );
     for (const file of [installer, `${installer}.blockmap`, "latest.yml"]) {
       fs.copyFileSync(
         path.join(root, ".tmp", "package", file),

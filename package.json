@@ -1,7 +1,7 @@
 {
   "name": "hydralauncher-local",
   "version": "4.4.1-rev.2",
-  "description": "Hydra Custom by Cédric — Ludusavi backups and release comparison",
+  "description": "Hydra with Ludusavi Integrated — save backups and release comparison",
   "main": "./out/main/index.js",
   "author": "Los Broxas",
   "repository": {

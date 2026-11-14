@@ -1,3 +1,4 @@
+import localEdition from "../../../../../shared/local-edition.json";
 import { useCallback, useContext } from "react";
 import { userProfileContext } from "@renderer/context";
 import { useTranslation } from "react-i18next";
@@ -67,37 +68,38 @@ export function UserStatsBox() {
           </li>
         )}
 
-        {(isMe || userStats.achievementsPointsEarnedSum !== undefined) && (
-          <li className="user-stats__list-item">
-            <h3 className="user-stats__list-title">{t("earned_points")}</h3>
-            {userStats.achievementsPointsEarnedSum !== undefined ? (
-              <div className="user-stats__stats-row">
-                <p className="user-stats__list-description">
-                  <HydraIcon width={20} height={20} />
-                  {numberFormatter.format(
-                    userStats.achievementsPointsEarnedSum.value
-                  )}
-                </p>
-                <p title={t("ranking_updated_weekly")}>
-                  {t("top_percentile", {
-                    percentile:
-                      userStats.achievementsPointsEarnedSum.topPercentile,
-                  })}
-                </p>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => showHydraCloudModal("achievements-points")}
-                className="user-stats__link"
-              >
-                <small className="user-stats__link--warning">
-                  {t("show_points_on_profile")}
-                </small>
-              </button>
-            )}
-          </li>
-        )}
+        {!localEdition.hideHydraPoints &&
+          (isMe || userStats.achievementsPointsEarnedSum !== undefined) && (
+            <li className="user-stats__list-item">
+              <h3 className="user-stats__list-title">{t("earned_points")}</h3>
+              {userStats.achievementsPointsEarnedSum !== undefined ? (
+                <div className="user-stats__stats-row">
+                  <p className="user-stats__list-description">
+                    <HydraIcon width={20} height={20} />
+                    {numberFormatter.format(
+                      userStats.achievementsPointsEarnedSum.value
+                    )}
+                  </p>
+                  <p title={t("ranking_updated_weekly")}>
+                    {t("top_percentile", {
+                      percentile:
+                        userStats.achievementsPointsEarnedSum.topPercentile,
+                    })}
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => showHydraCloudModal("achievements-points")}
+                  className="user-stats__link"
+                >
+                  <small className="user-stats__link--warning">
+                    {t("show_points_on_profile")}
+                  </small>
+                </button>
+              )}
+            </li>
+          )}
 
         <li className="user-stats__list-item">
           <h3 className="user-stats__list-title">{t("total_play_time")}</h3>

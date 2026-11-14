@@ -1,3 +1,4 @@
+import localEdition from "../../../../shared/local-edition.json";
 import "./profile.scss";
 
 import {
@@ -1037,6 +1038,7 @@ function ProfileStats({
             userStats?.achievementsPointsEarnedSum?.value
           )}
           rightLabel="Earned Points"
+          showRight={!localEdition.hideHydraPoints}
         />
       </div>
     </section>
@@ -1050,6 +1052,7 @@ interface ProfileStatPairProps {
   rightIcon: ReactNode;
   rightValue: string;
   rightLabel: string;
+  showRight?: boolean;
 }
 
 function ProfileStatPair({
@@ -1059,10 +1062,16 @@ function ProfileStatPair({
   rightIcon,
   rightValue,
   rightLabel,
+  showRight = true,
 }: Readonly<ProfileStatPairProps>) {
   return (
-    <div className="profile-page__stat-pair">
-      <article className="profile-page__stat-card profile-page__stat-card--pair-left">
+    <div
+      className="profile-page__stat-pair"
+      style={showRight ? undefined : { gridTemplateColumns: "1fr" }}
+    >
+      <article
+        className={`profile-page__stat-card${showRight ? " profile-page__stat-card--pair-left" : ""}`}
+      >
         <div className="profile-page__stat-main">
           <div className="profile-page__stat-value">
             {leftIcon}
@@ -1072,15 +1081,17 @@ function ProfileStatPair({
         <div className="profile-page__stat-label">{leftLabel}</div>
       </article>
 
-      <article className="profile-page__stat-card profile-page__stat-card--pair-right">
-        <div className="profile-page__stat-main">
-          <div className="profile-page__stat-value">
-            {rightIcon}
-            <span>{rightValue}</span>
+      {showRight && (
+        <article className="profile-page__stat-card profile-page__stat-card--pair-right">
+          <div className="profile-page__stat-main">
+            <div className="profile-page__stat-value">
+              {rightIcon}
+              <span>{rightValue}</span>
+            </div>
           </div>
-        </div>
-        <div className="profile-page__stat-label">{rightLabel}</div>
-      </article>
+          <div className="profile-page__stat-label">{rightLabel}</div>
+        </article>
+      )}
     </div>
   );
 }
@@ -1518,7 +1529,9 @@ function LockedAchievements({
                 </div>
 
                 <div className="profile-page__achievement-meta">
-                  <strong>+{achievement.points} pts.</strong>
+                  {!localEdition.hideHydraPoints && (
+                    <strong>+{achievement.points} pts.</strong>
+                  )}
                   <span>{achievement.earnedLabel}</span>
                 </div>
               </div>

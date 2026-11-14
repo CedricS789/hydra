@@ -10,7 +10,7 @@ The PNGs are unaltered captures of actual React settings components rendered in 
 | `restore-preview.png`       | Current affected-file preview and disabled restore confirmation before acknowledgement.            |
 | `source-diff-prototype.png` | Historical source-comparison display test with synthetic example code and earlier branding.        |
 
-Example Game, paths, versions, statuses, and code comparisons are synthetic. They do not establish account access, published release availability, actual game backup success, or completed cloud synchronization. The current settings captures use Hydra Custom source version `4.4.1-rev.2`. The historical source-diff capture retains Hydra Local prototype wording; normal comparison retrieves real source snapshots.
+Example Game, paths, versions, statuses, and code comparisons are synthetic. They do not establish account access, published release availability, actual game backup success, or completed cloud synchronization. The current settings captures use Hydra Ludusavi source version `4.4.1-rev.2`. The historical source-diff capture retains Hydra Local prototype wording; normal comparison retrieves real source snapshots.
 
 The remaining `*-prototype.png` files are historical captures from earlier interface tests. Controls may extend below each captured viewport. No personal desktop was captured, and no installer was built or installed to create these images.
 

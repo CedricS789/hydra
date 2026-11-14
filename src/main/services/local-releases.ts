@@ -27,7 +27,7 @@ const github = async <T>(resource: string, force = false): Promise<T> => {
   const response = await fetch(`https://api.github.com/repos/${resource}`, {
     headers: {
       Accept: "application/vnd.github+json",
-      "User-Agent": "Hydra-Local-Releases",
+      "User-Agent": "Hydra-Ludusavi-Releases",
     },
     signal: AbortSignal.timeout(30_000),
   });

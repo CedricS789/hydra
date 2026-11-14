@@ -1,5 +1,5 @@
 appId: gg.hydralauncher.hydra.local
-productName: Hydra Custom
+productName: Hydra Ludusavi
 beforePack: scripts/legendary-before-pack.cjs
 afterPack: scripts/legendary-after-pack.cjs
 afterSign: scripts/legendary-after-pack.cjs
@@ -47,7 +47,7 @@ asarUnpack:
   - node_modules/sharp/**
   - node_modules/@img/sharp-libvips-*/**
 win:
-  executableName: Hydra Custom
+  executableName: Hydra Ludusavi
   extraResources:
     - from: legendary/win32/${arch}
       to: legendary
@@ -71,15 +71,15 @@ win:
     - nsis
     - portable
 nsis:
-  artifactName: hydra-custom-${version}-setup-customized-by-cédric.${ext}
+  artifactName: hydra-ludusavi-${version}-setup.${ext}
   shortcutName: ${productName}
-  uninstallDisplayName: Hydra Custom by Cédric
+  uninstallDisplayName: Hydra + Ludusavi Integrated
   createDesktopShortcut: always
   oneClick: false
   allowToChangeInstallationDirectory: true
   include: installer.nsh
 portable:
-  artifactName: ${name}-${version}-portable.${ext}
+  artifactName: hydra-ludusavi-${version}-portable.${ext}
   unpackDirName: false
 mac:
   sign: scripts/legendary-mac-sign.cjs
@@ -102,7 +102,7 @@ mac:
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: hydra-ludusavi-${version}.${ext}
 linux:
   extraResources:
     - from: binaries/epic-prerequisite-runner/x64
@@ -141,7 +141,7 @@ linux:
   mimeTypes:
     - x-scheme-handler/hydralauncher
 appImage:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: hydra-ludusavi-${version}.${ext}
 npmRebuild: false
 publish:
   provider: github

@@ -1,3 +1,4 @@
+import localEdition from "../../../../shared/local-edition.json";
 import { DashIcon, XIcon } from "@primer/octicons-react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
@@ -28,7 +29,7 @@ export function WindowTitleBar({
 
   return (
     <header className="window-title-bar" style={titleBarStyle}>
-      <h4>Hydra</h4>
+      <h4 title={localEdition.fullName}>{localEdition.displayName}</h4>
       <div className="window-title-bar__controls">
         <button
           type="button"

@@ -1321,7 +1321,7 @@ export class WindowManager {
     const connectionWindow = new BrowserWindow({
       width: layout.width,
       height: layout.height,
-      title: "Hydra",
+      title: localEdition.displayName,
       backgroundColor: "#1c1c1c",
       parent: parentWindow,
       modal: true,

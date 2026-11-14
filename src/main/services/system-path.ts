@@ -1,3 +1,4 @@
+import localEdition from "../../shared/local-edition.json";
 import { app, dialog } from "electron";
 import { logger } from "./logger";
 
@@ -27,7 +28,7 @@ export class SystemPath {
         }
 
         dialog.showErrorBox(
-          `Hydra was not able to find path for '${pathName}' system folder`,
+          `${localEdition.displayName} was not able to find path for '${pathName}' system folder`,
           `Some functionalities may not work as expected.\nPlease check your system settings.`
         );
       }

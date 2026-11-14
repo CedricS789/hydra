@@ -739,8 +739,8 @@
     "enable_download_notifications": "Amikor egy letöltés befejeződik",
     "enable_repack_list_notifications": "Amikor új repack kerül feltöltésre",
     "real_debrid_api_token_label": "Real-Debrid API token",
-    "quit_app_instead_hiding": "Hydra elrejtésének tiltása bezáráskor",
-    "launch_with_system": "Hydra automatikus indítása rendszer indításakor",
+    "quit_app_instead_hiding": "Hydra Ludusavi elrejtésének tiltása bezáráskor",
+    "launch_with_system": "Hydra Ludusavi automatikus indítása rendszer indításakor",
     "general": "Általános",
     "behavior": "Működés",
     "app_basics": "Alapvető beállítások",
@@ -811,8 +811,8 @@
     "blocked_users": "Letiltott felhasználók",
     "user_unblocked": "Felhasználó letiltva",
     "enable_achievement_notifications": "Amikor egy achievement feloldódik",
-    "launch_minimized": "Hydra indítása minimalizálva",
-    "launch_hydra_in_library_page": "Hydra automatikus indítása a Könyvtár-ba",
+    "launch_minimized": "Hydra Ludusavi indítása minimalizálva",
+    "launch_hydra_in_library_page": "Hydra Ludusavi automatikus indítása a Könyvtár-ba",
     "disable_nsfw_alert": "NSFW figyelmeztetés kikapcsolása a játékoldalakon és a szuveníreknél",
     "seed_after_download_complete": "Letöltés utáni seedelés",
     "show_hidden_achievement_description": "Rejtett achievementek leírásának megjelenítése feloldás előtt",
@@ -924,7 +924,7 @@
     "notification_preview": "Achievement Értesítés Előnézete",
     "enable_friend_start_game_notifications": "Amikor egy barátod elkezd játszani egy játékot",
     "autoplay_trailers_on_game_page": "Játékelőzetes automatikus lejátszása a játék oldalán",
-    "hide_to_tray_on_game_start": "Hydra elrejtése játék indításakor a tálcára",
+    "hide_to_tray_on_game_start": "Hydra Ludusavi elrejtése játék indításakor a tálcára",
     "downloads": "Letöltések",
     "create_shortcuts_on_download": "Asztali és Start menü parancsikonok létrehozása a letöltés befejezésekor",
     "default_wine_prefix": "Alapértelmezett Wine prefix helye",
@@ -970,7 +970,7 @@
     "scan_games_no_results_description": "Nem található telepített játék"
   },
   "system_tray": {
-    "open": "Hydra megnyitása",
+    "open": "Hydra Ludusavi megnyitása",
     "quit": "Kilépés"
   },
   "game_card": {
@@ -1212,7 +1212,7 @@
   "game_launcher": {
     "launching": "Indítás...",
     "launching_base": "Indítás",
-    "open_hydra": "Hydra Megnyitása",
+    "open_hydra": "Hydra Ludusavi Megnyitása",
     "playtime": "Játszottidő",
     "amount_hours": "{{amount}} óra",
     "amount_minutes": "{{amount}} perc",

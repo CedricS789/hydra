@@ -716,7 +716,7 @@
     "enable_repack_list_notifications": "Pievienojot jaunu repaku",
     "real_debrid_api_token_label": "Real-Debrid API-atslēga",
     "quit_app_instead_hiding": "Aizvērt lietotni, nevis minimizēt uz paplātes",
-    "launch_with_system": "Palaist Hydra kopā ar sistēmu",
+    "launch_with_system": "Palaist Hydra Ludusavi kopā ar sistēmu",
     "general": "Vispārīgi",
     "behavior": "Uzvedība",
     "download_sources": "Lejupielādes avoti",
@@ -769,7 +769,7 @@
     "blocked_users": "Bloķētie lietotāji",
     "user_unblocked": "Lietotājs atbloķēts",
     "enable_achievement_notifications": "Kad sasniegums ir atbloķēts",
-    "launch_minimized": "Palaist Hydra minimizētā veidā",
+    "launch_minimized": "Palaist Hydra Ludusavi minimizētā veidā",
     "disable_nsfw_alert": "Atspējot brīdinājumu par neķītru saturu spēļu lapās un suvenīros",
     "seed_after_download_complete": "Sēdēt pēc lejupielādes pabeigšanas",
     "show_hidden_achievement_description": "Rādīt slēpto sasniegumu aprakstu pirms to iegūšanas",
@@ -869,7 +869,7 @@
     "download_source_no_information": "No information available",
     "removed_all_download_sources": "All download sources removed",
     "download_sources_synced_successfully": "All download sources are synced",
-    "launch_hydra_in_library_page": "Launch Hydra in Library page",
+    "launch_hydra_in_library_page": "Launch Hydra Ludusavi in Library page",
     "hydra_cloud": "Hydra Cloud",
     "enable_premiumize": "Enable Premiumize",
     "enable_alldebrid": "Enable AllDebrid",
@@ -898,7 +898,7 @@
     "remove": "Remove",
     "no_sound_file_selected": "No sound file selected",
     "autoplay_trailers_on_game_page": "Automatically start playing trailers on game page",
-    "hide_to_tray_on_game_start": "Hide Hydra to tray on game startup",
+    "hide_to_tray_on_game_start": "Hide Hydra Ludusavi to tray on game startup",
     "downloads": "Downloads",
     "create_start_menu_shortcut_on_download": "Create Start Menu shortcut when game finishes downloading",
     "default_wine_prefix": "Default Wine prefix location",
@@ -932,7 +932,7 @@
     "repack_count_one": "{{count}} repaks pievienots",
     "repack_count_other": "{{count}} repaki pievienoti",
     "new_update_available": "Pieejama jauna versija {{version}}",
-    "restart_to_install_update": "Pārstartējiet Hydra, lai instalētu atjauninājumu",
+    "restart_to_install_update": "Pārstartējiet Hydra Ludusavi, lai instalētu atjauninājumu",
     "notification_achievement_unlocked_title": "Sasniegums atbloķēts spēlei {{game}}",
     "notification_achievement_unlocked_body": "tika atbloķēti {{achievement}} un citi {{count}}",
     "new_friend_request_description": "{{displayName}} nosūtīja jums draudzības pieprasījumu",
@@ -948,7 +948,7 @@
     "scan_games_no_results_description": "No installed games were found"
   },
   "system_tray": {
-    "open": "Atvērt Hydra",
+    "open": "Atvērt Hydra Ludusavi",
     "quit": "Iziet"
   },
   "game_card": {
@@ -1190,7 +1190,7 @@
   "game_launcher": {
     "launching": "Launching...",
     "launching_base": "Launching",
-    "open_hydra": "Open Hydra",
+    "open_hydra": "Open Hydra Ludusavi",
     "playtime": "Playtime",
     "amount_hours": "{{amount}} hours",
     "amount_minutes": "{{amount}} minutes",

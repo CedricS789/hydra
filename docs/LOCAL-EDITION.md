@@ -1,6 +1,6 @@
-# Hydra Custom: setup, build, and maintenance
+# Hydra + Ludusavi Integrated: setup, build, and maintenance
 
-Hydra Custom adds automatic Ludusavi backups and release-source comparison to Hydra Launcher. It retains the upstream launcher and integration code, while keeping the local-backup workflow separate from Hydra Cloud. It does not provide paid cloud services or change subscription checks.
+Hydra Ludusavi adds automatic Ludusavi backups and release-source comparison to Hydra Launcher. It retains the upstream launcher and integration code, while keeping the local-backup workflow separate from Hydra Cloud. It does not provide paid cloud services or change subscription checks.
 
 See the [repository README](../README.md) for an overview and screenshots, and [release notes](LOCAL-RELEASE-NOTES.md) for version-specific changes.
 
@@ -9,7 +9,9 @@ See the [repository README](../README.md) for an overview and screenshots, and [
 - **Repository:** [CedricS789/hydra](https://github.com/CedricS789/hydra).
 - **Upstream:** [hydralauncher/hydra](https://github.com/hydralauncher/hydra).
 - **Customization branch:** `custom/ludusavi-backups`, currently based on official `v4.4.1`.
-- **Application name:** Hydra Custom; full name Hydra Custom by Cédric.
+- **Project name:** Hydra + Ludusavi Integrated.
+- **Everyday application name:** Hydra Ludusavi.
+- **Descriptive name:** Hydra with Ludusavi Integrated.
 - **Internal identifiers:** package `hydralauncher-local`, app ID `gg.hydralauncher.hydra.local`. Keep these stable for configuration and installer compatibility.
 - **Build:** compiles the application and packages its runtime resources into an installer.
 - **Release:** a published version with an installer and update metadata. A pushed source commit alone is not an application update.
@@ -23,10 +25,10 @@ See the [repository README](../README.md) for an overview and screenshots, and [
 5. Choose retention and the exit delay. Initial values are 10 full versions and 10 seconds.
 6. Run **Preview save detection** for a game. Inspect the source paths. If necessary, add its save folders; a registry-only result is insufficient to verify game progress.
 7. While the game is stopped, run **Back up now** and inspect the created archive. Verify expected save files and contents before relying on automatic backups.
-8. Enable automatic backups and save. Launch the game through Hydra Custom, make a save, quit the actual game, and check that one result and the expected backup appear after the delay.
+8. Enable automatic backups and save. Launch the game through Hydra Ludusavi, make a save, quit the actual game, and check that one result and the expected backup appear after the delay.
 9. Verify the sync client's upload separately, if applicable. Enable **Run at startup** and **Start minimized** in General settings only after the workflow has been checked.
 
-Keep Hydra Custom running in its tray while playing. Fully quitting it disables observation. Automatic backups start disabled and never trigger restoration.
+Keep Hydra Ludusavi running in its tray while playing. Fully quitting it disables observation. Automatic backups start disabled and never trigger restoration.
 
 ### Add detected games to the library
 
@@ -114,8 +116,8 @@ Project-local scratch files, logs, downloads, and caches belong under `.tmp/`. I
 Run these commands in PowerShell, proceeding only when each command succeeds:
 
 ```powershell
-git clone --branch custom/ludusavi-backups https://github.com/CedricS789/hydra.git hydra-custom
-Set-Location -LiteralPath .\hydra-custom
+git clone --branch custom/ludusavi-backups https://github.com/CedricS789/hydra.git hydra-ludusavi
+Set-Location -LiteralPath .\hydra-ludusavi
 npm install --prefix .tmp/tooling --cache .tmp/npm-cache --no-audit --no-fund yarn@1.22.22
 node .tmp/tooling/node_modules/yarn/bin/yarn.js install --frozen-lockfile --ignore-scripts --non-interactive --cache-folder .tmp/yarn-cache
 $env:ELECTRON_CACHE = Join-Path (Get-Location).Path '.tmp/electron-cache'
@@ -178,8 +180,9 @@ The version check cannot establish that native source was left unchanged. Do not
 After successful verification, the helper copies these files into `dist/`:
 
 ```text
-hydra-custom-<version>-setup-customized-by-cédric.exe
-hydra-custom-<version>-setup-customized-by-cédric.exe.blockmap
+hydra-ludusavi-<version>-setup.exe
+hydra-ludusavi-<version>-setup.exe.blockmap
+START-HERE.txt
 latest.yml
 ```
 
@@ -231,8 +234,8 @@ Commit the reviewed integration, merge it into `custom/ludusavi-backups`, and pu
 
 ### Build and publish
 
-1. Open **Actions → Build Hydra Custom installer → Run workflow**. Select the tested branch and enable draft creation if a release is intended. Use a fresh version/tag; the workflow rejects an existing release tag.
-2. Wait for success. Download the `Hydra-Local-Windows` artifact ZIP or review the release draft. The artifact label retains the earlier prototype wording.
+1. Open **Actions → Build Hydra Ludusavi installer → Run workflow**. Select the tested branch and enable draft creation if a release is intended. Use a fresh version/tag; the workflow rejects an existing release tag.
+2. Wait for success. Download the `Hydra-Ludusavi-Windows` artifact ZIP or review the release draft. The artifact label retains the earlier prototype wording.
 3. Test the downloaded installer, source comparison, and update metadata. Confirm the EXE, blockmap, and metadata come from the same build.
 4. Publish the tested draft as a normal release. Drafts and GitHub releases marked prerelease are excluded by the application's release browser.
 5. Verify the installed update flow. Older Hydra Local prototypes may require manually running the new setup EXE.

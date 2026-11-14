@@ -60,9 +60,7 @@ export function AppTitleBar({
       <div className="title-bar__brand">
         {hasCustomFrame && (
           <h4>
-            {localEdition.hideCloudPromotions
-              ? localEdition.displayName
-              : "Hydra"}
+            {localEdition.displayName}
             {!localEdition.hideCloudPromotions && hasActiveSubscription && (
               <span className="title-bar__cloud-text"> Cloud</span>
             )}

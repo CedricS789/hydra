@@ -711,8 +711,8 @@
     "enable_download_notifications": "Când o descărcare este completă",
     "enable_repack_list_notifications": "Când un nou repack este adăugat",
     "real_debrid_api_token_label": "Token API Real-Debrid",
-    "quit_app_instead_hiding": "Nu ascunde Hydra la închidere",
-    "launch_with_system": "Lansează Hydra la pornirea sistemului",
+    "quit_app_instead_hiding": "Nu ascunde Hydra Ludusavi la închidere",
+    "launch_with_system": "Lansează Hydra Ludusavi la pornirea sistemului",
     "general": "General",
     "behavior": "Comportament",
     "language": "Limbă",
@@ -786,8 +786,8 @@
     "blocked_users": "Blocked users",
     "user_unblocked": "User has been unblocked",
     "enable_achievement_notifications": "When an achievement is unlocked",
-    "launch_minimized": "Launch Hydra minimized",
-    "launch_hydra_in_library_page": "Launch Hydra in Library page",
+    "launch_minimized": "Launch Hydra Ludusavi minimized",
+    "launch_hydra_in_library_page": "Launch Hydra Ludusavi in Library page",
     "disable_nsfw_alert": "Disable NSFW alert in game pages and souvenirs",
     "seed_after_download_complete": "Seed after download complete",
     "show_hidden_achievement_description": "Show hidden achievements description before unlocking them",
@@ -894,7 +894,7 @@
     "notification_preview": "Achievement Notification Preview",
     "enable_friend_start_game_notifications": "When a friend starts playing a game",
     "autoplay_trailers_on_game_page": "Automatically start playing trailers on game page",
-    "hide_to_tray_on_game_start": "Hide Hydra to tray on game startup",
+    "hide_to_tray_on_game_start": "Hide Hydra Ludusavi to tray on game startup",
     "downloads": "Downloads",
     "create_start_menu_shortcut_on_download": "Create Start Menu shortcut when game finishes downloading",
     "default_wine_prefix": "Default Wine prefix location",
@@ -928,7 +928,7 @@
     "repack_count_one": "{{count}} repack adăugat",
     "repack_count_other": "{{count}} repack-uri adăugate",
     "new_update_available": "Version {{version}} available",
-    "restart_to_install_update": "Restart Hydra to install the update",
+    "restart_to_install_update": "Restart Hydra Ludusavi to install the update",
     "notification_achievement_unlocked_title": "Achievement unlocked for {{game}}",
     "notification_achievement_unlocked_body": "{{achievement}} and other {{count}} were unlocked",
     "new_friend_request_description": "{{displayName}} sent you a friend request",
@@ -944,7 +944,7 @@
     "scan_games_no_results_description": "No installed games were found"
   },
   "system_tray": {
-    "open": "Deschide Hydra",
+    "open": "Deschide Hydra Ludusavi",
     "quit": "Ieși"
   },
   "game_card": {
@@ -1189,7 +1189,7 @@
   "game_launcher": {
     "launching": "Launching...",
     "launching_base": "Launching",
-    "open_hydra": "Open Hydra",
+    "open_hydra": "Open Hydra Ludusavi",
     "playtime": "Playtime",
     "amount_hours": "{{amount}} hours",
     "amount_minutes": "{{amount}} minutes",

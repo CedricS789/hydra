@@ -715,8 +715,8 @@
     "enable_download_notifications": "Når en download bliver færdigt",
     "enable_repack_list_notifications": "Når en ny repack bliver tilføjet",
     "real_debrid_api_token_label": "Real-Debrid API nøgle",
-    "quit_app_instead_hiding": "Afslut Hydra instedet for at minimere til processlinjen",
-    "launch_with_system": "Åben Hydra ved start af systemet",
+    "quit_app_instead_hiding": "Afslut Hydra Ludusavi instedet for at minimere til processlinjen",
+    "launch_with_system": "Åben Hydra Ludusavi ved start af systemet",
     "general": "Generelt",
     "behavior": "Opførsel",
     "download_sources": "Download kilder",
@@ -790,8 +790,8 @@
     "download_sources_synced_successfully": "All download sources are synced",
     "importing": "Importing...",
     "enable_achievement_notifications": "When an achievement is unlocked",
-    "launch_minimized": "Launch Hydra minimized",
-    "launch_hydra_in_library_page": "Launch Hydra in Library page",
+    "launch_minimized": "Launch Hydra Ludusavi minimized",
+    "launch_hydra_in_library_page": "Launch Hydra Ludusavi in Library page",
     "disable_nsfw_alert": "Disable NSFW alert in game pages and souvenirs",
     "seed_after_download_complete": "Seed after download complete",
     "show_hidden_achievement_description": "Show hidden achievements description before unlocking them",
@@ -898,7 +898,7 @@
     "notification_preview": "Achievement Notification Preview",
     "enable_friend_start_game_notifications": "When a friend starts playing a game",
     "autoplay_trailers_on_game_page": "Automatically start playing trailers on game page",
-    "hide_to_tray_on_game_start": "Hide Hydra to tray on game startup",
+    "hide_to_tray_on_game_start": "Hide Hydra Ludusavi to tray on game startup",
     "downloads": "Downloads",
     "create_start_menu_shortcut_on_download": "Create Start Menu shortcut when game finishes downloading",
     "default_wine_prefix": "Default Wine prefix location",
@@ -932,7 +932,7 @@
     "repack_count_one": "{{count}} repack tilføjet",
     "repack_count_other": "{{count}} repacks tilføjet",
     "new_update_available": "Version {{version}} tilgængelig",
-    "restart_to_install_update": "Genstart Hydra for at installere opdateringen",
+    "restart_to_install_update": "Genstart Hydra Ludusavi for at installere opdateringen",
     "notification_achievement_unlocked_title": "Achievement unlocked for {{game}}",
     "notification_achievement_unlocked_body": "{{achievement}} and other {{count}} were unlocked",
     "new_friend_request_description": "{{displayName}} sent you a friend request",
@@ -948,7 +948,7 @@
     "scan_games_no_results_description": "No installed games were found"
   },
   "system_tray": {
-    "open": "Åben Hydra",
+    "open": "Åben Hydra Ludusavi",
     "quit": "Afslut"
   },
   "game_card": {
@@ -1190,7 +1190,7 @@
   "game_launcher": {
     "launching": "Launching...",
     "launching_base": "Launching",
-    "open_hydra": "Open Hydra",
+    "open_hydra": "Open Hydra Ludusavi",
     "playtime": "Playtime",
     "amount_hours": "{{amount}} hours",
     "amount_minutes": "{{amount}} minutes",

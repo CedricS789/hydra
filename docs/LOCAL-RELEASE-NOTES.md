@@ -1,8 +1,11 @@
-# Hydra Custom by Cédric — 4.4.1-rev.2
+# Hydra + Ludusavi Integrated — 4.4.1-rev.2
 
 Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright and the MIT license are retained. These notes describe the source version. Installer availability is listed on the repository's published releases page.
 
 ## Features
+
+- Project renamed **Hydra + Ludusavi Integrated**, displayed as **Hydra Ludusavi** in everyday UI and described as **Hydra with Ludusavi Integrated**.
+- Subscription-linked Hydra Points counters, locked placeholders, and score badges are hidden in achievement lists, comparisons, profiles, and Big Picture. Unlock tracking and stored scoring data are preserved.
 
 - Versioned backups created by bundled Ludusavi 0.29.0 after the observed game and captured game-directory child processes exit.
 - Configurable destination, full/differential retention, ZIP/plain-file formats, compression, exit delay, additional save folders, and tracking executables.
@@ -13,9 +16,9 @@ Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright a
 - Reduced Hydra Cloud promotion with paid-service subscription checks retained.
 - Published-release browser and source snapshot comparison: official source in red, installed custom source in green.
 - Check, download, and install controls for custom releases. The updater uses the configured custom repository.
-- Short display name **Hydra Custom**, with the full name in formal installer details. Existing internal identifiers remain stable for settings and installer compatibility.
+- Short display name **Hydra Ludusavi**, with the full name in formal installer details. Existing internal identifiers remain stable for settings and installer compatibility.
 - Theme import, CSS editing, and active-theme loading retained. Additional panels may require theme CSS adjustments.
-- Installer filename `hydra-custom-4.4.1-rev.2-setup-customized-by-cédric.exe`.
+- Installer filename `hydra-ludusavi-4.4.1-rev.2-setup.exe`.
 
 - Everyday labels use **Save backups**, with Ludusavi credited in settings. The game-page shortcut preselects the library game.
 - Version browsing, file/registry restore previews, explicit expiring confirmation, stopped-game checks, selected-version validation, and a separate pre-restore snapshot.
@@ -27,7 +30,7 @@ Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright a
 
 ## Setup and build
 
-Backups start disabled. Configure a destination, preview detection, inspect an archive, and verify a real game-exit backup before enabling everyday automation. Keep Hydra Custom running while playing. No automatic restoration is provided.
+Backups start disabled. Configure a destination, preview detection, inspect an archive, and verify a real game-exit backup before enabling everyday automation. Keep Hydra Ludusavi running while playing. No automatic restoration is provided.
 
 The build helper supports full native compilation and optional reuse of unchanged native components from an exactly matching official Hydra installation. The GitHub Windows workflow uses the full-source route. See the [setup and build guide](LOCAL-EDITION.md).
 

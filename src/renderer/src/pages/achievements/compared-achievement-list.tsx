@@ -1,3 +1,4 @@
+import localEdition from "../../../../shared/local-edition.json";
 import type { ComparedAchievements, UserAchievement } from "@types";
 import "./achievements.scss";
 import {
@@ -255,7 +256,9 @@ export function ComparedAchievementList({
     );
 
   const hasCommunityStats = rows.some(
-    (row) => row.points != null || row.globalUnlockPercentage != null
+    (row) =>
+      (!localEdition.hideHydraPoints && row.points != null) ||
+      row.globalUnlockPercentage != null
   );
 
   const statColumnCount = 1 + Number(hasOwnerStats) + Number(hasCommunityStats);
@@ -374,7 +377,7 @@ export function ComparedAchievementList({
                 </span>
               )}
 
-              {achievement.points != null && (
+              {!localEdition.hideHydraPoints && achievement.points != null && (
                 <div
                   className="achievements__item-points"
                   title={t("achievement_earn_points", {
@@ -461,37 +464,41 @@ export function ComparedAchievementList({
           </div>
         </div>
 
-        <div
-          className="achievements__compare-grid achievements__compare-grid--points"
-          style={gridStyle}
-        >
-          <div className="achievements__compare-controls">
-            <span className="achievements__compare-row-label">
-              <HydraIcon className="achievements__toolbar-points-icon" />
-              {t("hydra_points")}
-            </span>
-          </div>
-
-          {hasCommunityStats && (
-            <div
-              className="achievements__compare-cell achievements__compare-points"
-              title={t("available_points")}
-            >
-              <HydraIcon className="achievements__item-points-icon" />
-              <span>{achievements.achievementsPointsTotal}</span>
+        {!localEdition.hideHydraPoints && (
+          <div
+            className="achievements__compare-grid achievements__compare-grid--points"
+            style={gridStyle}
+          >
+            <div className="achievements__compare-controls">
+              <span className="achievements__compare-row-label">
+                <HydraIcon className="achievements__toolbar-points-icon" />
+                {t("hydra_points")}
+              </span>
             </div>
-          )}
-          {hasOwnerStats && (
+
+            {hasCommunityStats && (
+              <div
+                className="achievements__compare-cell achievements__compare-points"
+                title={t("available_points")}
+              >
+                <HydraIcon className="achievements__item-points-icon" />
+                <span>{achievements.achievementsPointsTotal}</span>
+              </div>
+            )}
+            {hasOwnerStats && (
+              <div className="achievements__compare-cell achievements__compare-points">
+                <HydraIcon className="achievements__item-points-icon" />
+                <span>
+                  {achievements.owner.achievementsPointsEarnedSum ?? 0}
+                </span>
+              </div>
+            )}
             <div className="achievements__compare-cell achievements__compare-points">
               <HydraIcon className="achievements__item-points-icon" />
-              <span>{achievements.owner.achievementsPointsEarnedSum ?? 0}</span>
+              <span>{achievements.target.achievementsPointsEarnedSum}</span>
             </div>
-          )}
-          <div className="achievements__compare-cell achievements__compare-points">
-            <HydraIcon className="achievements__item-points-icon" />
-            <span>{achievements.target.achievementsPointsEarnedSum}</span>
           </div>
-        </div>
+        )}
       </div>
 
       {entries.length === 0 ? (

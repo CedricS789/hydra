@@ -1,13 +1,14 @@
-# Hydra Custom by Cédric
+# Hydra + Ludusavi Integrated
 
 A Windows game launcher based on [Hydra Launcher by Los Broxas](https://github.com/hydralauncher/hydra), with automatic [Ludusavi](https://github.com/mtkennerly/ludusavi) save backups to storage you control.
 
-Hydra Custom keeps Hydra's catalogue, library, launch controls, playtime tracking, achievements, themes, and integration code. It adds backup and recovery settings inside the launcher, access to the complete save-tool manager, custom release updates, and a source comparison against official Hydra releases. The application normally displays **Hydra Custom**.
+Hydra with Ludusavi Integrated keeps Hydra's catalogue, library, launch controls, playtime tracking, achievements, themes, and integration code. It adds backup and recovery settings inside the launcher, access to the complete save-tool manager, custom release updates, and a source comparison against official Hydra releases. The project is **Hydra + Ludusavi Integrated**, also described as **Hydra with Ludusavi Integrated**; everyday app screens display **Hydra Ludusavi**.
 
 **Current source:** `4.4.1-rev.2`, based on official Hydra `v4.4.1`. This README describes the source in this repository. Check [Releases](https://github.com/CedricS789/hydra/releases) for available installers; a source update does not automatically create a downloadable release.
 
 ## Get started
 
+- [Quick start for installer recipients](docs/START-HERE.txt)
 - [Install and configure backups](#install-and-configure-backups)
 - [How automatic backups work](#how-automatic-backups-work)
 - [Features and limitations](#features-and-limitations)
@@ -24,7 +25,7 @@ Hydra Custom keeps Hydra's catalogue, library, launch controls, playtime trackin
 3. Add games normally or use **Discover saved games** in Save backups settings, then set each game's actual executable before launching or enabling game-exit automation.
 4. Open **Settings → Save backups**. Choose a backup folder you control, such as a folder inside OneDrive, a local drive, or a mounted server share. This destination picker accepts filesystem paths; engine-managed remote providers are configured separately under **Advanced rules and full manager**.
 5. Choose retention and an exit delay. The initial values are 10 full versions per game and 10 seconds. Run **Preview save detection**, then **Back up now** while the game is stopped. Inspect the backed-up files; a registry-only result does not confirm that game progress was captured.
-6. Enable automatic backups and save the settings. Launch a game, make a save, quit the actual game process, and verify the new result and archive after the delay. Keep Hydra Custom running in its tray while playing.
+6. Enable automatic backups and save the settings. Launch a game, make a save, quit the actual game process, and verify the new result and archive after the delay. Keep Hydra Ludusavi running in its tray while playing.
 7. If using a sync client, check its upload status separately. After verifying the workflow, optionally enable **Run at startup** and **Start minimized** in General settings.
 
 Automatic backups start disabled. The local-backup feature does not require a Hydra Cloud subscription. Automatic operations never restore live saves. Manual restoration requires a reviewed preview and explicit confirmation.
@@ -39,7 +40,7 @@ Hydra remains the launcher. The added integration decides when a backup can run,
 4. **Invoke Ludusavi.** Manifest-based detection, supported standalone rules, discovered common Steam emulator save locations, and configured save folders determine the data to include. Ludusavi writes ZIP or plain-file backups with detected files and, where applicable, registry data. Full and differential version retention are configurable.
 5. **Record the result.** A serialized queue and destination lock prevent overlapping backup writers. The panel reports detected paths, counts, and errors; failures can generate Windows notifications. Unchanged saves need not create another backup version.
 
-**Local backup completion and cloud synchronization are separate.** Automatic backups invoke Ludusavi with `--no-cloud-sync`. OneDrive or another sync client handles uploads independently; Hydra Custom does not verify that client's completion. Manual remote transfers have separate results, and no automatic cross-device restoration is enabled.
+**Local backup completion and cloud synchronization are separate.** Automatic backups invoke Ludusavi with `--no-cloud-sync`. OneDrive or another sync client handles uploads independently; Hydra Ludusavi does not verify that client's completion. Manual remote transfers have separate results, and no automatic cross-device restoration is enabled.
 
 ## Features and limitations
 
@@ -84,7 +85,7 @@ Hydra validates the selected version and captures current affected data before r
 
 Automatic launcher backups remain local with implicit engine cloud synchronization disabled. OneDrive and similar folder-sync clients upload independently, and their completion is not verified by Hydra. Manual Rclone transfers have separate completion results; an upload replaces the selected game's remote backup set, and a download replaces its local backup set. Both can remove versions absent from the source. Configure providers in the full manager or advanced configuration before previewing a transfer.
 
-Hydra's destination, retention, format, and compression controls take precedence over matching advanced YAML fields. Other supported rules are preserved, and native-manager changes are read back when it closes. Account credentials are not required for local backups. Hydra Cloud promotion is reduced in common desktop screens, while subscription checks remain intact. This fork does not provide Hydra Cloud services; Big Picture has not been comprehensively restyled.
+Hydra's destination, retention, format, and compression controls take precedence over matching advanced YAML fields. Other supported rules are preserved, and native-manager changes are read back when it closes. Account credentials are not required for local backups. Hydra Cloud promotion is reduced, and Hydra Points counters and locked score prompts are hidden in desktop and Big Picture screens. Achievement unlock tracking is retained, while paid-service subscription checks remain intact. This fork does not provide Hydra Cloud services; Big Picture has not been comprehensively restyled.
 
 The existing debrid, Steam/Epic, friends, community, playtime, and achievement code is retained. Live account and external-provider compatibility still require verification. Automated tests cover core guards and isolated real backup/restore operations. Remote transfer checks use a local Rclone remote; they do not establish that a particular cloud account or private server is configured correctly.
 
@@ -129,8 +130,8 @@ Use Windows x64, Git, Node.js, and Yarn Classic 1.22.22. The build workflow pins
 Clone into any suitable working directory and prepare the dependencies in PowerShell:
 
 ```powershell
-git clone --branch custom/ludusavi-backups https://github.com/CedricS789/hydra.git hydra-custom
-Set-Location -LiteralPath .\hydra-custom
+git clone --branch custom/ludusavi-backups https://github.com/CedricS789/hydra.git hydra-ludusavi
+Set-Location -LiteralPath .\hydra-ludusavi
 npm install --prefix .tmp/tooling --cache .tmp/npm-cache --no-audit --no-fund yarn@1.22.22
 node .tmp/tooling/node_modules/yarn/bin/yarn.js install --frozen-lockfile --ignore-scripts --non-interactive --cache-folder .tmp/yarn-cache
 $env:ELECTRON_CACHE = Join-Path (Get-Location).Path '.tmp/electron-cache'
@@ -150,9 +151,10 @@ For the current version, successful output is:
 
 ```text
 dist/
-  hydra-custom-4.4.1-rev.2-setup-customized-by-cédric.exe
-  hydra-custom-4.4.1-rev.2-setup-customized-by-cédric.exe.blockmap
+  hydra-ludusavi-4.4.1-rev.2-setup.exe
+  hydra-ludusavi-4.4.1-rev.2-setup.exe.blockmap
   latest.yml
+  START-HERE.txt
 ```
 
 Keep the EXE, blockmap, and update metadata from the same successful build together. Older files can remain after a failed build, so their presence alone does not prove success. Installers are unsigned unless signing is configured.
@@ -174,7 +176,7 @@ Official Hydra releases are **not automatically merged or rebuilt**. The fork ma
 | Workflow                                                                                                          | Purpose                                                                                                                                                                    |
 | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [Check official Hydra releases](https://github.com/CedricS789/hydra/actions/workflows/upstream-release-check.yml) | Scheduled every six hours, subject to GitHub scheduling. Reports a mismatch between the latest official release and the recorded base; does not merge or install anything. |
-| [Build Hydra Custom installer](https://github.com/CedricS789/hydra/actions/workflows/local-release.yml)           | Manually triggered Windows build with focused tests, downloadable artifacts, and optional draft release creation. Installer testing and publication remain manual.         |
+| [Build Hydra Ludusavi installer](https://github.com/CedricS789/hydra/actions/workflows/local-release.yml)         | Manually triggered Windows build with focused tests, downloadable artifacts, and optional draft release creation. Installer testing and publication remain manual.         |
 
 See [maintenance instructions](docs/LOCAL-EDITION.md#maintain-a-fork) for upstream integration, versioning, verification, and publication. Pushing source does not distribute an app update. The installed updater uses this repository's published custom releases; drafts and GitHub releases marked prerelease are excluded by the release browser.
 
