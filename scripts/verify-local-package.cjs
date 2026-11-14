@@ -19,6 +19,7 @@ try {
   const forbidden = Object.keys(tree.files).filter(
     (name) =>
       name === ".tmp" ||
+      name === "dist" ||
       name === ".env" ||
       name.startsWith(".env.") ||
       name.endsWith(".tsbuildinfo")

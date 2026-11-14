@@ -24,6 +24,7 @@ extraResources:
     to: chat-message.wav
 files:
   - "!.tmp/**"
+  - "!dist/**"
   - "!**/*.tsbuildinfo"
   - "!.cache/**"
   - "!legendary/**"
