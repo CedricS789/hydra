@@ -1938,6 +1938,7 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("runLudusaviLocalBackup", key, preview),
   openLudusaviLocalFolder: (logs = false) =>
     ipcRenderer.invoke("openLudusaviLocalFolder", logs),
+  clearLudusaviLocalLogs: () => ipcRenderer.invoke("clearLudusaviLocalLogs"),
   getLocalReleases: (force = false) =>
     ipcRenderer.invoke("getLocalReleases", force),
   getReleaseSourceChanges: (tag: string) =>

@@ -34,6 +34,10 @@ The queue admits only one backup writer across games. A lock in the destination 
 
 Settings shows recent results and source paths; **Open logs** opens the log folder. Failed attempts generate Windows notifications, subject to Windows notification settings. A failure can be retried with Back up now after fixing the cause. Automatic retries are not currently implemented.
 
+Under **Recent backup results**, choose **Clear results and logs**, then confirm. This clears the entire stored results history (including entries beyond the 12 currently displayed), `backup.log`, and `backup.log.old`. It preserves game saves, backup archives, settings, and Ludusavi configuration. Clearing is unavailable while backups or previews are queued/running, and uses the same queue to avoid racing a new operation. Errors are shown in the settings panel.
+
+History keeps the latest 50 results. Disk logs keep only the current and previous file, each up to 2 MiB; oversized entries are truncated in the log, and oversized logs from older versions are discarded on the next write. Log cleanup is specific to this backup feature; it does not clear Hydra's general application logs.
+
 Ludusavi retains up to the configured number of changed full backups; unchanged saves do not require another version. To recover a version, inspect it in standalone Ludusavi and perform a deliberate manual restore while the game is stopped. There is no automatic restore path in this feature.
 
 To disable automation, uncheck automatic backups and save. To stop startup, turn off Run at startup in General. Uninstall Hydra Custom through Windows Installed apps. Your external backup destination is not deleted by this feature. Keep its separate user data directory if you want the history and configuration.
@@ -78,7 +82,7 @@ For a complete source build on a correctly provisioned machine:
 node scripts/build-local.cjs
 ```
 
-The final EXE appears under `dist/`. Packaging intermediates stay under `.tmp/package` and only the installer and update metadata are copied to `dist/` after verification. The build verifies that the package excludes `.tmp`, local environment files, and TypeScript build metadata before it can be distributed. The build script gives child processes a restricted environment so unrelated credentials are not inherited by verbose build tools. The initial artifact is unsigned; add a deliberate signing configuration before distributing widely.
+The final EXE appears under `dist/`, named `hydra-custom-<version>-setup-customized-by-cédric.exe`. Its companion blockmap uses the same filename followed by `.blockmap`. Packaging intermediates stay under `.tmp/package` and only the installer and update metadata are copied to `dist/` after verification. The build verifies that the package excludes `.tmp`, local environment files, and TypeScript build metadata before it can be distributed. The build script gives child processes a restricted environment so unrelated credentials are not inherited by verbose build tools. The initial artifact is unsigned; add a deliberate signing configuration before distributing widely.
 
 ## Integrate a new official release
 

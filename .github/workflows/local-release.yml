@@ -39,15 +39,15 @@ jobs:
         shell: pwsh
         run: node scripts/write-local-build-config.cjs
       - name: Test the backup and release comparison logic
-        run: node --import ./scripts/register-ts-node.mjs --test src/main/services/ludusavi-local-tracker.test.ts src/main/services/ludusavi-local-queue.test.ts src/main/services/local-release-source.test.ts
+        run: node --import ./scripts/register-ts-node.mjs --test src/main/services/ludusavi-local-tracker.test.ts src/main/services/ludusavi-local-queue.test.ts src/main/services/ludusavi-local-log.test.ts src/main/services/local-release-source.test.ts
       - name: Compile native code, application, and Windows installer
         run: node scripts/build-local.cjs
       - uses: actions/upload-artifact@v4
         with:
           name: Hydra-Local-Windows
           path: |
-            dist/*-setup.exe
-            dist/*.blockmap
+            dist/*-setup-customized-by-cédric.exe
+            dist/*-setup-customized-by-cédric.exe.blockmap
             dist/latest.yml
           if-no-files-found: error
       - name: Create a reviewable release draft
@@ -61,4 +61,4 @@ jobs:
           if ($LASTEXITCODE -eq 0) { throw 'A release with this tag already exists; bump the custom version first.' }
           gh release create $releaseTag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --title "Hydra Custom $releaseTag" --notes-file docs/LOCAL-RELEASE-NOTES.md
           if ($LASTEXITCODE -ne 0) { throw 'Could not create the release draft.' }
-          Get-ChildItem dist/*-setup.exe,dist/*.blockmap,dist/latest.yml | ForEach-Object { gh release upload $releaseTag $_.FullName --repo $env:GITHUB_REPOSITORY; if ($LASTEXITCODE -ne 0) { throw 'Release upload failed.' } }
+          Get-ChildItem dist/*-setup-customized-by-cédric.exe,dist/*-setup-customized-by-cédric.exe.blockmap,dist/latest.yml | ForEach-Object { gh release upload $releaseTag $_.FullName --repo $env:GITHUB_REPOSITORY; if ($LASTEXITCODE -ne 0) { throw 'Release upload failed.' } }

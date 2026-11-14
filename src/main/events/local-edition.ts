@@ -4,6 +4,7 @@ import {
   saveLudusaviLocalSettings,
   enqueueLudusaviLocalBackup,
   openLudusaviLocalFolder,
+  clearLudusaviLocalLogs,
 } from "../services/ludusavi-local";
 import {
   getLocalReleases,
@@ -25,6 +26,7 @@ registerEvent("runLudusaviLocalBackup", (_event, key, preview) =>
 registerEvent("openLudusaviLocalFolder", (_event, logs) =>
   openLudusaviLocalFolder(logs)
 );
+registerEvent("clearLudusaviLocalLogs", () => clearLudusaviLocalLogs());
 registerEvent("getLocalReleases", (_event, force) => getLocalReleases(force));
 registerEvent("getReleaseSourceChanges", (_event, tag) =>
   getReleaseSourceChanges(tag)

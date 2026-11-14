@@ -11,6 +11,8 @@ export function SettingsLudusavi() {
   const [selected, setSelected] = useState("");
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearNotice, setClearNotice] = useState("");
   const refresh = async () => {
     const value = await window.electron.getLudusaviLocalState();
     setState(value);
@@ -213,6 +215,46 @@ export function SettingsLudusavi() {
         </>
       )}
       <h3>{t("history")}</h3>
+      <p>{t("log_limits")}</p>
+      <div className="local-edition__row">
+        <Button
+          theme="outline"
+          disabled={working || state.busy || confirmClear}
+          onClick={() => {
+            setClearNotice("");
+            setConfirmClear(true);
+          }}
+        >
+          {t("clear_logs")}
+        </Button>
+      </div>
+      {confirmClear && (
+        <div className="local-edition__notice">
+          <p>{t("clear_logs_confirmation")}</p>
+          <div className="local-edition__row">
+            <Button
+              disabled={working || state.busy}
+              onClick={() =>
+                action(async () => {
+                  await window.electron.clearLudusaviLocalLogs();
+                  setConfirmClear(false);
+                  setClearNotice(t("logs_cleared"));
+                })
+              }
+            >
+              {t("clear_logs")}
+            </Button>
+            <Button
+              theme="outline"
+              disabled={working}
+              onClick={() => setConfirmClear(false)}
+            >
+              {t("cancel_clear")}
+            </Button>
+          </div>
+        </div>
+      )}
+      {clearNotice && <p role="status">{clearNotice}</p>}
       <p>{t("cloud_notice")}</p>
       {!state.history.length && <p>{t("no_history")}</p>}
       {state.history.slice(0, 12).map((result, index) => (

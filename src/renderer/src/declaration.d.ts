@@ -196,6 +196,7 @@ declare global {
       preview: boolean
     ) => Promise<import("@types").LudusaviLocalResult | undefined>;
     openLudusaviLocalFolder: (logs?: boolean) => Promise<string>;
+    clearLudusaviLocalLogs: () => Promise<void>;
     getLocalReleases: (
       force?: boolean
     ) => Promise<import("@types").LocalReleaseState>;

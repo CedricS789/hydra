@@ -24,6 +24,10 @@ import {
   type TrackedLocalGame,
 } from "./ludusavi-local-tracker";
 import { LudusaviBackupQueue } from "./ludusavi-local-queue";
+import {
+  appendLudusaviBackupLog,
+  clearLudusaviBackupLogs,
+} from "./ludusavi-local-log";
 
 const exec = promisify(execFile);
 const settingsKey = "ludusaviLocalSettings";
@@ -111,6 +115,14 @@ export const getLudusaviLocalState = async (): Promise<LudusaviLocalState> => {
         executablePath: g.executablePath ?? null,
       })),
   };
+};
+
+export const clearLudusaviLocalLogs = () => {
+  if (busy || queue.busy) throw new Error(t("ludusavi:clear_busy"));
+  return queue.enqueue("maintenance:clear-logs", async () => {
+    await clearLudusaviBackupLogs(folder());
+    await db.put(historyKey, [], { valueEncoding: "json" });
+  });
 };
 
 const trackingGame = (
@@ -313,15 +325,7 @@ const record = async (result: LudusaviLocalResult) => {
   await db.put(historyKey, [result, ...history].slice(0, 50), {
     valueEncoding: "json",
   });
-  await fs.mkdir(folder(), { recursive: true });
-  if (
-    await fs
-      .stat(logPath())
-      .then((s) => s.size > 2 * 1024 * 1024)
-      .catch(() => false)
-  )
-    await fs.rename(logPath(), `${logPath()}.old`).catch(() => undefined);
-  await fs.appendFile(logPath(), `${JSON.stringify(result)}\n`);
+  await appendLudusaviBackupLog(folder(), result);
   return result;
 };
 

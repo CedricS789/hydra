@@ -200,7 +200,7 @@ async function main() {
     ]);
     run(process.execPath, ["scripts/verify-local-package.cjs"]);
     const pkg = require("../package.json");
-    const installer = `hydra-custom-${pkg.version}-setup.exe`;
+    const installer = `hydra-custom-${pkg.version}-setup-customized-by-cédric.exe`;
     fs.mkdirSync(path.join(root, "dist"), { recursive: true });
     for (const file of [installer, `${installer}.blockmap`, "latest.yml"]) {
       fs.copyFileSync(

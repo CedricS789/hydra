@@ -5,6 +5,7 @@ Based on official Hydra v4.4.1. Unofficial personal fork; upstream copyright and
 - Versioned backups created by Ludusavi 0.29.0 after the observed game process and captured game-directory children exit.
 - Configurable destination, retention, delay, additional save paths, and tracking executables.
 - Backup-only operation, a serialized queue, destination lock, history, logs, and failure notifications.
+- Clear backup results and both backup log files from settings after confirmation, without removing saves, archives, or configuration. Clearing is blocked during queued/running operations. History is limited to 50 results; the two log files are capped at 2 MiB each.
 - Standard Ludusavi save detection plus common local Steam emulator save folders.
 - OneDrive upload is explicitly separate from local backup completion.
 - Reduced Hydra Cloud promotion; paid-service entitlement checks remain intact.

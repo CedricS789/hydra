@@ -70,7 +70,7 @@ win:
     - nsis
     - portable
 nsis:
-  artifactName: hydra-custom-${version}-setup.${ext}
+  artifactName: hydra-custom-${version}-setup-customized-by-cédric.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: Hydra Custom by Cédric
   createDesktopShortcut: always
