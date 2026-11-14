@@ -197,6 +197,30 @@ declare global {
     ) => Promise<import("@types").LudusaviLocalResult | undefined>;
     openLudusaviLocalFolder: (logs?: boolean) => Promise<string>;
     clearLudusaviLocalLogs: () => Promise<void>;
+    listSaveBackupVersions: (key: string) => Promise<{
+      title: string;
+      versions: import("@types").SaveBackupVersion[];
+    }>;
+    previewSaveRestore: (
+      key: string,
+      version: string
+    ) => Promise<import("@types").SaveOperationPreview>;
+    confirmSaveOperation: (
+      token: string
+    ) => Promise<import("@types").SaveOperationResult>;
+    validateSaveBackup: (
+      key: string,
+      version: string
+    ) => Promise<import("@types").SaveOperationResult>;
+    previewSaveCloudTransfer: (
+      key: string,
+      direction: "upload" | "download"
+    ) => Promise<import("@types").SaveOperationPreview>;
+    getSaveAdvancedConfig: () => Promise<string>;
+    saveSaveAdvancedConfig: (text: string) => Promise<void>;
+    importStandaloneSaveConfig: () => Promise<void>;
+    updateSaveManifest: () => Promise<void>;
+    openFullSaveManager: (key?: string) => Promise<void>;
     getLocalReleases: (
       force?: boolean
     ) => Promise<import("@types").LocalReleaseState>;

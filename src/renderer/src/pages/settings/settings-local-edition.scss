@@ -33,6 +33,22 @@
     padding: 12px;
     background: #202a36;
   }
+  &__table-scroll {
+    overflow: auto;
+    max-height: 320px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  th,
+  td {
+    text-align: left;
+    padding: 8px;
+    border-bottom: 1px solid #454952;
+    overflow-wrap: anywhere;
+  }
   &__error {
     color: #ff9999;
     overflow-wrap: anywhere;

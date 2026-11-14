@@ -2,7 +2,7 @@
 
 A Windows game launcher based on [Hydra Launcher by Los Broxas](https://github.com/hydralauncher/hydra), with automatic [Ludusavi](https://github.com/mtkennerly/ludusavi) save backups to storage you control.
 
-Hydra Custom keeps Hydra's catalogue, library, launch controls, playtime tracking, achievements, themes, and integration code. It adds backup settings inside the launcher, custom release updates, and a source comparison against official Hydra releases. The application normally displays **Hydra Custom**.
+Hydra Custom keeps Hydra's catalogue, library, launch controls, playtime tracking, achievements, themes, and integration code. It adds backup and recovery settings inside the launcher, access to the complete save-tool manager, custom release updates, and a source comparison against official Hydra releases. The application normally displays **Hydra Custom**.
 
 **Current source:** `4.4.1-rev.2`, based on official Hydra `v4.4.1`. This README describes the source in this repository. Check [Releases](https://github.com/CedricS789/hydra/releases) for available installers; a source update does not automatically create a downloadable release.
 
@@ -22,12 +22,12 @@ Hydra Custom keeps Hydra's catalogue, library, launch controls, playtime trackin
 1. Download a custom setup EXE from this repository's [published releases](https://github.com/CedricS789/hydra/releases), if available, or [build from source](#build-from-source).
 2. Fully exit other Hydra instances from their system trays before installing and testing. This fork uses separate application data from official Hydra; existing library and account settings are not silently copied.
 3. Add games to the library and set each game's actual executable in its game options.
-4. Open **Settings → Ludusavi backups**. Choose a backup folder you control, such as a folder inside OneDrive, a local drive, or a mounted server share. The interface accepts filesystem destinations; it does not configure remote-storage accounts.
+4. Open **Settings → Save backups**. Choose a backup folder you control, such as a folder inside OneDrive, a local drive, or a mounted server share. This destination picker accepts filesystem paths; engine-managed remote providers are configured separately under **Advanced rules and full manager**.
 5. Choose retention and an exit delay. The initial values are 10 full versions per game and 10 seconds. Run **Preview save detection**, then **Back up now** while the game is stopped. Inspect the backed-up files; a registry-only result does not confirm that game progress was captured.
 6. Enable automatic backups and save the settings. Launch a game, make a save, quit the actual game process, and verify the new result and archive after the delay. Keep Hydra Custom running in its tray while playing.
 7. If using a sync client, check its upload status separately. After verifying the workflow, optionally enable **Run at startup** and **Start minimized** in General settings.
 
-Automatic backups start disabled. The local-backup feature does not require a Hydra Cloud subscription. It never automatically restores or overwrites live saves.
+Automatic backups start disabled. The local-backup feature does not require a Hydra Cloud subscription. Automatic operations never restore live saves. Manual restoration requires a reviewed preview and explicit confirmation.
 
 ## How automatic backups work
 
@@ -36,54 +36,75 @@ Hydra remains the launcher. The added integration decides when a backup can run,
 1. **Read the library.** Game titles, store identifiers, and executable paths come from Hydra. Individual games can be excluded; extra save folders and tracking executables can be supplied when needed.
 2. **Observe the game processes.** Windows process snapshots track the configured executable and captured child processes within the game's directory. A bootstrap program exiting is insufficient while a captured game process remains active. Handoffs that are too brief to observe may require an additional tracking path.
 3. **Wait and recheck.** After the tracked processes exit, the integration waits for the configured delay and checks again before backing up. Failed process enumeration is not treated as proof of exit.
-4. **Invoke Ludusavi.** Manifest-based detection, supported standalone rules, discovered common Steam emulator save locations, and configured save folders determine the data to include. Ludusavi writes ZIP backups with detected files and, where applicable, registry data.
+4. **Invoke Ludusavi.** Manifest-based detection, supported standalone rules, discovered common Steam emulator save locations, and configured save folders determine the data to include. Ludusavi writes ZIP or plain-file backups with detected files and, where applicable, registry data. Full and differential version retention are configurable.
 5. **Record the result.** A serialized queue and destination lock prevent overlapping backup writers. The panel reports detected paths, counts, and errors; failures can generate Windows notifications. Unchanged saves need not create another backup version.
 
-**Local backup completion and cloud synchronization are separate.** This integration invokes Ludusavi with `--no-cloud-sync`. OneDrive or another sync client handles uploads independently; Hydra Custom does not verify remote delivery or provide automatic cross-device restoration.
+**Local backup completion and cloud synchronization are separate.** Automatic backups invoke Ludusavi with `--no-cloud-sync`. OneDrive or another sync client handles uploads independently; Hydra Custom does not verify that client's completion. Manual remote transfers have separate results, and no automatic cross-device restoration is enabled.
 
 ## Features and limitations
 
-| Feature               | Current behavior                                                                                                                                                                                                                             |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Automatic backups     | Windows game-exit observation, configurable delay, final process check, and deduplicated queued work.                                                                                                                                        |
-| Ludusavi engine       | Bundled save detection and ZIP backup creation, including detected registry data.                                                                                                                                                            |
-| Backup controls       | Folder picker, retained full versions, per-game inclusion, extra save folders, and extra tracking executables.                                                                                                                               |
-| Manual operations     | Save detection preview, **Back up now**, **Open backup folder**, and **Open logs**.                                                                                                                                                          |
-| Results and cleanup   | Latest 50 results stored; latest 12 displayed. **Clear results and logs** removes the history and both backup log files after confirmation while preserving saves, archives, and settings. Clearing is blocked while work is queued/running. |
-| Log limits            | Current and previous backup logs, each capped at 2 MiB. Oversized entries are truncated; oversized legacy logs are discarded on the next write.                                                                                              |
-| Failure reporting     | Results, logs, and Windows notifications where permitted. Automatic retries are not implemented.                                                                                                                                             |
-| Custom updates        | Check, download, and install controls for published custom releases. Installation is blocked while tracked games or backups are active.                                                                                                      |
-| Source comparison     | Select an official published release, list changed files, and view an inline red/green comparison against the installed custom source revision. This compares snapshots rather than commit history.                                          |
-| Themes                | Existing theme import, CSS editing, and active-theme loading are retained under **Settings → General → Appearance**. New panels may need theme adjustments.                                                                                  |
-| Hydra Cloud promotion | Reduced in common desktop screens. Subscription checks remain intact. This fork does not provide Hydra Cloud services, and Big Picture has not been comprehensively restyled.                                                                |
+Everyday navigation and game-page buttons use **Save backups**. The settings identify Ludusavi as the bundled engine. The main workflow is integrated into Hydra; **Open full manager** provides the engine's complete graphical interface for specialist controls.
 
-This is a **backup-focused Ludusavi integration**. Hydra does not yet expose a browser for stored versions and their contents, manual version restoration, backup validation controls, or the full set of exclusions, redirects, differential backup, and remote-storage settings. Some standalone roots and custom-game rules are reused, but the complete standalone configuration is not mirrored.
+| Feature                | Current behavior                                                                                                                                                                                                                          |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Automatic backups      | Windows process-exit observation, delay, final stop check, and deduplicated queued work.                                                                                                                                                  |
+| Formats and retention  | ZIP or plain-file storage, ZIP compression choice, retained full versions, and differential versions per full backup. Compression levels remain available in advanced configuration.                                                      |
+| Detection              | Hydra library reuse, manifest lookup and update control, extra save folders, registry rules, and extra tracking executables.                                                                                                              |
+| Version browser        | Load saved versions for the selected game, including dates, comments, and protection status; preview their files and registry keys.                                                                                                       |
+| Manual recovery        | Preview, acknowledge overwrite consequences, and explicitly restore a version. A single-use confirmation expires after five minutes and becomes invalid if configuration or backup mapping changes. The game must be stopped.             |
+| Pre-restore snapshots  | Existing affected saves are backed up separately before a Hydra-managed restore. Validation or snapshot failures stop restoration.                                                                                                        |
+| Validation             | Check mapping structure, mapped-file presence, plain-file sizes, and ZIP integrity without extracting into live saves. This does not establish whether a game can load the save.                                                          |
+| Advanced configuration | Native-validated YAML for roots, custom file/registry rules, exclusions, redirects, secondary manifests, provider settings, and other engine options. Standalone configuration can be imported.                                           |
+| Full manager           | Opens bundled Ludusavi with this integration's configuration, allowing comments, backup locks/removal, detailed exclusions, provider setup, and all other native GUI controls. Close it to save its settings and resume Hydra operations. |
+| Remote transfers       | Manual Rclone upload/download previews followed by explicit confirmation. Downloads replace backup archives, not live game saves. Rclone is configured separately.                                                                        |
+| Results and cleanup    | Latest 50 results stored, latest 12 displayed. **Clear results and logs** clears history and both bounded log files while preserving saves, archives, and configuration.                                                                  |
+| Overlap prevention     | One queue and destination lock for backup, restore, validation, transfers, and the full manager. Settings and log cleanup are blocked during queued/running work.                                                                         |
+| Release tools          | Custom installer update controls and source-snapshot comparison against official published releases.                                                                                                                                      |
+| Themes                 | Existing theme import, CSS editing, and active-theme loading retained. New panels may require theme adjustments.                                                                                                                          |
 
-For recovery, use standalone Ludusavi deliberately while the game is stopped. There is no automatic restore path in this feature.
+### Restore a saved version
 
-The existing debrid, Steam/Epic, friends, community, playtime, and achievement code is retained. Full live account and service compatibility has not been verified in this fork. Core backup tracking, queue, log cleanup, and source-comparison tests are included, but game-specific save detection and integrations still require runtime verification. Retained upstream code does not guarantee continued compatibility with external services.
+In **Settings → Save backups**, select a library game, choose **Load saved versions**, select a version, then **Preview files and restore**. Review the paths, acknowledge what will be overwritten, and choose **Restore this version**. Cancellation and preview do not write live saves. There is no automatic restoration.
+
+Hydra validates the selected version and captures current affected data before restoring. Pre-restore snapshots are kept under `.hydra-restore-safety/<operation-id>/` inside the backup destination when there is existing data to preserve. These snapshots are separate from normal retention and are not automatically pruned; manage their storage deliberately. A partially failed native restore may require manual recovery from that snapshot; restoration is not a filesystem transaction.
+
+**Open full manager** runs the native tool, which has its own manual operations and confirmations. Hydra pauses its queued operations while that window is open. Operations performed directly in that window use the native workflow rather than Hydra's preview tokens or extra pre-restore snapshot. Keep games stopped while using its restore controls.
+
+### Storage and integration boundaries
+
+Automatic launcher backups remain local with implicit engine cloud synchronization disabled. OneDrive and similar folder-sync clients upload independently, and their completion is not verified by Hydra. Manual Rclone transfers have separate completion results; an upload replaces the selected game's remote backup set, and a download replaces its local backup set. Both can remove versions absent from the source. Configure providers in the full manager or advanced configuration before previewing a transfer.
+
+Hydra's destination, retention, format, and compression controls take precedence over matching advanced YAML fields. Other supported rules are preserved, and native-manager changes are read back when it closes. Account credentials are not required for local backups. Hydra Cloud promotion is reduced in common desktop screens, while subscription checks remain intact. This fork does not provide Hydra Cloud services; Big Picture has not been comprehensively restyled.
+
+The existing debrid, Steam/Epic, friends, community, playtime, and achievement code is retained. Live account and external-provider compatibility still require verification. Automated tests cover core guards and isolated real backup/restore operations. Remote transfer checks use a local Rclone remote; they do not establish that a particular cloud account or private server is configured correctly.
 
 ## Screenshots
 
-These are unaltered captures of the custom settings panels from earlier interface tests with sample backend data. They show the earlier **Hydra Local / 4.4.1-local.1** name; current source uses **Hydra Custom / 4.4.1-rev.2**. The newer log-cleanup control is not shown. They demonstrate the interface, not a completed current release or a successful cloud upload. See [screenshot details](docs/screenshots/README.md).
+These unaltered captures render the actual settings components in an isolated interface test with sample backend data. The game, paths, versions, and status text are examples. They are not screenshots of an installed release or evidence of real cloud synchronization. See [screenshot details](docs/screenshots/README.md).
 
-### Ludusavi backup settings
+### Save backup settings
 
-Choose a destination, retention, exit delay, and games from the Hydra library. Preview, manual backup, and result controls continue farther down the panel.
+Configure the destination, full/differential retention, format, compression, and game selection. Ludusavi is identified once in the settings description.
 
-![Prototype backup settings showing destination, retention, delay, and game selection](docs/screenshots/ludusavi-backups-prototype.png)
+![Save backup settings with sample data](docs/screenshots/save-backups.png)
 
-### Releases and changes
+### Saved versions and cleanup
 
-Custom update controls and official release selection share a dedicated settings panel. The release list and “current” status shown here are sample data.
+Browse versions, preview recovery, validate archives, and access remote transfers, advanced rules, and log cleanup.
 
-![Prototype Releases and changes panel](docs/screenshots/releases-prototype.png)
+![Saved versions and management controls with sample data](docs/screenshots/saved-versions.png)
 
-### Inline source comparison
+### Manual restore preview
 
-Official source appears in red and custom source in green. **The code shown is a synthetic display-test example, not an actual upstream-versus-fork diff.** Normal operation retrieves the selected official source and embedded custom revision from GitHub.
+Review affected paths and explicitly acknowledge the overwrite before confirmation becomes available. This example preview does not perform a real restore.
 
-![Prototype inline source comparison with synthetic red and green example code](docs/screenshots/source-diff-prototype.png)
+![Manual restore preview with confirmation disabled until acknowledged](docs/screenshots/restore-preview.png)
+
+### Release source comparison
+
+The historical capture below shows the earlier prototype name. The red/green code is a synthetic display-test example rather than actual official-versus-custom source. Normal operation fetches real snapshots from GitHub.
+
+![Historical prototype source comparison with synthetic example code](docs/screenshots/source-diff-prototype.png)
 
 ## Build from source
 
@@ -126,7 +147,7 @@ Keep the EXE, blockmap, and update metadata from the same successful build toget
 | Packaging staging and build caches  | `.tmp/`, including `.tmp/package/`                                             |
 | Custom application data             | `%APPDATA%\hydralauncher-local`                                                |
 | Backup logs                         | `%APPDATA%\hydralauncher-local\ludusavi-local\backup.log` and `backup.log.old` |
-| Save backup destination             | Folder selected in **Settings → Ludusavi backups**                             |
+| Save backup destination             | Folder selected in **Settings → Save backups**                                 |
 
 The internal package name `hydralauncher-local` and app ID `gg.hydralauncher.hydra.local` remain stable for configuration and installer compatibility. Renaming a source checkout does not affect those identifiers.
 
@@ -145,7 +166,7 @@ When maintaining a separate fork, update the repository settings described in th
 
 ## Disable or uninstall
 
-Disable automatic backups in **Settings → Ludusavi backups** and save. Disable **Run at startup** in General settings if enabled. Uninstall through Windows Installed apps. This backup feature does not delete the external backup destination when disabled or uninstalled.
+Disable automatic backups in **Settings → Save backups** and save. Disable **Run at startup** in General settings if enabled. Uninstall through Windows Installed apps. This backup feature does not delete the external backup destination when disabled or uninstalled.
 
 ## Credits and license
 

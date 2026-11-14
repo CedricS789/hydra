@@ -5,8 +5,8 @@ Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright a
 ## Features
 
 - Versioned backups created by bundled Ludusavi 0.29.0 after the observed game and captured game-directory child processes exit.
-- Configurable destination, full-version retention, exit delay, additional save folders, and tracking executables.
-- Backup-only operation, a serialized queue, destination lock, results, logs, and failure notifications.
+- Configurable destination, full/differential retention, ZIP/plain-file formats, compression, exit delay, additional save folders, and tracking executables.
+- Automatic backup-only operation, a serialized queue, destination lock, results, logs, and failure notifications.
 - **Clear results and logs** removes saved history and both backup logs after confirmation, preserving saves, archives, and configuration. Clearing is blocked during queued/running operations. History is limited to 50 results and each of the two log files to 2 MiB.
 - Manifest-based save detection plus discovery of common Steam emulator save folders.
 - Local backup completion reported separately from unverified external synchronization.
@@ -16,6 +16,11 @@ Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright a
 - Short display name **Hydra Custom**, with the full name in formal installer details. Existing internal identifiers remain stable for settings and installer compatibility.
 - Theme import, CSS editing, and active-theme loading retained. Additional panels may require theme CSS adjustments.
 - Installer filename `hydra-custom-4.4.1-rev.2-setup-customized-by-cédric.exe`.
+
+- Everyday labels use **Save backups**, with Ludusavi credited in settings. The game-page shortcut preselects the library game.
+- Version browsing, file/registry restore previews, explicit expiring confirmation, stopped-game checks, selected-version validation, and a separate pre-restore snapshot.
+- Native-validated advanced YAML and standalone-rule import; the complete bundled graphical manager is available with shared configuration. Closing it reads back settings and resumes queued operations.
+- Manual Rclone upload/download previews and confirmations, with remote completion recorded separately from local backup completion. No automatic download or restoration is enabled.
 
 ## Setup and build
 
@@ -27,6 +32,8 @@ The official-release check reports new upstream versions; integration, testing, 
 
 ## Known limits
 
-The interface does not yet include backup-version browsing, manual restoration, backup validation controls, or all advanced Ludusavi settings. Full live account sign-in, debrid downloads, Steam/Epic linking, friends/community behavior, and real achievement unlocks have not been verified in this fork. Check these before replacing an existing installation for daily use.
+Specialist controls such as backup comments, locks, deletion, provider setup, and the complete engine GUI remain in **Open full manager** rather than being recreated as individual Hydra forms. Native-window operations use their own confirmations and do not add Hydra's extra pre-restore snapshot. Pre-restore snapshots created by Hydra are not automatically pruned. Validation checks metadata, presence, sizes for plain files, and ZIP integrity; it does not establish save usability.
 
-Older Hydra Local prototypes may require a manual upgrade using the new setup EXE. Prototype screenshots use sample backend data and earlier branding; see [screenshot details](screenshots/README.md).
+Rclone is configured separately. Isolated local-remote tests do not verify a cloud account or private server. Full live sign-in, debrid downloads, Steam/Epic linking, friends/community behavior, real achievement unlocks, and native provider authentication still need manual verification.
+
+Older Hydra Local prototypes may require a manual upgrade using the new setup EXE. Screenshots use sample backend data; see [screenshot details](screenshots/README.md).

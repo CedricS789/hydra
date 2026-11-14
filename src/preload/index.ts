@@ -1939,6 +1939,24 @@ contextBridge.exposeInMainWorld("electron", {
   openLudusaviLocalFolder: (logs = false) =>
     ipcRenderer.invoke("openLudusaviLocalFolder", logs),
   clearLudusaviLocalLogs: () => ipcRenderer.invoke("clearLudusaviLocalLogs"),
+  listSaveBackupVersions: (key: string) =>
+    ipcRenderer.invoke("listSaveBackupVersions", key),
+  previewSaveRestore: (key: string, version: string) =>
+    ipcRenderer.invoke("previewSaveRestore", key, version),
+  confirmSaveOperation: (token: string) =>
+    ipcRenderer.invoke("confirmSaveOperation", token),
+  validateSaveBackup: (key: string, version: string) =>
+    ipcRenderer.invoke("validateSaveBackup", key, version),
+  previewSaveCloudTransfer: (key: string, direction: "upload" | "download") =>
+    ipcRenderer.invoke("previewSaveCloudTransfer", key, direction),
+  getSaveAdvancedConfig: () => ipcRenderer.invoke("getSaveAdvancedConfig"),
+  saveSaveAdvancedConfig: (text: string) =>
+    ipcRenderer.invoke("saveSaveAdvancedConfig", text),
+  importStandaloneSaveConfig: () =>
+    ipcRenderer.invoke("importStandaloneSaveConfig"),
+  updateSaveManifest: () => ipcRenderer.invoke("updateSaveManifest"),
+  openFullSaveManager: (key?: string) =>
+    ipcRenderer.invoke("openFullSaveManager", key),
   getLocalReleases: (force = false) =>
     ipcRenderer.invoke("getLocalReleases", force),
   getReleaseSourceChanges: (tag: string) =>

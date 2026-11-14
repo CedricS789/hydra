@@ -19,7 +19,7 @@ See the [repository README](../README.md) for an overview and screenshots, and [
 1. Fully exit official Hydra and earlier custom versions from their system trays. Avoid two launchers tracking the same game session.
 2. Install a custom setup EXE from a published release, or build one using the instructions below. Official Hydra and this fork use separate application data; configuration is not silently copied.
 3. Configure the library and each game's actual executable. Use the game process rather than a store client or a bootstrap program that immediately hands off.
-4. Open **Settings → Ludusavi backups** and choose an absolute filesystem destination using **Browse**. A local drive, a folder managed by OneDrive or another sync client, or a mounted server share can be selected. This panel does not configure remote servers or cloud credentials.
+4. Open **Settings → Save backups** and choose an absolute filesystem destination using **Browse**. A local drive, a folder managed by OneDrive or another sync client, or a mounted server share can be selected. This panel does not configure remote servers or cloud credentials.
 5. Choose retention and the exit delay. Initial values are 10 full versions and 10 seconds.
 6. Run **Preview save detection** for a game. Inspect the source paths. If necessary, add its save folders; a registry-only result is insufficient to verify game progress.
 7. While the game is stopped, run **Back up now** and inspect the created archive. Verify expected save files and contents before relying on automatic backups.
@@ -44,7 +44,44 @@ Under **Recent backup results**, select **Clear results and logs** and confirm. 
 
 History retains 50 results. Each of the two log files is capped at 2 MiB. Oversized log entries are truncated; oversized logs from older builds are discarded on the next write. This control does not clear Hydra's general application logs.
 
-Ludusavi retains the configured number of changed full backups. Unchanged saves need not create another version. Recovery currently requires a deliberate manual restore in standalone Ludusavi while the game is stopped. Hydra has no version browser, manual restore, or automatic restore control in this integration.
+Full and differential retention are configurable, as are ZIP/plain-file format and ZIP compression. Unchanged saves need not create another version. Automatic operations never restore live saves.
+
+### Restore a saved version
+
+Choose a library game, **Load saved versions**, select a version, and choose **Preview files and restore**. Review the affected files and registry keys, acknowledge the overwrite, and confirm **Restore this version**. A confirmation is single-use, expires after five minutes, and is bound to the current configuration, preview, and backup mapping. Preview and cancel do not write live saves. The configured game must be stopped before confirmation succeeds.
+
+Before restoration, Hydra checks mapped-file presence and ZIP integrity, then snapshots current affected files and registry data separately. A failure in either step stops the restore. Snapshots with existing data are retained under `.hydra-restore-safety/<operation-id>/` in the selected backup destination. They are outside normal retention and are not automatically pruned. If native restoration partially fails, use the snapshot for deliberate recovery; the operation is not transactional.
+
+**Validate selected version** checks mapping structure, declared-file presence, simple-format file sizes, and ZIP integrity through bundled 7-Zip. It does not extract into live saves or prove the save is usable in the game.
+
+### Advanced rules and complete native controls
+
+**Advanced rules and full manager** provides a YAML editor, an import from standalone settings, and **Open full manager**. The native executable validates the edited configuration before it is saved; one previous advanced configuration is kept. Roots, custom file and registry entries, exclusions, redirects, secondary manifests, compression levels, and provider settings remain available. Hydra's destination, full/differential retention, format, and compression controls override the matching YAML fields. Implicit engine cloud synchronization is disabled for launcher operations.
+
+The full manager opens bundled Ludusavi with the shared configuration, including detection rules for the selected library game. It exposes the complete native GUI, including backup comments, locks, removal, exclusions, native validation, and provider setup. Close it to read back settings and resume Hydra's queue. Games must be stopped when opening it; keep them stopped while using native restore controls. Native-window operations use that tool's own workflow and do not use Hydra's approval tokens or extra pre-restore snapshots.
+
+### Manual remote transfers
+
+Install/configure Rclone separately to use engine-managed remote transfers. A normal OneDrive folder destination requires only the OneDrive client and does not need Rclone.
+
+Configure the provider through the full manager, or configure an existing Rclone remote in advanced YAML. For example:
+
+```yaml
+apps:
+  rclone:
+    path: C:/Tools/rclone/rclone.exe
+    arguments: ""
+cloud:
+  remote:
+    Custom:
+      id: my-private-remote
+  path: GameBackups
+  synchronize: false
+```
+
+Keep provider credentials in Rclone's own configuration, not the repository. Select a library game and use **Preview remote upload** or **Preview remote download**, review the changed archive paths, then explicitly confirm. Upload replaces that game's remote backup set; download replaces its local backup set. Versions missing from the source may be removed. Downloading archives does not restore live saves, and no transfer runs automatically from Hydra. A new preview is required after settings or the current transfer plan changes.
+
+Local backups, manual remote transfers, and an external folder-sync client's uploads have distinct completion states. Successful local Rclone-remote tests do not verify a real account, provider authentication, or server permissions.
 
 ### Disable and uninstall
 
@@ -81,11 +118,26 @@ For an existing checkout, start from its root and omit cloning. `--ignore-script
 ### Check the source
 
 ```powershell
-node --import ./scripts/register-ts-node.mjs --test src/main/services/ludusavi-local-tracker.test.ts src/main/services/ludusavi-local-queue.test.ts src/main/services/ludusavi-local-log.test.ts src/main/services/local-release-source.test.ts src/main/services/process-watcher-scan.test.ts src/main/services/game-running-state.test.ts
+node --import ./scripts/register-ts-node.mjs --test src/main/services/ludusavi-local-tracker.test.ts src/main/services/ludusavi-local-queue.test.ts src/main/services/ludusavi-local-log.test.ts src/main/services/ludusavi-local-api.test.ts src/main/services/ludusavi-local-config.test.ts src/main/services/ludusavi-local-validation.test.ts src/main/services/local-release-source.test.ts src/main/services/process-watcher-scan.test.ts src/main/services/game-running-state.test.ts
 node node_modules/typescript/bin/tsc --noEmit -p tsconfig.node.json --composite false
 node node_modules/typescript/bin/tsc --noEmit -p tsconfig.web.json --composite false
 git status --short
 ```
+
+Run the isolated real-tool checks after dependencies are prepared:
+
+```powershell
+node scripts/postinstall.cjs
+node scripts/test-save-manager-integration.mjs
+```
+
+The checks use synthetic saves and an isolated profile under `.tmp/`, leaving real game saves unchanged. They exercise ZIP, differential and plain-file backups, version listing, previews, validation/corruption handling, restore guards, explicit restoration, and the pre-restore snapshot. Fixtures are retained under `.tmp/` for inspection. An optional local-remote transfer check can use an existing Rclone executable:
+
+```powershell
+node scripts/test-save-manager-integration.mjs --rclone C:/Tools/rclone/rclone.exe
+```
+
+It uses a temporary filesystem remote and isolated Rclone configuration; it does not connect a cloud account. The graphical manager's provider authentication and real service compatibility require manual testing.
 
 Build distributables from a clean committed revision. The helper embeds `git rev-parse HEAD` for source comparison; uncommitted code cannot be represented by that revision. Publish the commit to the configured source repository before distributing the installer.
 
@@ -163,7 +215,7 @@ Resolve conflicts while preserving backup-only boundaries, process-exit evidence
 
 Update the version in `package.json` together with `upstreamTag` and `releaseTag` in `src/shared/local-edition.json`. For example, official `v4.4.2` can become custom `4.4.2-rev.1` with release tag `v4.4.2-rev.1`. Increase the revision for subsequent custom releases of that base. Update release notes, public service defaults, resource packaging, toolchain requirements, and documentation as needed.
 
-Run focused tests and type checks, build, and test native loading, save preview, archive contents, retention, process-exit behavior, failures, log cleanup, startup, and disabling. Separately verify account sign-in, debrid, Steam/Epic, friends/community, playtime, achievements, themes, and external upload. A clean merge and compilation do not establish service compatibility. Keep a previous installer available; downgrades do not necessarily reverse data migrations.
+Run focused tests and type checks, build, and test native loading, save preview, full/differential and plain-file archives, retention, process-exit behavior, manual restoration and its snapshot, validation, advanced rules, transfers, failures, log cleanup, startup, and disabling. Separately verify account sign-in, debrid, Steam/Epic, friends/community, playtime, achievements, themes, and external upload. A clean merge and compilation do not establish service compatibility. Keep a previous installer available; downgrades do not necessarily reverse data migrations.
 
 Commit the reviewed integration, merge it into `custom/ludusavi-backups`, and push. The scheduled official-release check reads the default branch; an integration branch alone does not advance its recorded base.
 
@@ -192,6 +244,8 @@ The official-release check is scheduled every six hours, subject to GitHub sched
 | `src/renderer/src/pages/settings/settings-local-releases.tsx`       | Release browser and inline diff.                                                       |
 | `src/shared/local-edition.json`                                     | Fork identity, upstream base, and release tag.                                         |
 | `scripts/build-local.cjs` and `verify-local-package.cjs`            | Build preparation, packaging, and verification.                                        |
+
+Additional management modules are `ludusavi-local-manager.ts` (version/restore/transfer/native-window operations), `ludusavi-local-config.ts` (managed configuration), `ludusavi-local-lock.ts` (destination ownership), `ludusavi-local-validation.ts` (non-extracting checks), and `ludusavi-local-api.ts` (response handling and expiring confirmations). The added interface is `settings-save-manager.tsx`.
 
 ## Themes
 

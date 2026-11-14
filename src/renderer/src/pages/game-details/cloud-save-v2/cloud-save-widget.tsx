@@ -1,5 +1,7 @@
 import localEdition from "../../../../../shared/local-edition.json";
 import { useTranslation } from "react-i18next";
+import { useContext } from "react";
+import { gameDetailsContext } from "@renderer/context";
 
 import type { CloudSaveSyncProgressPayload } from "@types";
 
@@ -70,13 +72,16 @@ function HydraCloudSaveWidget() {
 
 export function CloudSaveWidget() {
   const { t } = useTranslation("ludusavi");
+  const { shop, objectId } = useContext(gameDetailsContext);
   if (!localEdition.hideCloudPromotions) return <HydraCloudSaveWidget />;
   return (
     <button
       type="button"
       className="game-details__cloud-sync-button"
       onClick={() => {
-        globalThis.location.hash = "/settings?tab=local_backups";
+        const query = new URLSearchParams({ tab: "local_backups" });
+        if (objectId) query.set("game", `${shop}:${objectId}`);
+        globalThis.location.hash = `/settings?${query}`;
       }}
     >
       {t("title")}

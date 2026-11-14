@@ -18,6 +18,16 @@ import type {
 import { SystemPath } from "./system-path";
 import { NativeAddon, type SystemProcessMap } from "./native-addon";
 import { logger } from "./logger";
+import { acquireSaveBackupLock } from "./ludusavi-local-lock";
+import {
+  assertSaveApiSuccess,
+  type SaveApiResponse,
+} from "./ludusavi-local-api";
+import {
+  managedSaveConfig,
+  parseSaveEngineConfig,
+  type SaveEngineConfig,
+} from "./ludusavi-local-config";
 import {
   LudusaviExitTracker,
   matchesLocalGame,
@@ -50,6 +60,9 @@ const defaults = (): LudusaviLocalSettings => ({
   fullRetention: 10,
   exitDelaySeconds: 10,
   games: {},
+  differentialRetention: 0,
+  format: "zip",
+  compression: "deflate",
 });
 
 export const getLudusaviLocalSettings =
@@ -74,7 +87,14 @@ export const saveLudusaviLocalSettings = async (
     value.exitDelaySeconds < 5 ||
     value.exitDelaySeconds > 300 ||
     !value.games ||
-    typeof value.games !== "object"
+    typeof value.games !== "object" ||
+    (value.differentialRetention !== undefined &&
+      (!Number.isInteger(value.differentialRetention) ||
+        value.differentialRetention < 0 ||
+        value.differentialRetention > 255)) ||
+    (value.format !== undefined && !["zip", "simple"].includes(value.format)) ||
+    (value.compression !== undefined &&
+      !["none", "deflate", "bzip2", "zstd"].includes(value.compression))
   ) {
     throw new Error(t("ludusavi:invalid_settings"));
   }
@@ -89,9 +109,12 @@ export const saveLudusaviLocalSettings = async (
     )
       throw new Error(t("ludusavi:invalid_settings"));
   }
-  await db.put(settingsKey, value, { valueEncoding: "json" });
-  if (!value.enabled) tracker.reset();
-  return getLudusaviLocalState();
+  if (queue.busy) throw new Error(t("ludusavi:clear_busy"));
+  return queue.enqueue("settings:save", async () => {
+    await db.put(settingsKey, value, { valueEncoding: "json" });
+    if (!value.enabled) tracker.reset();
+    return getLudusaviLocalState();
+  });
 };
 
 export const getLudusaviLocalState = async (): Promise<LudusaviLocalState> => {
@@ -163,32 +186,66 @@ const assertStopped = async (game: Game, settings: LudusaviLocalSettings) => {
   if (running) throw new Error(t("ludusavi:game_running"));
 };
 
-const prepareConfig = async (game: Game, settings: LudusaviLocalSettings) => {
-  const configDir = path.join(folder(), "config");
-  await fs.mkdir(configDir, { recursive: true });
-  const binary = path.join(
+const binaryPath = () =>
+  path.join(
     app.isPackaged ? process.resourcesPath : app.getAppPath(),
     "ludusavi",
     process.platform === "win32" ? "ludusavi.exe" : "ludusavi"
   );
+
+const prepareBaseConfig = async (settings: LudusaviLocalSettings) => {
+  const configDir = path.join(folder(), "config");
+  await fs.mkdir(configDir, { recursive: true });
   const standalone = path.join(SystemPath.getPath("appData"), "ludusavi");
-  let original: {
-    roots?: unknown[];
-    customGames?: {
-      name: string;
-      files?: string[];
-      registry?: string[];
-      integration?: string;
-    }[];
-  } = {};
+  let original: SaveEngineConfig = {};
   try {
-    original =
-      YAML.parse(
-        await fs.readFile(path.join(standalone, "config.yaml"), "utf8")
-      ) ?? {};
+    const source = parseSaveEngineConfig(
+      await fs.readFile(path.join(standalone, "config.yaml"), "utf8")
+    );
+    original = { roots: source.roots, customGames: source.customGames };
   } catch {
-    /* Standalone Ludusavi is optional. */
+    /* Standalone configuration is optional. */
   }
+  let advanced: SaveEngineConfig = {};
+  try {
+    advanced = parseSaveEngineConfig(
+      await fs.readFile(path.join(folder(), "advanced.yaml"), "utf8")
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  const config = managedSaveConfig(
+    {
+      manifest: { enable: true },
+      roots: original.roots ?? [
+        {
+          store: "steam",
+          path: path.join(
+            process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)",
+            "Steam"
+          ),
+        },
+      ],
+      customGames: original.customGames ?? [],
+      ...advanced,
+    },
+    settings
+  );
+  await fs.writeFile(
+    path.join(configDir, "config.yaml"),
+    YAML.stringify(config)
+  );
+  return { configDir, binary: binaryPath(), config, standalone };
+};
+
+const prepareConfig = async (
+  game: Game,
+  settings: LudusaviLocalSettings,
+  updateManifest = true
+) => {
+  const { configDir, binary, config, standalone } =
+    await prepareBaseConfig(settings);
+  const original = config;
   try {
     await fs.copyFile(
       path.join(standalone, "manifest.yaml"),
@@ -243,22 +300,13 @@ const prepareConfig = async (game: Game, settings: LudusaviLocalSettings) => {
   const writeConfig = async () =>
     fs.writeFile(
       path.join(configDir, "config.yaml"),
-      YAML.stringify({
-        manifest: { enable: true },
-        roots,
-        backup: {
-          path: settings.destination,
-          retention: { full: settings.fullRetention, differential: 0 },
-        },
-        cloud: { synchronize: false },
-        customGames,
-      })
+      YAML.stringify({ ...config, roots, customGames })
     );
   await writeConfig();
   const lookupArgs = [
     "--config",
     configDir,
-    "--try-manifest-update",
+    updateManifest ? "--try-manifest-update" : "--no-manifest-update",
     "find",
     "--api",
     "--normalized",
@@ -296,8 +344,9 @@ const prepareConfig = async (game: Game, settings: LudusaviLocalSettings) => {
     const previous = existing >= 0 ? customGames[existing] : undefined;
     if (existing >= 0) customGames.splice(existing, 1);
     customGames.push({
+      ...previous,
       name: canonical,
-      integration: "extend",
+      integration: previous?.integration ?? "extend",
       files: [...new Set([...(previous?.files ?? []), ...configuredPaths])],
       registry: previous?.registry ?? [],
     });
@@ -343,8 +392,7 @@ const run = async (game: Game, preview: boolean, automatic: boolean) => {
     message: "",
     cloudSync: "not-verified",
   };
-  let lock: Awaited<ReturnType<typeof fs.open>> | undefined;
-  let lockFile: string | undefined;
+  let lock: Awaited<ReturnType<typeof acquireSaveBackupLock>> | undefined;
   try {
     const settings = await getLudusaviLocalSettings();
     if (
@@ -353,37 +401,11 @@ const run = async (game: Game, preview: boolean, automatic: boolean) => {
     )
       return;
     await assertStopped(game, settings);
+    lock = await acquireSaveBackupLock(settings.destination);
     const { binary, configDir, canonical } = await prepareConfig(
       game,
       settings
     );
-    if (!preview) {
-      await fs.mkdir(settings.destination, { recursive: true });
-      lockFile = path.join(settings.destination, ".hydra-ludusavi.lock");
-      try {
-        lock = await fs.open(lockFile, "wx");
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-        const owner = JSON.parse(await fs.readFile(lockFile, "utf8"));
-        if (owner.host !== os.hostname() || !Number.isInteger(owner.pid))
-          throw new Error(t("ludusavi:backup_locked"));
-        const alive = [owner.pid, owner.childPid].some((pid) => {
-          if (!Number.isInteger(pid) || pid < 1) return false;
-          try {
-            process.kill(pid, 0);
-            return true;
-          } catch (e) {
-            return (e as NodeJS.ErrnoException).code !== "ESRCH";
-          }
-        });
-        if (alive) throw new Error(t("ludusavi:backup_locked"));
-        await fs.unlink(lockFile);
-        lock = await fs.open(lockFile, "wx");
-      }
-      await lock.writeFile(
-        JSON.stringify({ host: os.hostname(), pid: process.pid })
-      );
-    }
     await assertStopped(game, settings);
     const args = [
       "--config",
@@ -397,11 +419,13 @@ const run = async (game: Game, preview: boolean, automatic: boolean) => {
       "--path",
       settings.destination,
       "--format",
-      "zip",
+      settings.format ?? "zip",
+      "--compression",
+      settings.compression ?? "deflate",
       "--full-limit",
       String(settings.fullRetention),
       "--differential-limit",
-      "0",
+      String(settings.differentialRetention ?? 0),
     ];
     if (preview) args.push("--preview");
     const operation = exec(binary, args, {
@@ -409,42 +433,34 @@ const run = async (game: Game, preview: boolean, automatic: boolean) => {
       timeout: 10 * 60_000,
       maxBuffer: 32 * 1024 * 1024,
     });
-    if (lock && operation.child.pid) {
-      await lock
-        .write(
-          JSON.stringify({
-            host: os.hostname(),
-            pid: process.pid,
-            childPid: operation.child.pid,
-          }),
-          0,
-          "utf8"
-        )
-        .catch((error) =>
-          logger.warn(
-            "[Ludusavi Local] Could not persist backup child identity",
-            error
-          )
-        );
-    }
+    if (lock) await lock.child(operation.child.pid);
     const response = await operation;
-    const data = JSON.parse(response.stdout);
+    const data = JSON.parse(response.stdout) as SaveApiResponse;
+    assertSaveApiSuccess(data);
     const scanned = data.games?.[canonical];
     if (
       !scanned ||
       scanned.decision !== "Processed" ||
-      data.errors ||
+      (data.errors && Object.keys(data.errors).length > 0) ||
       Object.values(scanned.files ?? {}).some(
-        (f) => (f as { error?: unknown })?.error
+        (f) =>
+          (f as { error?: unknown; failed?: boolean })?.error ||
+          (f as { failed?: boolean })?.failed
       ) ||
       Object.values(scanned.registry ?? {}).some(
-        (f) => (f as { error?: unknown })?.error
+        (f) =>
+          (f as { error?: unknown; failed?: boolean })?.error ||
+          (f as { failed?: boolean })?.failed
       )
     )
       throw new Error(t("ludusavi:incomplete_backup"));
-    result.filePaths = Object.keys(scanned.files ?? {});
+    result.filePaths = Object.entries(scanned.files ?? {})
+      .filter(([, item]) => !item.ignored)
+      .map(([file]) => file);
     result.files = result.filePaths.length;
-    result.registryKeys = Object.keys(scanned.registry ?? {}).length;
+    result.registryKeys = Object.values(scanned.registry ?? {}).filter(
+      (item) => !item.ignored
+    ).length;
     result.bytes = data.overall?.processedBytes ?? 0;
     if (!result.files && !result.registryKeys)
       throw new Error(t("ludusavi:no_saves"));
@@ -455,10 +471,7 @@ const run = async (game: Game, preview: boolean, automatic: boolean) => {
   } catch (error) {
     result.message = error instanceof Error ? error.message : String(error);
   } finally {
-    if (lock) {
-      await lock.close();
-      await fs.unlink(lockFile!).catch(() => undefined);
-    }
+    if (lock) await lock.release();
     busy = false;
   }
   return record(result);
@@ -515,3 +528,14 @@ export const openLudusaviLocalFolder = async (logs = false) => {
 };
 
 export const waitForLudusaviLocalBackups = () => queue.drain();
+
+/** Shared operations use this same queue, configuration and stop checks. */
+export const localSaveTools = {
+  queue,
+  folder,
+  binaryPath,
+  prepareBaseConfig,
+  prepareConfig,
+  assertStopped,
+  record,
+};

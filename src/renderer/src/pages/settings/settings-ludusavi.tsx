@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button, CheckboxField, TextField } from "@renderer/components";
 import type { LudusaviLocalSettings, LudusaviLocalState } from "@types";
 import "./settings-local-edition.scss";
+import { SettingsSaveManager } from "./settings-save-manager";
 
 export function SettingsLudusavi() {
   const { t } = useTranslation("ludusavi");
@@ -26,7 +27,15 @@ export function SettingsLudusavi() {
         if (!mounted) return;
         setState(value);
         setSettings(value.settings);
-        setSelected(value.games[0]?.key ?? "");
+        const query = new URLSearchParams(
+          globalThis.location.hash.split("?")[1] ?? globalThis.location.search
+        );
+        const requested = query.get("game");
+        setSelected(
+          value.games.find((game) => game.key === requested)?.key ??
+            value.games[0]?.key ??
+            ""
+        );
       })
       .catch((e) => mounted && setError(String(e)));
     const timer = setInterval(() => {
@@ -71,8 +80,8 @@ export function SettingsLudusavi() {
 
   return (
     <div className="settings-context-panel local-edition">
-      <h2>{t("title")}</h2>
       <p>{t("description")}</p>
+      <p>{t("engine_credit")}</p>
       <p className="local-edition__notice">{t("backup_only_notice")}</p>
       {error && (
         <p role="alert" className="local-edition__error">
@@ -126,6 +135,50 @@ export function SettingsLudusavi() {
         <Button disabled={working} onClick={() => action(save)}>
           {t("save")}
         </Button>
+      </div>
+      <div className="local-edition__row">
+        <TextField
+          label={t("differential_retention")}
+          type="number"
+          min={0}
+          max={255}
+          value={String(settings.differentialRetention ?? 0)}
+          onChange={(e) =>
+            update({ differentialRetention: Number(e.target.value) })
+          }
+        />
+        <label className="local-edition__label">
+          {t("backup_format")}
+          <select
+            value={settings.format ?? "zip"}
+            onChange={(e) =>
+              update({ format: e.target.value as "zip" | "simple" })
+            }
+          >
+            <option value="zip">ZIP</option>
+            <option value="simple">{t("simple_format")}</option>
+          </select>
+        </label>
+        <label className="local-edition__label">
+          {t("compression")}
+          <select
+            disabled={settings.format === "simple"}
+            value={settings.compression ?? "deflate"}
+            onChange={(e) =>
+              update({
+                compression: e.target.value as NonNullable<
+                  LudusaviLocalSettings["compression"]
+                >,
+              })
+            }
+          >
+            {["none", "deflate", "bzip2", "zstd"].map((method) => (
+              <option key={method} value={method}>
+                {method}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
       <div className="local-edition__row">
         <Button
@@ -214,6 +267,17 @@ export function SettingsLudusavi() {
           </div>
         </>
       )}
+      <SettingsSaveManager
+        gameKey={selected}
+        destination={settings.destination}
+        busy={working || state.busy}
+        beforeAction={save}
+        refresh={refresh}
+        reloadSettings={async () => {
+          const latest = await refresh();
+          setSettings(latest.settings);
+        }}
+      />
       <h3>{t("history")}</h3>
       <p>{t("log_limits")}</p>
       <div className="local-edition__row">
@@ -264,7 +328,12 @@ export function SettingsLudusavi() {
         >
           <summary>
             {new Date(result.at).toLocaleString()} · {result.title} ·{" "}
-            {t(`status_${result.status}`)}
+            {t(`operation_${result.operation ?? "backup"}`)} ·{" "}
+            {result.status === "success" &&
+            result.operation &&
+            result.operation !== "backup"
+              ? t("operation_complete")
+              : t(`status_${result.status}`)}
           </summary>
           <p>{result.message}</p>
           <p>

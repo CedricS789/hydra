@@ -10,9 +10,55 @@ export interface LudusaviLocalSettings {
   fullRetention: number;
   exitDelaySeconds: number;
   games: Record<string, LudusaviGameSettings>;
+  differentialRetention?: number;
+  format?: "zip" | "simple";
+  compression?: "none" | "deflate" | "bzip2" | "zstd";
+}
+
+export interface SaveBackupVersion {
+  name: string;
+  when: string;
+  locked: boolean;
+  comment?: string | null;
+  os?: string | null;
+}
+
+export interface SaveBackupFile {
+  path: string;
+  bytes: number;
+  change: string;
+  ignored: boolean;
+  failed: boolean;
+}
+
+export interface SaveOperationPreview {
+  token: string;
+  operation: "restore" | "upload" | "download";
+  gameKey: string;
+  title: string;
+  backup: string;
+  files: SaveBackupFile[];
+  registry: string[];
+  expiresAt: number;
+}
+
+export interface SaveOperationResult {
+  message: string;
+  safetyPath?: string;
+  files?: number;
+  bytes?: number;
+  registryKeys?: number;
+  filePaths?: string[];
 }
 
 export interface LudusaviLocalResult {
+  operation?:
+    | "backup"
+    | "restore"
+    | "validate"
+    | "upload"
+    | "download"
+    | "manager";
   gameKey: string;
   title: string;
   at: string;
@@ -22,7 +68,7 @@ export interface LudusaviLocalResult {
   registryKeys: number;
   filePaths: string[];
   message: string;
-  cloudSync: "not-verified";
+  cloudSync: "not-verified" | "complete";
 }
 
 export interface LudusaviLocalState {

@@ -41,6 +41,7 @@ files:
   - "!{.env,.env.*,.npmrc,pnpm-lock.yaml}"
   - "!{tsconfig.json,tsconfig.node.json,tsconfig.web.json,tsconfig.test.json}"
   - "!scripts/register-ts-node.mjs"
+  - "!scripts/test-save-manager-integration.mjs"
 asarUnpack:
   - resources/**
   - node_modules/sharp/**
