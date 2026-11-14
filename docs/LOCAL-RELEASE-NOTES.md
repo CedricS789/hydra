@@ -1,24 +1,32 @@
 # Hydra Custom by Cédric — 4.4.1-rev.2
 
-Based on official Hydra v4.4.1. Unofficial personal fork; upstream copyright and MIT license are retained.
+Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright and the MIT license are retained. These notes describe the source version. Installer availability is listed on the repository's published releases page.
 
-- Versioned backups created by Ludusavi 0.29.0 after the observed game process and captured game-directory children exit.
-- Configurable destination, retention, delay, additional save paths, and tracking executables.
-- Backup-only operation, a serialized queue, destination lock, history, logs, and failure notifications.
-- Clear backup results and both backup log files from settings after confirmation, without removing saves, archives, or configuration. Clearing is blocked during queued/running operations. History is limited to 50 results; the two log files are capped at 2 MiB each.
-- Standard Ludusavi save detection plus common local Steam emulator save folders.
-- OneDrive upload is explicitly separate from local backup completion.
-- Reduced Hydra Cloud promotion; paid-service entitlement checks remain intact.
-- Release-only browser and complete source snapshot comparison: official source in red, installed custom source in green.
-- Manual check, download, and install controls for custom releases. Official binaries cannot replace the customization through this updater.
-- Separate Hydra Custom application identity and user data directory.
+## Features
 
-Backups are disabled initially. Configure and preview them before enabling automation. Hydra Custom must remain running while playing.
+- Versioned backups created by bundled Ludusavi 0.29.0 after the observed game and captured game-directory child processes exit.
+- Configurable destination, full-version retention, exit delay, additional save folders, and tracking executables.
+- Backup-only operation, a serialized queue, destination lock, results, logs, and failure notifications.
+- **Clear results and logs** removes saved history and both backup logs after confirmation, preserving saves, archives, and configuration. Clearing is blocked during queued/running operations. History is limited to 50 results and each of the two log files to 2 MiB.
+- Manifest-based save detection plus discovery of common Steam emulator save folders.
+- Local backup completion reported separately from unverified external synchronization.
+- Reduced Hydra Cloud promotion with paid-service subscription checks retained.
+- Published-release browser and source snapshot comparison: official source in red, installed custom source in green.
+- Check, download, and install controls for custom releases. The updater uses the configured custom repository.
+- Short display name **Hydra Custom**, with the full name in formal installer details. Existing internal identifiers remain stable for settings and installer compatibility.
+- Theme import, CSS editing, and active-theme loading retained. Additional panels may require theme CSS adjustments.
+- Installer filename `hydra-custom-4.4.1-rev.2-setup-customized-by-cédric.exe`.
 
-The first locally built installer reuses unchanged native components from the installed official 4.4.1 build; TypeScript and renderer code are compiled from this fork. The GitHub build workflow compiles the native components from source.
+## Setup and build
 
-No live account login, debrid download, Steam/Epic linking, or real in-game achievement unlock has been tested in this fork yet. Test these before replacing daily use of official Hydra.
+Backups start disabled. Configure a destination, preview detection, inspect an archive, and verify a real game-exit backup before enabling everyday automation. Keep Hydra Custom running while playing. No automatic restoration is provided.
 
-The installer is unsigned unless a signing setup is added. The official release check reports new upstream versions; integration and a tested custom release are still required.
+The build helper supports full native compilation and optional reuse of unchanged native components from an exactly matching official Hydra installation. The GitHub Windows workflow uses the full-source route. See the [setup and build guide](LOCAL-EDITION.md).
 
-The short application name is Hydra Custom. Internal application identifiers are retained from the initial prototype so its settings and installer registration can be reused. This rebranded installer is a manual upgrade from the unpublished local.1 prototype. Theme import, the CSS editor, and saved-theme loading remain available. Existing themes may need adjustments for the newly added settings panels.
+The official-release check reports new upstream versions; integration, testing, and custom release publication remain manual. Installers are unsigned unless signing is configured.
+
+## Known limits
+
+The interface does not yet include backup-version browsing, manual restoration, backup validation controls, or all advanced Ludusavi settings. Full live account sign-in, debrid downloads, Steam/Epic linking, friends/community behavior, and real achievement unlocks have not been verified in this fork. Check these before replacing an existing installation for daily use.
+
+Older Hydra Local prototypes may require a manual upgrade using the new setup EXE. Prototype screenshots use sample backend data and earlier branding; see [screenshot details](screenshots/README.md).

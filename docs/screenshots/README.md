@@ -1,19 +1,19 @@
 # Custom settings screenshots
 
-These PNGs are unaltered captures of the fork's actual React settings components, rendered in an isolated, hidden Electron test window. The capture script is the local development artifact `.tmp/ui-smoke.cjs`; it used an isolated test profile and a local development server with a sample Electron bridge. The installed Hydra application and the user's desktop were not captured.
+These unaltered PNGs show the fork's React settings components rendered in an isolated Electron interface test with sample backend responses. They are panel captures, not screenshots of an installed current release.
 
-| Image                            | Original local capture     | What it demonstrates                                                                         |
-| -------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------- |
-| `ludusavi-backups-prototype.png` | `.tmp/ui-backups.png`      | Destination, retention, delay, Hydra library game selection, and extra save-folder controls. |
-| `releases-prototype.png`         | `.tmp/ui-releases.png`     | Custom release controls, official release selection, and the source comparison area.         |
-| `source-diff-prototype.png`      | `.tmp/ui-release-diff.png` | The rendered Monaco inline red/green source comparison with synthetic example code.          |
+| Image                            | What it demonstrates                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------- |
+| `ludusavi-backups-prototype.png` | Destination, retention, exit delay, library game selection, and extra save-folder controls. |
+| `releases-prototype.png`         | Custom release controls, official release selection, and the source comparison area.        |
+| `source-diff-prototype.png`      | The Monaco inline red/green comparison using synthetic example code.                        |
 
-## Scope and limitations
+## Scope
 
-- The captures predate rebranding. They retain the name **Hydra Local** and version **4.4.1-local.1**. Current source uses **Hydra Custom** and **4.4.1-rev.2**.
-- Games, settings, release lists, status text, and diff contents were supplied by the interface-test fixture. They do not establish live account access, published release availability, a successful backup, or completed cloud synchronization.
-- In particular, the diff is not actual official Hydra source. It tests display behavior only. The normal comparison service retrieves real source snapshots from GitHub.
-- The images are settings-panel captures, not full launcher-window screenshots. Lower controls may extend below the captured viewport.
-- No installer was built or installed to add these images to the documentation. Replace them with captures from a tested current build when one is available, and update these notes at the same time.
+- The captures retain the earlier **Hydra Local / 4.4.1-local.1** branding. Current source uses **Hydra Custom / 4.4.1-rev.2**.
+- The newer **Clear results and logs** control is not shown. Some controls continue below the captured viewport.
+- Games, settings, release lists, statuses, and diff contents are test data. They do not establish published release availability, account access, successful backups, or completed cloud synchronization.
+- The diff is a display-test example, not actual official Hydra source. Normal operation retrieves real source snapshots from GitHub.
+- No personal desktop or installed application was captured. No installer was built or installed to create these documentation images.
 
-The files were copied without image editing so the original capture remains distinguishable from the current source and its verification status.
+When replacing images with captures from a tested current release, update the captions and these scope notes to match. Preserve clear labeling for any remaining test data.
