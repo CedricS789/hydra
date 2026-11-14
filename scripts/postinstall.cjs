@@ -1,7 +1,7 @@
 const axios = require("axios"),
   fs = require("node:fs"),
-  path = require("node:path"),
-  extract = require("extract-zip");
+  path = require("node:path");
+const { extract } = require("@electron-internal/extract-zip");
 const { pipeline } = require("node:stream/promises");
 const version = "0.29.0";
 (async () => {
