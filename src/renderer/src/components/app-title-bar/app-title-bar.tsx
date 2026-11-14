@@ -60,7 +60,9 @@ export function AppTitleBar({
       <div className="title-bar__brand">
         {hasCustomFrame && (
           <h4>
-            {localEdition.hideCloudPromotions ? "Hydra Local" : "Hydra"}
+            {localEdition.hideCloudPromotions
+              ? localEdition.displayName
+              : "Hydra"}
             {!localEdition.hideCloudPromotions && hasActiveSubscription && (
               <span className="title-bar__cloud-text"> Cloud</span>
             )}
@@ -74,6 +76,7 @@ export function AppTitleBar({
               globalThis.location.hash = "/settings?tab=local_releases";
             }}
             className="title-bar__version"
+            title={localEdition.fullName}
           >
             v{version}
           </button>

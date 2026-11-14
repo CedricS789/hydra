@@ -1,4 +1,4 @@
-> **Hydra Local personal fork:** Ludusavi save backups and release source comparison. Read [setup and development guide](docs/LOCAL-EDITION.md) and [custom release notes](docs/LOCAL-RELEASE-NOTES.md).
+> **Hydra Custom personal fork:** Ludusavi save backups and release source comparison. Read [setup and development guide](docs/LOCAL-EDITION.md) and [custom release notes](docs/LOCAL-RELEASE-NOTES.md).
 
 <div align="center">
 

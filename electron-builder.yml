@@ -1,5 +1,5 @@
 appId: gg.hydralauncher.hydra.local
-productName: Hydra Local
+productName: Hydra Custom
 beforePack: scripts/legendary-before-pack.cjs
 afterPack: scripts/legendary-after-pack.cjs
 afterSign: scripts/legendary-after-pack.cjs
@@ -46,7 +46,7 @@ asarUnpack:
   - node_modules/sharp/**
   - node_modules/@img/sharp-libvips-*/**
 win:
-  executableName: Hydra Local
+  executableName: Hydra Custom
   extraResources:
     - from: legendary/win32/${arch}
       to: legendary
@@ -70,9 +70,9 @@ win:
     - nsis
     - portable
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
+  artifactName: hydra-custom-${version}-setup.${ext}
   shortcutName: ${productName}
-  uninstallDisplayName: ${productName}
+  uninstallDisplayName: Hydra Custom by Cédric
   createDesktopShortcut: always
   oneClick: false
   allowToChangeInstallationDirectory: true
