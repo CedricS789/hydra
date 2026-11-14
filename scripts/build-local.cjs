@@ -199,6 +199,15 @@ async function main() {
       "never",
     ]);
     run(process.execPath, ["scripts/verify-local-package.cjs"]);
+    const pkg = require("../package.json");
+    const installer = `${pkg.name}-${pkg.version}-setup.exe`;
+    fs.mkdirSync(path.join(root, "dist"), { recursive: true });
+    for (const file of [installer, `${installer}.blockmap`, "latest.yml"]) {
+      fs.copyFileSync(
+        path.join(root, ".tmp", "package", file),
+        path.join(root, "dist", file)
+      );
+    }
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
     process.exitCode = 1;

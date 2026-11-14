@@ -1,7 +1,13 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const root = path.resolve(__dirname, "..");
-const resources = path.join(root, "dist", "win-unpacked", "resources");
+const resources = path.join(
+  root,
+  ".tmp",
+  "package",
+  "win-unpacked",
+  "resources"
+);
 const archive = path.join(resources, "app.asar");
 const fd = fs.openSync(archive, "r");
 try {

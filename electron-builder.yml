@@ -13,6 +13,7 @@ electronFuses:
   grantFileProtocolExtraPrivileges: true
 directories:
   buildResources: build
+  output: .tmp/package
 extraResources:
   - ludusavi
   - hydra-native

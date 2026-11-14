@@ -78,7 +78,7 @@ For a complete source build on a correctly provisioned machine:
 node scripts/build-local.cjs
 ```
 
-The EXE appears under `dist/`. The build verifies that the package excludes `.tmp`, local environment files, and TypeScript build metadata before it can be distributed. The build script gives child processes a restricted environment so unrelated credentials are not inherited by verbose build tools. The initial artifact is unsigned; add a deliberate signing configuration before distributing widely.
+The final EXE appears under `dist/`. Packaging intermediates stay under `.tmp/package` and only the installer and update metadata are copied to `dist/` after verification. The build verifies that the package excludes `.tmp`, local environment files, and TypeScript build metadata before it can be distributed. The build script gives child processes a restricted environment so unrelated credentials are not inherited by verbose build tools. The initial artifact is unsigned; add a deliberate signing configuration before distributing widely.
 
 ## Integrate a new official release
 
