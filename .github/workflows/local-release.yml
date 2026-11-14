@@ -1,0 +1,64 @@
+name: Build Hydra Local installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      create_draft_release:
+        description: Create a draft release containing the installer and updater metadata
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hydra-local-release
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.21.0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install JavaScript build tools
+        shell: pwsh
+        run: |
+          corepack enable
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive --cache-folder .tmp/yarn-cache
+          node node_modules/electron/install.js
+        env:
+          ELECTRON_CACHE: ${{ github.workspace }}/.tmp/electron-cache
+          HUSKY: "0"
+      - name: Configure public Hydra service endpoints
+        shell: pwsh
+        run: node scripts/write-local-build-config.cjs
+      - name: Test the backup and release comparison logic
+        run: node --import ./scripts/register-ts-node.mjs --test src/main/services/ludusavi-local-tracker.test.ts src/main/services/ludusavi-local-queue.test.ts src/main/services/local-release-source.test.ts
+      - name: Compile native code, application, and Windows installer
+        run: node scripts/build-local.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Hydra-Local-Windows
+          path: |
+            dist/*-setup.exe
+            dist/*.blockmap
+            dist/latest.yml
+          if-no-files-found: error
+      - name: Create a reviewable release draft
+        if: inputs.create_draft_release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $releaseTag = node -p "require('./src/shared/local-edition.json').releaseTag"
+          gh release view $releaseTag --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) { throw 'A release with this tag already exists; bump the custom version first.' }
+          gh release create $releaseTag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --title "Hydra Local $releaseTag" --notes-file docs/LOCAL-RELEASE-NOTES.md
+          if ($LASTEXITCODE -ne 0) { throw 'Could not create the release draft.' }
+          Get-ChildItem dist/*-setup.exe,dist/*.blockmap,dist/latest.yml | ForEach-Object { gh release upload $releaseTag $_.FullName --repo $env:GITHUB_REPOSITORY; if ($LASTEXITCODE -ne 0) { throw 'Release upload failed.' } }

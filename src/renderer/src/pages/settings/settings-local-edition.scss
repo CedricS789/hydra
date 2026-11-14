@@ -1,0 +1,103 @@
+.local-edition {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  &__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 12px;
+  }
+  &__label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  select,
+  textarea {
+    background: #171a21;
+    border: 1px solid #454952;
+    border-radius: 6px;
+    color: #e8e8ea;
+    padding: 10px;
+    width: 100%;
+    font: inherit;
+  }
+  textarea {
+    font-family: monospace;
+    resize: vertical;
+  }
+  &__notice {
+    border-left: 3px solid #82b5e8;
+    padding: 12px;
+    background: #202a36;
+  }
+  &__error {
+    color: #ff9999;
+    overflow-wrap: anywhere;
+  }
+  &__result {
+    padding: 12px;
+    border: 1px solid #454952;
+    border-radius: 6px;
+  }
+  &__result--failed {
+    border-color: #c95a5a;
+  }
+  &__result--success {
+    border-color: #428653;
+  }
+  summary {
+    cursor: pointer;
+  }
+  pre {
+    overflow: auto;
+    max-height: 300px;
+    font-size: 12px;
+    padding: 12px;
+  }
+  &__notes {
+    white-space: pre-wrap;
+  }
+  &__diff {
+    display: grid;
+    grid-template-columns: minmax(160px, 28%) minmax(0, 1fr);
+    border: 1px solid #454952;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  &__files {
+    display: flex;
+    flex-direction: column;
+    max-height: 620px;
+    overflow: auto;
+    background: #181b22;
+  }
+  &__files button {
+    text-align: left;
+    padding: 10px;
+    color: #c8cbd1;
+    overflow-wrap: anywhere;
+  }
+  &__files .active {
+    background: #2e394a;
+    color: white;
+  }
+  &__status--added {
+    color: #7ee787;
+  }
+  &__status--removed {
+    color: #ff7b72;
+  }
+  &__status--modified {
+    color: #e3b341;
+  }
+  &__editor {
+    min-width: 0;
+  }
+  &__editor > p {
+    padding: 12px;
+    overflow-wrap: anywhere;
+  }
+}

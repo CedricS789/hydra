@@ -1174,3 +1174,4 @@ export type ExtractionFailure =
   | { reason: "file-not-found" }
   | { reason: "pkg-keys-unavailable" };
 export type { SystemPowerAction } from "./system-power";
+export * from "./local-edition.types";

@@ -1,3 +1,4 @@
+import localEdition from "../../shared/local-edition.json";
 import { is } from "@electron-toolkit/utils";
 import { isStaging } from "@main/constants";
 import { db, gamesSublevel, levelKeys } from "@main/level";
@@ -208,7 +209,10 @@ export class WindowManager {
     // Load the remote URL for development or the local html file for production.
     if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
       window.loadURL(`${process.env["ELECTRON_RENDERER_URL"]}#/${hash}`);
-    } else if (import.meta.env.MAIN_VITE_LAUNCHER_SUBDOMAIN) {
+    } else if (
+      !localEdition.hideCloudPromotions &&
+      import.meta.env.MAIN_VITE_LAUNCHER_SUBDOMAIN
+    ) {
       // Try to load from remote URL in production
       try {
         await window.loadURL(

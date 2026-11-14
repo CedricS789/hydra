@@ -57,7 +57,12 @@ async function downloadVerifiedArtifact(
     return true;
   }
   await fs.mkdir(path.dirname(filePath), { recursive: true });
-  const temporaryPath = `${filePath}.download-${randomUUID()}`;
+  const temporaryRoot = path.join(process.cwd(), ".tmp", "legendary-downloads");
+  await fs.mkdir(temporaryRoot, { recursive: true });
+  const temporaryPath = path.join(
+    temporaryRoot,
+    `${randomUUID()}-${path.basename(filePath)}`
+  );
 
   try {
     const signal = AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS);

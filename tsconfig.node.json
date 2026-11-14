@@ -12,6 +12,7 @@
   ],
   "exclude": ["src/**/*.test.ts"],
   "compilerOptions": {
+    "tsBuildInfoFile": ".tmp/tsconfig.node.tsbuildinfo",
     "module": "ESNext",
     "composite": true,
     "types": ["electron-vite/node"],

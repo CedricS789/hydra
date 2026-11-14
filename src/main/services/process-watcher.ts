@@ -75,6 +75,7 @@ import {
   interruptManagedEpicPlaytime,
 } from "./epic/launch";
 import { runWithHydraSaveGuard } from "./epic/cloud-saves";
+import { observeLudusaviLocalGames } from "./ludusavi-local";
 
 export { gamesPlaytime };
 export { isGameRunning } from "./game-running-state";
@@ -364,6 +365,9 @@ export const watchProcesses = async () => {
     return;
   }
   const { processMap, winePrefixMap, linuxProcesses } = systemProcessMap;
+  await observeLudusaviLocalGames(games, systemProcessMap).catch((error) =>
+    logger.error("[Ludusavi Local] Process observer failed", error)
+  );
 
   const pidToProcess = new Map<number, LinuxProcessInfo>(
     linuxProcesses.map((process) => [process.pid, process])

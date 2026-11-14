@@ -1,3 +1,4 @@
+import localEdition from "../../../../../shared/local-edition.json";
 import { lazy, Suspense, useContext, useEffect, useState } from "react";
 import type {
   HowLongToBeatCategory,
@@ -293,16 +294,18 @@ export function Sidebar() {
           <ul className="list">
             <RetroAchievementsConnectBanner />
 
-            {!hasActiveSubscription && achievementsCount > 0 && (
-              <button
-                type="button"
-                className="subscription-required-button"
-                onClick={() => showHydraCloudModal("achievements")}
-              >
-                <AlertIcon size={14} />
-                <span>{t("achievements_not_sync")}</span>
-              </button>
-            )}
+            {!localEdition.hideCloudPromotions &&
+              !hasActiveSubscription &&
+              achievementsCount > 0 && (
+                <button
+                  type="button"
+                  className="subscription-required-button"
+                  onClick={() => showHydraCloudModal("achievements")}
+                >
+                  <AlertIcon size={14} />
+                  <span>{t("achievements_not_sync")}</span>
+                </button>
+              )}
 
             {(achievements ?? []).slice(0, 4).map((achievement) => {
               const concealed = isAchievementConcealed(

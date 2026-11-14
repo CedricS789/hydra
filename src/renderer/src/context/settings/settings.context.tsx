@@ -9,6 +9,8 @@ import { useSearchParams } from "react-router-dom";
 import { SETTINGS_CATEGORY_STORAGE_KEY } from "@renderer/session-state";
 
 export type SettingsCategoryId =
+  | "local_backups"
+  | "local_releases"
   | "general"
   | "downloads"
   | "download_sources"
@@ -32,6 +34,8 @@ const legacyTabMap: Record<number, SettingsCategoryId> = {
 
 const isSettingsCategoryId = (value: string): value is SettingsCategoryId => {
   return [
+    "local_backups",
+    "local_releases",
     "general",
     "downloads",
     "download_sources",

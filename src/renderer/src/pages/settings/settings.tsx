@@ -29,6 +29,9 @@ import { SettingsContextCompatibility } from "./settings-context-compatibility";
 import { SettingsContextBigPicture } from "./settings-context-big-picture";
 import { SettingsContextEmulation } from "./emulation/settings-context-emulation";
 
+import { SettingsLudusavi } from "./settings-ludusavi";
+import { SettingsLocalReleases } from "./settings-local-releases";
+
 export default function Settings() {
   const { t } = useTranslation("settings");
 
@@ -38,6 +41,16 @@ export default function Settings() {
 
   const categories = useMemo(
     () => [
+      {
+        id: "local_backups" as const,
+        label: t("ludusavi:title"),
+        icon: <DownloadIcon size={16} />,
+      },
+      {
+        id: "local_releases" as const,
+        label: t("local_releases:title"),
+        icon: <GearIcon size={16} />,
+      },
       {
         id: "general" as const,
         label: t("general"),
@@ -116,6 +129,10 @@ export default function Settings() {
           const selectedCategoryId = currentCategory.id;
 
           const renderCategory = () => {
+            if (selectedCategoryId === "local_backups")
+              return <SettingsLudusavi />;
+            if (selectedCategoryId === "local_releases")
+              return <SettingsLocalReleases />;
             if (selectedCategoryId === "general") {
               return <SettingsContextGeneral appearance={appearance} />;
             }

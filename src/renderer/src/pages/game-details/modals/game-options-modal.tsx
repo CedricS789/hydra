@@ -1,3 +1,4 @@
+import localEdition from "../../../../../shared/local-edition.json";
 import {
   useCallback,
   useContext,
@@ -1015,24 +1016,31 @@ export function GameOptionsModal({
           showDownloadSettings,
         },
         legacyPurpose
-      ).map((id) => ({
-        id,
-        label:
-          id === "epic_cloud"
-            ? "Epic Games"
-            : id === "hydra_cloud_legacy" &&
-                (legacyPurpose !== "active" || showCloudSaveV2Settings)
-              ? t("settings_category_legacy_saves")
-              : t("settings_category_hydra_cloud"),
-        icon:
-          id === "epic_cloud" ? (
-            <EpicLogo width={16} height={16} aria-hidden="true" />
-          ) : id === "hydra_cloud_legacy" && legacyPurpose === "archive" ? (
-            <HistoryIcon size={16} />
-          ) : (
-            <CloudIcon size={16} />
-          ),
-      })),
+      )
+        .filter(
+          (id) =>
+            !localEdition.hideCloudPromotions ||
+            id === "epic_cloud" ||
+            id === "downloads"
+        )
+        .map((id) => ({
+          id,
+          label:
+            id === "epic_cloud"
+              ? "Epic Games"
+              : id === "hydra_cloud_legacy" &&
+                  (legacyPurpose !== "active" || showCloudSaveV2Settings)
+                ? t("settings_category_legacy_saves")
+                : t("settings_category_hydra_cloud"),
+          icon:
+            id === "epic_cloud" ? (
+              <EpicLogo width={16} height={16} aria-hidden="true" />
+            ) : id === "hydra_cloud_legacy" && legacyPurpose === "archive" ? (
+              <HistoryIcon size={16} />
+            ) : (
+              <CloudIcon size={16} />
+            ),
+        })),
       ...(shouldShowWinePrefixConfiguration
         ? [
             {

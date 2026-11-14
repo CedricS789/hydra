@@ -1,3 +1,5 @@
+> **Hydra Local personal fork:** Ludusavi save backups and release source comparison. Read [setup and development guide](docs/LOCAL-EDITION.md) and [custom release notes](docs/LOCAL-RELEASE-NOTES.md).
+
 <div align="center">
 
 [<img src="https://raw.githubusercontent.com/hydralauncher/hydra/refs/heads/main/resources/icon.png" width="144"/>](https://help.hydralauncher.gg)

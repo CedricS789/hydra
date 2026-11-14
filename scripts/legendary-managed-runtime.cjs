@@ -157,7 +157,7 @@ async function prepareBundle({
     .update(JSON.stringify({ format: 2, config, platform, arch, artifact }))
     .digest("hex");
   if (await verifyManagedRuntime(directory, fingerprint, sha256File)) return;
-  const downloads = path.join(projectDir, "legendary", ".downloads", arch);
+  const downloads = path.join(projectDir, ".tmp", "legendary-downloads", arch);
   await fs.mkdir(directory, { recursive: true });
   const zipapp = path.join(downloads, `${artifact.sha256}.pyz`);
   await download(artifact, zipapp);

@@ -187,6 +187,35 @@ declare global {
   };
 
   interface Electron {
+    getLudusaviLocalState: () => Promise<import("@types").LudusaviLocalState>;
+    saveLudusaviLocalSettings: (
+      settings: import("@types").LudusaviLocalSettings
+    ) => Promise<import("@types").LudusaviLocalState>;
+    runLudusaviLocalBackup: (
+      key: string,
+      preview: boolean
+    ) => Promise<import("@types").LudusaviLocalResult | undefined>;
+    openLudusaviLocalFolder: (logs?: boolean) => Promise<string>;
+    getLocalReleases: (
+      force?: boolean
+    ) => Promise<import("@types").LocalReleaseState>;
+    getReleaseSourceChanges: (
+      tag: string
+    ) => Promise<import("@types").ReleaseSourceFile[]>;
+    getReleaseSourceFile: (
+      tag: string,
+      file: string
+    ) => Promise<{ original: string; modified: string }>;
+    getLocalUpdateState: () => Promise<{
+      phase: string;
+      version: string;
+      error: string;
+    }>;
+    checkLocalReleaseUpdate: () => ReturnType<Electron["getLocalUpdateState"]>;
+    downloadLocalReleaseUpdate: () => ReturnType<
+      Electron["getLocalUpdateState"]
+    >;
+    installLocalReleaseUpdate: () => Promise<void>;
     onCloudSaveAutomaticSyncModeChanged: (
       callback: (event: CloudSaveAutomaticSyncModeChangedEvent) => void
     ) => () => void;

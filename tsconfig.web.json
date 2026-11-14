@@ -14,6 +14,7 @@
     ".storybook/**/*"
   ],
   "compilerOptions": {
+    "tsBuildInfoFile": ".tmp/tsconfig.web.tsbuildinfo",
     "composite": true,
     "jsx": "react-jsx",
     "baseUrl": ".",

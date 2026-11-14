@@ -1,3 +1,4 @@
+import localEdition from "../../../../shared/local-edition.json";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -59,8 +60,8 @@ export function AppTitleBar({
       <div className="title-bar__brand">
         {hasCustomFrame && (
           <h4>
-            Hydra
-            {hasActiveSubscription && (
+            {localEdition.hideCloudPromotions ? "Hydra Local" : "Hydra"}
+            {!localEdition.hideCloudPromotions && hasActiveSubscription && (
               <span className="title-bar__cloud-text"> Cloud</span>
             )}
           </h4>
@@ -69,7 +70,9 @@ export function AppTitleBar({
         {version && (
           <button
             type="button"
-            data-open-workwonders-changelog-mini
+            onClick={() => {
+              globalThis.location.hash = "/settings?tab=local_releases";
+            }}
             className="title-bar__version"
           >
             v{version}

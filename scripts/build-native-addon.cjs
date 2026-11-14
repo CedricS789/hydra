@@ -19,12 +19,7 @@ const manifestPath = path.join(
   "hydra-native",
   "Cargo.toml"
 );
-const cargoTargetDir = path.join(
-  projectRoot,
-  "native",
-  "hydra-native",
-  "target"
-);
+const cargoTargetDir = path.join(projectRoot, ".tmp", "cargo-target");
 const outputDir = path.join(projectRoot, "hydra-native");
 const outputNodePath = path.join(outputDir, "hydra-native.node");
 

@@ -1,3 +1,4 @@
+import localEdition from "../../../../shared/local-edition.json";
 import {
   Avatar,
   Button,
@@ -343,21 +344,23 @@ export function SettingsAccount() {
         </div>
       </section>
 
-      <section className="settings-account__section">
-        <h3>{t("hydra_cloud")}</h3>
-        <div className="settings-account__subscription-info">
-          {getHydraCloudSectionContent().description}
-        </div>
+      {!localEdition.hideCloudPromotions && (
+        <section className="settings-account__section">
+          <h3>{t("hydra_cloud")}</h3>
+          <div className="settings-account__subscription-info">
+            {getHydraCloudSectionContent().description}
+          </div>
 
-        <Button
-          className="settings-account__subscription-button"
-          theme="outline"
-          onClick={() => window.electron.openCheckout()}
-        >
-          <CloudIcon />
-          {getHydraCloudSectionContent().callToAction}
-        </Button>
-      </section>
+          <Button
+            className="settings-account__subscription-button"
+            theme="outline"
+            onClick={() => window.electron.openCheckout()}
+          >
+            <CloudIcon />
+            {getHydraCloudSectionContent().callToAction}
+          </Button>
+        </section>
+      )}
 
       <Controller
         control={control}

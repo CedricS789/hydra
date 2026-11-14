@@ -1,3 +1,4 @@
+import localEdition from "../../../shared/local-edition.json";
 import { useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "./redux";
 import {
@@ -15,6 +16,11 @@ export function useSubscription() {
 
   const showHydraCloudModal = useCallback(
     (feature: HydraCloudFeature) => {
+      if (localEdition.hideCloudPromotions) {
+        if (feature === "backup")
+          globalThis.location.hash = "/settings?tab=local_backups";
+        return;
+      }
       dispatch(setHydraCloudModalVisible(feature));
     },
     [dispatch]

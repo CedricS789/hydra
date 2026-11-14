@@ -1,3 +1,4 @@
+import localEdition from "../../../../../shared/local-edition.json";
 import { useTranslation } from "react-i18next";
 
 import type { CloudSaveSyncProgressPayload } from "@types";
@@ -18,7 +19,7 @@ const getProgressPercentage = (
   return Math.min(100, Math.max(0, percentage));
 };
 
-export function CloudSaveWidget() {
+function HydraCloudSaveWidget() {
   const { t } = useTranslation("game_details");
   const {
     overview,
@@ -63,6 +64,22 @@ export function CloudSaveWidget() {
           style={{ width: `${progressPercentage}%` }}
         />
       )}
+    </button>
+  );
+}
+
+export function CloudSaveWidget() {
+  const { t } = useTranslation("ludusavi");
+  if (!localEdition.hideCloudPromotions) return <HydraCloudSaveWidget />;
+  return (
+    <button
+      type="button"
+      className="game-details__cloud-sync-button"
+      onClick={() => {
+        globalThis.location.hash = "/settings?tab=local_backups";
+      }}
+    >
+      {t("title")}
     </button>
   );
 }

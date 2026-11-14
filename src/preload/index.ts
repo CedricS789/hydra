@@ -1930,6 +1930,26 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("getGameLauncherStatuses", shop, objectId),
   resetCommonRedistPreflight: () =>
     ipcRenderer.invoke("resetCommonRedistPreflight"),
+  getLudusaviLocalState: () => ipcRenderer.invoke("getLudusaviLocalState"),
+  saveLudusaviLocalSettings: (
+    settings: import("@types").LudusaviLocalSettings
+  ) => ipcRenderer.invoke("saveLudusaviLocalSettings", settings),
+  runLudusaviLocalBackup: (key: string, preview: boolean) =>
+    ipcRenderer.invoke("runLudusaviLocalBackup", key, preview),
+  openLudusaviLocalFolder: (logs = false) =>
+    ipcRenderer.invoke("openLudusaviLocalFolder", logs),
+  getLocalReleases: (force = false) =>
+    ipcRenderer.invoke("getLocalReleases", force),
+  getReleaseSourceChanges: (tag: string) =>
+    ipcRenderer.invoke("getReleaseSourceChanges", tag),
+  getReleaseSourceFile: (tag: string, file: string) =>
+    ipcRenderer.invoke("getReleaseSourceFile", tag, file),
+  getLocalUpdateState: () => ipcRenderer.invoke("getLocalUpdateState"),
+  checkLocalReleaseUpdate: () => ipcRenderer.invoke("checkLocalReleaseUpdate"),
+  downloadLocalReleaseUpdate: () =>
+    ipcRenderer.invoke("downloadLocalReleaseUpdate"),
+  installLocalReleaseUpdate: () =>
+    ipcRenderer.invoke("installLocalReleaseUpdate"),
   checkForUpdates: () => ipcRenderer.invoke("checkForUpdates"),
   restartAndInstallUpdate: () => ipcRenderer.invoke("restartAndInstallUpdate"),
 

@@ -1,5 +1,5 @@
-appId: gg.hydralauncher.hydra
-productName: Hydra
+appId: gg.hydralauncher.hydra.local
+productName: Hydra Local
 beforePack: scripts/legendary-before-pack.cjs
 afterPack: scripts/legendary-after-pack.cjs
 afterSign: scripts/legendary-after-pack.cjs
@@ -22,6 +22,8 @@ extraResources:
   - from: "src/big-picture/src/assets/audio/Favorite Sound.wav"
     to: chat-message.wav
 files:
+  - "!.tmp/**"
+  - "!**/*.tsbuildinfo"
   - "!.cache/**"
   - "!legendary/**"
   - "!resources/legendary/**"
@@ -42,7 +44,7 @@ asarUnpack:
   - node_modules/sharp/**
   - node_modules/@img/sharp-libvips-*/**
 win:
-  executableName: Hydra
+  executableName: Hydra Local
   extraResources:
     - from: legendary/win32/${arch}
       to: legendary
@@ -140,7 +142,7 @@ appImage:
 npmRebuild: false
 publish:
   provider: github
-  owner: hydralauncher
+  owner: CedricS789
   repo: hydra
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/

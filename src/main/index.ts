@@ -61,6 +61,8 @@ import {
   resumeEpicPlaytime,
 } from "./services/epic";
 import { removeAppImageLibraryPath } from "./helpers/remove-appimage-library-path";
+import localEdition from "../shared/local-edition.json";
+import { waitForLudusaviLocalBackups } from "./services/ludusavi-local";
 
 if (process.platform === "linux") removeAppImageLibraryPath();
 
@@ -72,9 +74,12 @@ const { autoUpdater } = updater;
 
 autoUpdater.setFeedURL({
   provider: "github",
-  owner: "hydralauncher",
-  repo: "hydra",
+  owner: localEdition.repository.split("/")[0],
+  repo: localEdition.repository.split("/")[1],
 });
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = false;
+autoUpdater.allowPrerelease = true;
 
 autoUpdater.logger = logger;
 
@@ -125,7 +130,7 @@ if (process.defaultApp) {
 
 const initializeApp = async () => {
   refreshPortableShortcutLauncher();
-  electronApp.setAppUserModelId("gg.hydralauncher.hydra");
+  electronApp.setAppUserModelId("gg.hydralauncher.hydra.local");
 
   logger.info("Crash dumps directory", app.getPath("crashDumps"));
 
@@ -463,6 +468,7 @@ app.on("before-quit", async (e) => {
     e.preventDefault();
     if (isAppClosing) return;
     isAppClosing = true;
+    await waitForLudusaviLocalBackups();
     await saveSocialWindowsSession();
     try {
       await shutdownEpicIntegration();

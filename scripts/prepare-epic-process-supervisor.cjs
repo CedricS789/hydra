@@ -90,7 +90,9 @@ async function prepareEpicProcessSupervisor({
     "csc.exe"
   );
   await fs.mkdir(directory, { recursive: true });
-  const temporary = path.join(directory, `supervisor-${randomUUID()}.exe`);
+  const scratch = path.join(projectDir, ".tmp", "epic-supervisor");
+  await fs.mkdir(scratch, { recursive: true });
+  const temporary = path.join(scratch, `supervisor-${randomUUID()}.exe`);
   try {
     await execFileAsync(
       compiler,

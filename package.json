@@ -1,12 +1,12 @@
 {
-  "name": "hydralauncher",
-  "version": "4.4.1",
-  "description": "Hydra",
+  "name": "hydralauncher-local",
+  "version": "4.4.1-local.1",
+  "description": "Hydra Local — Ludusavi backups and release comparison",
   "main": "./out/main/index.js",
   "author": "Los Broxas",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hydralauncher/hydra.git"
+    "url": "https://github.com/CedricS789/hydra.git"
   },
   "type": "module",
   "engines": {
@@ -33,7 +33,8 @@
     "build:mac": "npm run build:native && electron-vite build && electron-builder --mac",
     "build:linux": "npm run build:native && electron-vite build && electron-builder --linux",
     "dev:big-picture": "vite dev src/big-picture",
-    "prepare": "husky"
+    "prepare": "husky",
+    "build:local": "electron-vite build && electron-builder --win nsis --x64"
   },
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "^1.8.1",

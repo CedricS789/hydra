@@ -9,6 +9,7 @@ import {
 } from "@main/services/achievements/grouped-souvenir-worker";
 
 import "./auth";
+import "./local-edition";
 import "./autoupdater";
 import "./big-picture";
 import "./catalogue";
