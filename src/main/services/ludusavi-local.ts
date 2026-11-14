@@ -103,6 +103,15 @@ export const saveLudusaviLocalSettings = async (
       typeof game.enabled !== "boolean" ||
       !Array.isArray(game.savePaths) ||
       !Array.isArray(game.trackingPaths) ||
+      (game.manifestTitle !== undefined &&
+        (typeof game.manifestTitle !== "string" ||
+          !game.manifestTitle.trim() ||
+          game.manifestTitle.length > 1000)) ||
+      (game.steamId !== undefined &&
+        (typeof game.steamId !== "string" ||
+          !/^\d+$/.test(game.steamId) ||
+          Number(game.steamId) < 1 ||
+          Number(game.steamId) > 4294967295)) ||
       [...game.savePaths, ...game.trackingPaths].some(
         (p) => typeof p !== "string" || !path.isAbsolute(p) || /[?*]/.test(p)
       )
@@ -272,7 +281,11 @@ const prepareConfig = async (
   )?.[1];
   if (steamLibrary) roots.push({ store: "steam", path: steamLibrary });
   const configuredPaths = [...(settings.games[keyOf(game)]?.savePaths ?? [])];
-  if (game.shop === "steam" && /^\d+$/.test(game.objectId)) {
+  const linkedTitle = settings.games[keyOf(game)]?.manifestTitle;
+  const saveSteamId =
+    settings.games[keyOf(game)]?.steamId ??
+    (game.shop === "steam" ? game.objectId : undefined);
+  if (saveSteamId && /^\d+$/.test(saveSteamId)) {
     const candidates = [
       ...["RUNE", "CODEX", "FLT"].map((provider) =>
         path.join(
@@ -280,11 +293,11 @@ const prepareConfig = async (
           "Documents",
           "Steam",
           provider,
-          game.objectId
+          saveSteamId
         )
       ),
       ...["Goldberg SteamEmu Saves", "GSE Saves"].map((provider) =>
-        path.join(SystemPath.getPath("appData"), provider, game.objectId)
+        path.join(SystemPath.getPath("appData"), provider, saveSteamId)
       ),
     ];
     for (const candidate of candidates) {
@@ -311,9 +324,9 @@ const prepareConfig = async (
     "--api",
     "--normalized",
   ];
-  if (game.shop === "steam" && /^\d+$/.test(game.objectId))
+  if (!linkedTitle && game.shop === "steam" && /^\d+$/.test(game.objectId))
     lookupArgs.push("--steam-id", game.objectId);
-  lookupArgs.push(game.title);
+  lookupArgs.push("--", linkedTitle ?? game.title);
   let canonical: string;
   try {
     const result = await exec(binary, lookupArgs, {
@@ -325,7 +338,7 @@ const prepareConfig = async (
   } catch {
     if (!configuredPaths.length)
       throw new Error(t("ludusavi:unrecognized_game", { game: game.title }));
-    canonical = game.title;
+    canonical = linkedTitle ?? game.title;
   }
   if (!canonical)
     throw new Error(t("ludusavi:unrecognized_game", { game: game.title }));

@@ -22,6 +22,9 @@ Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright a
 - Native-validated advanced YAML and standalone-rule import; the complete bundled graphical manager is available with shared configuration. Closing it reads back settings and resumes queued operations.
 - Manual Rclone upload/download previews and confirmations, with remote completion recorded separately from local backup completion. No automatic download or restoration is enabled.
 
+- **Discover saved games** scans local save data or existing archives and offers explicit **Add to My Games** / **Link save entry** controls. Verified Steam IDs use the normal Steam identity; other new entries require a chosen executable and use custom-game handling.
+- Linking keeps existing identity, playtime, achievements, title, and executable, while storing the canonical save association for future backups and recovery. Duplicate IDs/paths and stale scan results are checked. No executable is guessed from a save folder, and the global automatic-backup setting is preserved.
+
 ## Setup and build
 
 Backups start disabled. Configure a destination, preview detection, inspect an archive, and verify a real game-exit backup before enabling everyday automation. Keep Hydra Custom running while playing. No automatic restoration is provided.

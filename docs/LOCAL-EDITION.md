@@ -28,6 +28,16 @@ See the [repository README](../README.md) for an overview and screenshots, and [
 
 Keep Hydra Custom running in its tray while playing. Fully quitting it disables observation. Automatic backups start disabled and never trigger restoration.
 
+### Add detected games to the library
+
+Open **Settings → Save backups → Discover saved games**. **Scan local saves** runs a read-only save preview; **Find backed-up games** lists entries with versions in the selected destination. Results contain actual detected data or archives, not the entire supported-game catalogue. Saves and archives may belong to uninstalled games and do not reliably identify a launch executable.
+
+Choose **Review entry**, then select **New entry in My Games** or an existing library game. A Steam ID reported by the save definitions uses Hydra's normal Steam library identity. Without a verified store ID, choose the real `.exe` to create a custom entry, or link to an existing entry. A Steam entry may be added without an executable for backup management; launching and automatic game-exit backups still require the real executable.
+
+Linking preserves the existing game's shop/ID, title, playtime, achievements, and executable. Duplicate store identities and executable paths are checked before creating entries. A chosen executable fills an empty path but never replaces an existing one through this screen. Normal Steam creation follows Hydra's usual library/account behavior; discovery does not invoke a restore or change the global automatic-backup switch.
+
+The selected canonical save name is stored as an explicit association, so library display names can differ from save definitions and archive names. **Use automatic matching** removes this association after saving settings, without deleting data or the library entry. Scan results expire after 15 minutes and must be refreshed if configuration changes. Review save detection before relying on backups, particularly when only registry settings are found.
+
 ### Save detection and process tracking
 
 Ludusavi uses its manifest to identify saves. Available standalone roots and custom-game rules are reused where practical. The integration also discovers common Steam emulator save locations by game identifier and supports additional configured folders. It does not mirror every standalone setting.
@@ -118,7 +128,7 @@ For an existing checkout, start from its root and omit cloning. `--ignore-script
 ### Check the source
 
 ```powershell
-node --import ./scripts/register-ts-node.mjs --test src/main/services/ludusavi-local-tracker.test.ts src/main/services/ludusavi-local-queue.test.ts src/main/services/ludusavi-local-log.test.ts src/main/services/ludusavi-local-api.test.ts src/main/services/ludusavi-local-config.test.ts src/main/services/ludusavi-local-validation.test.ts src/main/services/local-release-source.test.ts src/main/services/process-watcher-scan.test.ts src/main/services/game-running-state.test.ts
+node --import ./scripts/register-ts-node.mjs --test src/main/services/ludusavi-local-tracker.test.ts src/main/services/ludusavi-local-queue.test.ts src/main/services/ludusavi-local-log.test.ts src/main/services/ludusavi-local-api.test.ts src/main/services/ludusavi-local-config.test.ts src/main/services/ludusavi-local-validation.test.ts src/main/services/ludusavi-local-discovery-core.test.ts src/main/services/local-release-source.test.ts src/main/services/process-watcher-scan.test.ts src/main/services/game-running-state.test.ts
 node node_modules/typescript/bin/tsc --noEmit -p tsconfig.node.json --composite false
 node node_modules/typescript/bin/tsc --noEmit -p tsconfig.web.json --composite false
 git status --short
@@ -137,7 +147,7 @@ The checks use synthetic saves and an isolated profile under `.tmp/`, leaving re
 node scripts/test-save-manager-integration.mjs --rclone C:/Tools/rclone/rclone.exe
 ```
 
-It uses a temporary filesystem remote and isolated Rclone configuration; it does not connect a cloud account. The graphical manager's provider authentication and real service compatibility require manual testing.
+It uses a temporary filesystem remote and isolated Rclone configuration; it does not connect a cloud account. The checks also exercise save/archive discovery and importing/linking with an isolated in-memory library and fake account adapters. No real library or account is changed. The graphical manager's provider authentication and real service compatibility require manual testing.
 
 Build distributables from a clean committed revision. The helper embeds `git rev-parse HEAD` for source comparison; uncommitted code cannot be represented by that revision. Publish the commit to the configured source repository before distributing the installer.
 
@@ -246,6 +256,8 @@ The official-release check is scheduled every six hours, subject to GitHub sched
 | `scripts/build-local.cjs` and `verify-local-package.cjs`            | Build preparation, packaging, and verification.                                        |
 
 Additional management modules are `ludusavi-local-manager.ts` (version/restore/transfer/native-window operations), `ludusavi-local-config.ts` (managed configuration), `ludusavi-local-lock.ts` (destination ownership), `ludusavi-local-validation.ts` (non-extracting checks), and `ludusavi-local-api.ts` (response handling and expiring confirmations). The added interface is `settings-save-manager.tsx`.
+
+The discovery bridge is in `ludusavi-local-discovery.ts`, with data matching in `ludusavi-local-discovery-core.ts` and interface controls in `settings-save-discovery.tsx`. It reuses Hydra's existing standard/custom library creation handlers.
 
 ## Themes
 

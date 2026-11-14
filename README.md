@@ -21,7 +21,7 @@ Hydra Custom keeps Hydra's catalogue, library, launch controls, playtime trackin
 
 1. Download a custom setup EXE from this repository's [published releases](https://github.com/CedricS789/hydra/releases), if available, or [build from source](#build-from-source).
 2. Fully exit other Hydra instances from their system trays before installing and testing. This fork uses separate application data from official Hydra; existing library and account settings are not silently copied.
-3. Add games to the library and set each game's actual executable in its game options.
+3. Add games normally or use **Discover saved games** in Save backups settings, then set each game's actual executable before launching or enabling game-exit automation.
 4. Open **Settings → Save backups**. Choose a backup folder you control, such as a folder inside OneDrive, a local drive, or a mounted server share. This destination picker accepts filesystem paths; engine-managed remote providers are configured separately under **Advanced rules and full manager**.
 5. Choose retention and an exit delay. The initial values are 10 full versions per game and 10 seconds. Run **Preview save detection**, then **Back up now** while the game is stopped. Inspect the backed-up files; a registry-only result does not confirm that game progress was captured.
 6. Enable automatic backups and save the settings. Launch a game, make a save, quit the actual game process, and verify the new result and archive after the delay. Keep Hydra Custom running in its tray while playing.
@@ -62,6 +62,16 @@ Everyday navigation and game-page buttons use **Save backups**. The settings ide
 | Release tools          | Custom installer update controls and source-snapshot comparison against official published releases.                                                                                                                                      |
 | Themes                 | Existing theme import, CSS editing, and active-theme loading retained. New panels may require theme adjustments.                                                                                                                          |
 
+### Add detected games to the library
+
+Open **Settings → Save backups → Discover saved games**. **Scan local saves** runs a read-only save preview; **Find backed-up games** lists entries with versions in the selected destination. Results contain actual detected data or archives, not the entire supported-game catalogue. Saves and archives may belong to uninstalled games and do not reliably identify a launch executable.
+
+Choose **Review entry**, then select **New entry in My Games** or an existing library game. A Steam ID reported by the save definitions uses Hydra's normal Steam library identity. Without a verified store ID, choose the real `.exe` to create a custom entry, or link to an existing entry. A Steam entry may be added without an executable for backup management; launching and automatic game-exit backups still require the real executable.
+
+Linking preserves the existing game's shop/ID, title, playtime, achievements, and executable. Duplicate store identities and executable paths are checked before creating entries. A chosen executable fills an empty path but never replaces an existing one through this screen. Normal Steam creation follows Hydra's usual library/account behavior; discovery does not invoke a restore or change the global automatic-backup switch.
+
+The selected canonical save name is stored as an explicit association, so library display names can differ from save definitions and archive names. **Use automatic matching** removes this association after saving settings, without deleting data or the library entry. Scan results expire after 15 minutes and must be refreshed if configuration changes. Review save detection before relying on backups, particularly when only registry settings are found.
+
 ### Restore a saved version
 
 In **Settings → Save backups**, select a library game, choose **Load saved versions**, select a version, then **Preview files and restore**. Review the paths, acknowledge what will be overwritten, and choose **Restore this version**. Cancellation and preview do not write live saves. There is no automatic restoration.
@@ -87,6 +97,12 @@ These unaltered captures render the actual settings components in an isolated in
 Configure the destination, full/differential retention, format, compression, and game selection. Ludusavi is identified once in the settings description.
 
 ![Save backup settings with sample data](docs/screenshots/save-backups.png)
+
+### Detected games and library import
+
+Review a detected save/archive entry and add it to My Games or associate it with an existing game. The image uses synthetic example data, including the displayed Steam ID.
+
+![Discovery results and explicit library add/link controls with sample data](docs/screenshots/discovered-games.png)
 
 ### Saved versions and cleanup
 

@@ -60,6 +60,9 @@ async function command(binary: string, args: string[], lock?: Lock) {
     timeout: 10 * 60_000,
     maxBuffer: 32 * 1024 * 1024,
   });
+  // With no game arguments, Ludusavi accepts names from stdin. Signal EOF so
+  // whole-library scans do not wait indefinitely on an unused input pipe.
+  operation.child.stdin?.end();
   // Attach rejection handling before asynchronous PID persistence.
   const handled = operation.catch(() => undefined);
   if (lock) {
@@ -110,7 +113,8 @@ async function gameOperation<T>(
     const lock = await acquireSaveBackupLock(settings.destination);
     try {
       const prepared = await tools.prepareBaseConfig(settings);
-      let canonical = game.title;
+      const linkedTitle = settings.games[key]?.manifestTitle;
+      let canonical = linkedTitle ?? game.title;
       try {
         // Recovery must work from existing archives even without a local manifest.
         const lookup = JSON.parse(
@@ -126,16 +130,18 @@ async function gameOperation<T>(
               "--api",
               "--path",
               settings.destination,
-              ...(game.shop === "steam" && /^\d+$/.test(game.objectId)
+              ...(!linkedTitle &&
+              game.shop === "steam" &&
+              /^\d+$/.test(game.objectId)
                 ? ["--steam-id", game.objectId]
                 : []),
               "--",
-              game.title,
+              canonical,
             ],
             lock
           )
         ) as SaveApiResponse;
-        canonical = Object.keys(lookup.games ?? {})[0] ?? game.title;
+        canonical = Object.keys(lookup.games ?? {})[0] ?? canonical;
       } catch {
         /* A new destination can legitimately contain no archives yet. */
       }
@@ -689,3 +695,5 @@ export const openFullSaveManager = (key?: string) =>
       await lock.release();
     }
   });
+
+export { command as runSaveToolCommand };

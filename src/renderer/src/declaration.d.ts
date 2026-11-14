@@ -197,6 +197,16 @@ declare global {
     ) => Promise<import("@types").LudusaviLocalResult | undefined>;
     openLudusaviLocalFolder: (logs?: boolean) => Promise<string>;
     clearLudusaviLocalLogs: () => Promise<void>;
+    scanDetectedSaveGames: (
+      source: "saves" | "backups"
+    ) => Promise<import("@types").DetectedSaveGame[]>;
+    addDetectedSaveGame: (
+      request: import("@types").AddDetectedSaveGameRequest
+    ) => Promise<{
+      gameKey: string;
+      title: string;
+      executableRequired: boolean;
+    }>;
     listSaveBackupVersions: (key: string) => Promise<{
       title: string;
       versions: import("@types").SaveBackupVersion[];

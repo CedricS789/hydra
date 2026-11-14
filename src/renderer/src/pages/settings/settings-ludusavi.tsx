@@ -4,9 +4,12 @@ import { Button, CheckboxField, TextField } from "@renderer/components";
 import type { LudusaviLocalSettings, LudusaviLocalState } from "@types";
 import "./settings-local-edition.scss";
 import { SettingsSaveManager } from "./settings-save-manager";
+import { SettingsSaveDiscovery } from "./settings-save-discovery";
+import { useLibrary } from "@renderer/hooks/use-library";
 
 export function SettingsLudusavi() {
   const { t } = useTranslation("ludusavi");
+  const { updateLibrary } = useLibrary();
   const [state, setState] = useState<LudusaviLocalState>();
   const [settings, setSettings] = useState<LudusaviLocalSettings>();
   const [selected, setSelected] = useState("");
@@ -198,6 +201,19 @@ export function SettingsLudusavi() {
           {t("open_logs")}
         </Button>
       </div>
+      <SettingsSaveDiscovery
+        games={state.games}
+        busy={working || state.busy}
+        destination={settings.destination}
+        beforeAction={save}
+        refresh={refresh}
+        onAdded={async (key) => {
+          const latest = await refresh();
+          setSettings(latest.settings);
+          setSelected(key);
+          await updateLibrary();
+        }}
+      />
       <h3>{t("games")}</h3>
       <p>{t("games_description")}</p>
       {!state.games.length ? (
@@ -221,6 +237,20 @@ export function SettingsLudusavi() {
             {state.games.find((g) => g.key === selected)?.executablePath ||
               t("missing_executable")}
           </code>
+          {game.manifestTitle && (
+            <div className="local-edition__row">
+              <p>{t("linked_save_title", { title: game.manifestTitle })}</p>
+              <Button
+                theme="outline"
+                disabled={working || state.busy}
+                onClick={() =>
+                  updateGame({ manifestTitle: undefined, steamId: undefined })
+                }
+              >
+                {t("unlink_save_title")}
+              </Button>
+            </div>
+          )}
           <CheckboxField
             label={t("enable_game")}
             checked={game.enabled}

@@ -3,7 +3,7 @@ import { gamesSublevel, gamesShopAssetsSublevel, levelKeys } from "@main/level";
 import { randomUUID } from "node:crypto";
 import type { GameShop } from "@types";
 
-const addCustomGameToLibrary = async (
+export const addCustomGameToLibrary = async (
   _event: Electron.IpcMainInvokeEvent,
   title: string,
   executablePath: string,

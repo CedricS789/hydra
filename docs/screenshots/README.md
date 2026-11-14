@@ -5,6 +5,7 @@ The PNGs are unaltered captures of actual React settings components rendered in 
 | Image                       | Scope                                                                                              |
 | --------------------------- | -------------------------------------------------------------------------------------------------- |
 | `save-backups.png`          | Current Save backups settings, engine credit, destination, retention, formats, and game selection. |
+| `discovered-games.png`      | Current discovery component and library add/link review using synthetic entries, IDs, and paths.   |
 | `saved-versions.png`        | Current version selection, validation/recovery buttons, advanced/remote sections, and log cleanup. |
 | `restore-preview.png`       | Current affected-file preview and disabled restore confirmation before acknowledgement.            |
 | `source-diff-prototype.png` | Historical source-comparison display test with synthetic example code and earlier branding.        |

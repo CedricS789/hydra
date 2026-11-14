@@ -1,5 +1,13 @@
 import { registerEvent } from "./register-event";
 import {
+  scanDetectedSaveGames,
+  addDetectedSaveGame,
+} from "../services/ludusavi-local-discovery";
+import { addGameToLibrary } from "./library/add-game-to-library";
+import { addCustomGameToLibrary } from "./library/add-custom-game-to-library";
+import { AchievementWatcherManager } from "../services/achievements/achievement-watcher-manager";
+import { logger } from "../services/logger";
+import {
   listSaveBackupVersions,
   previewSaveRestore,
   confirmSaveOperation,
@@ -39,6 +47,31 @@ registerEvent("openLudusaviLocalFolder", (_event, logs) =>
   openLudusaviLocalFolder(logs)
 );
 registerEvent("clearLudusaviLocalLogs", () => clearLudusaviLocalLogs());
+registerEvent("scanDetectedSaveGames", (_event, source) =>
+  scanDetectedSaveGames(source)
+);
+registerEvent("addDetectedSaveGame", (event, request) =>
+  addDetectedSaveGame(request, {
+    addSteam: (id, title) => addGameToLibrary(event, "steam", id, title),
+    addCustom: async (title, executable) => {
+      const game = await addCustomGameToLibrary(event, title, executable);
+      return `${game.shop}:${game.objectId}`;
+    },
+    executableAssigned: async (shop, objectId) => {
+      try {
+        await AchievementWatcherManager.syncGameAchievementFiles(
+          shop,
+          objectId
+        );
+      } catch (error) {
+        logger.warn(
+          "Could not refresh achievement files after adding a detected game",
+          error
+        );
+      }
+    },
+  })
+);
 registerEvent("listSaveBackupVersions", (_event, key) =>
   listSaveBackupVersions(key)
 );

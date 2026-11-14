@@ -32,7 +32,7 @@ const lookupCachedPlatform = async (
   return null;
 };
 
-const addGameToLibrary = async (
+export const addGameToLibrary = async (
   _event: Electron.IpcMainInvokeEvent,
   shop: GameShop,
   objectId: string,

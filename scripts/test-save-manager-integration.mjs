@@ -31,6 +31,7 @@ const game = {
   isDeleted: false,
 };
 const key = "steam:fixture";
+const libraryGames = new Map([[key, game]]);
 const settings = {
   enabled: false,
   destination,
@@ -62,7 +63,18 @@ globalThis.__fullSaveTest = {
     get: async (key) => store.get(key),
     put: async (key, value) => store.set(key, value),
   },
-  games: { get: async () => game, values: () => ({ all: async () => [game] }) },
+  games: {
+    get: async (key) => libraryGames.get(key),
+    values: () => ({ all: async () => [...libraryGames.values()] }),
+  },
+  updateGame: async (key, patch) => {
+    const updated = {
+      ...libraryGames.get(key),
+      ...patch(libraryGames.get(key)),
+    };
+    libraryGames.set(key, updated);
+    return updated;
+  },
 };
 const modules = {
   electron:
@@ -80,12 +92,14 @@ const modules = {
   "./logger": "export const logger={error(){},warn(){}};",
   "./game-running-state":
     "export const getTrackedGamesRunning=()=>globalThis.__fullSaveTest.running?[{}]:[];",
+  "./game-record-updater":
+    "export const updateGameRecord=globalThis.__fullSaveTest.updateGame;",
 };
 const bundle = path.join(base, "service-under-test.mjs");
 await build({
   stdin: {
     contents:
-      'export * from "./src/main/services/ludusavi-local.ts"; export * from "./src/main/services/ludusavi-local-manager.ts";',
+      'export * from "./src/main/services/ludusavi-local.ts"; export * from "./src/main/services/ludusavi-local-manager.ts"; export * from "./src/main/services/ludusavi-local-discovery.ts";',
     resolveDir: root,
   },
   outfile: bundle,
@@ -237,6 +251,108 @@ console.log(
   "PASS: real ZIP + differential backups, version list, contents preview, archive validation, stopped-game guard, changed-settings guard, explicit restore, verified pre-restore snapshot, single-use confirmation, advanced validation/import, and scoped log cleanup."
 );
 console.log("Fixture root: " + base);
+
+// Discovery reads only the same synthetic profile, and creators never call accounts.
+const archived = await service.scanDetectedSaveGames("backups");
+const detected = archived.find((entry) => entry.title === game.title);
+assert.ok(detected);
+assert.ok(detected.versions >= 1);
+const bin = path.join(base, "bin");
+await fs.mkdir(bin);
+const existingExe = path.join(bin, "existing.exe"),
+  addedExe = path.join(bin, "added.exe");
+await fs.writeFile(existingExe, "fixture executable; not launched");
+await fs.writeFile(addedExe, "fixture executable; not launched");
+const existingKey = "custom:linked";
+const existing = {
+  ...game,
+  shop: "custom",
+  objectId: "linked",
+  title: "Personal library title",
+  executablePath: existingExe,
+  playTimeInMilliseconds: 123456,
+  automaticCloudSync: true,
+};
+libraryGames.set(existingKey, existing);
+let customCreates = 0;
+const creators = {
+  addSteam: async () => {
+    throw Error("Fixture does not define a Steam ID.");
+  },
+  addCustom: async (title, executablePath) => {
+    customCreates++;
+    const id = `added-${customCreates}`;
+    const createdKey = `custom:${id}`;
+    libraryGames.set(createdKey, {
+      ...game,
+      shop: "custom",
+      objectId: id,
+      title,
+      executablePath,
+    });
+    return createdKey;
+  },
+};
+const linked = await service.addDetectedSaveGame(
+  { entryId: detected.id, targetGameKey: existingKey },
+  creators
+);
+assert.equal(linked.gameKey, existingKey);
+assert.deepEqual(libraryGames.get(existingKey), existing);
+assert.equal(
+  (await service.getLudusaviLocalSettings()).games[existingKey].manifestTitle,
+  game.title
+);
+assert.ok((await service.listSaveBackupVersions(existingKey)).versions.length);
+assert.equal(
+  (await service.enqueueLudusaviLocalBackup(existingKey, true)).status,
+  "preview"
+);
+await assert.rejects(
+  service.addDetectedSaveGame(
+    {
+      entryId: detected.id,
+      targetGameKey: existingKey,
+      executablePath: addedExe,
+    },
+    creators
+  ),
+  /already has an executable/
+);
+await assert.rejects(
+  service.addDetectedSaveGame({ entryId: detected.id }, creators),
+  /Choose the executable/
+);
+const added = await service.addDetectedSaveGame(
+  { entryId: detected.id, executablePath: addedExe },
+  creators
+);
+const repeated = await service.addDetectedSaveGame(
+  { entryId: detected.id, executablePath: addedExe },
+  creators
+);
+assert.equal(added.gameKey, repeated.gameKey);
+assert.equal(customCreates, 1);
+assert.equal((await service.getLudusaviLocalSettings()).enabled, false);
+const live = await service.scanDetectedSaveGames("saves");
+assert.ok(live.some((entry) => entry.title === game.title && entry.files > 0));
+assert.equal(await fs.readFile(progress, "utf8"), "version one");
+const currentSettings = await service.getLudusaviLocalSettings();
+await service.saveLudusaviLocalSettings({
+  ...currentSettings,
+  fullRetention: 9,
+});
+await assert.rejects(
+  service.addDetectedSaveGame(
+    { entryId: live[0].id, targetGameKey: existingKey },
+    creators
+  ),
+  /Settings changed/
+);
+await service.saveLudusaviLocalSettings(currentSettings);
+console.log(
+  "PASS: live-save/archive discovery, explicit library linking, alias-aware backup access, custom creation, executable checks, duplicate prevention, stale-scan rejection, and preservation of identity/playtime/settings. No real library or account was modified."
+);
 
 const rcloneIndex = process.argv.indexOf("--rclone");
 const rcloneArgument =

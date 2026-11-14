@@ -2,6 +2,26 @@ export interface LudusaviGameSettings {
   enabled: boolean;
   savePaths: string[];
   trackingPaths: string[];
+  manifestTitle?: string;
+  steamId?: string;
+}
+
+export interface DetectedSaveGame {
+  id: string;
+  title: string;
+  source: "saves" | "backups";
+  files: number;
+  registryKeys: number;
+  versions: number;
+  filePaths: string[];
+  steamId?: string;
+  matchingGameKeys: string[];
+}
+
+export interface AddDetectedSaveGameRequest {
+  entryId: string;
+  targetGameKey?: string;
+  executablePath?: string;
 }
 
 export interface LudusaviLocalSettings {
