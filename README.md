@@ -22,17 +22,21 @@ node node_modules/electron/install.js
 node scripts/write-local-build-config.cjs
 ```
 
-Run the shortcut build only when official Hydra is installed at `%LOCALAPPDATA%\Programs\Hydra`, matches the exact `upstreamTag` in `src/shared/local-edition.json`, and native code is unchanged:
+Build the installer with the full native toolchain:
+
+```powershell
+node scripts/build-local.cjs
+```
+
+This builds the native components and the app, then packages the setup EXE.
+
+**Optional faster route:** if official Hydra is installed in `%LOCALAPPDATA%\Programs\Hydra`, its version matches `upstreamTag` in `src/shared/local-edition.json` (currently `v4.4.1`), and this project has no native-code changes, the build script can reuse Hydra's native components instead of compiling them again:
 
 ```powershell
 node scripts/build-local.cjs --reuse-installed-native
 ```
 
-Otherwise, with the full native toolchain installed, run:
-
-```powershell
-node scripts/build-local.cjs
-```
+The script checks the installed Hydra version. If it does not match, use the full build command above. Use the full build after changing native code.
 
 The completed installer and update files are copied to `dist/`. The build does not install or publish them. For installer use and backup setup, see [Install and configure backups](#install-and-configure-backups); for other project topics, see [Features and limitations](#features-and-limitations), [Screenshots](#screenshots), and [Maintenance and updates](#maintenance-and-updates).
 
@@ -245,12 +249,12 @@ node scripts/update-from-official.mjs --check
 node scripts/build-local.cjs
 ```
 
-**Faster build when the installed official Hydra matches this source's exact upstream version and native code is unchanged:**
+**Optional shortcut:** reuses native components from installed official Hydra when its version matches `upstreamTag` and native code is unchanged:
 
 ```powershell
 node scripts/build-local.cjs --reuse-installed-native
 ```
 
-This reuses native components from the official Hydra installation at `%LOCALAPPDATA%\Programs\Hydra`. Use it only when that installation matches `upstreamTag` in `src/shared/local-edition.json` and you have not changed native code. Otherwise, use the full build command above.
+The build script checks the version at `%LOCALAPPDATA%\Programs\Hydra`; use the full build command above if it does not match or if native code has changed.
 
 See [Maintenance and updates](#maintenance-and-updates) and [Build from source](#build-from-source) for prerequisites, options, and details.
