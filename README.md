@@ -85,7 +85,7 @@ You only need this section if you want to build the Windows `.exe` installer you
 Run these commands one at a time in PowerShell:
 
 ```powershell
-git clone --branch custom/ludusavi-backups https://github.com/CedricS789/hydra.git hydra-ludusavi
+git clone https://github.com/CedricS789/hydra.git hydra-ludusavi
 Set-Location -LiteralPath .\hydra-ludusavi
 npm install --prefix .tmp/tooling --cache .tmp/npm-cache --no-audit --no-fund yarn@1.22.22
 node .tmp/tooling/node_modules/yarn/bin/yarn.js install --frozen-lockfile --ignore-scripts --non-interactive --cache-folder .tmp/yarn-cache

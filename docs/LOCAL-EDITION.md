@@ -8,7 +8,7 @@ See the [repository README](../README.md) for an overview and screenshots, and [
 
 - **Repository:** [CedricS789/hydra](https://github.com/CedricS789/hydra).
 - **Upstream:** [hydralauncher/hydra](https://github.com/hydralauncher/hydra).
-- **Customization branch:** `custom/ludusavi-backups`, currently based on official `v4.4.1`.
+- **Default branch:** `main`, currently based on official `v4.4.1`.
 - **Project name:** Hydra + Ludusavi Integrated.
 - **Everyday application name:** Hydra Ludusavi.
 - **Descriptive name:** Hydra with Ludusavi Integrated.
@@ -116,7 +116,7 @@ Project-local scratch files, logs, downloads, and caches belong under `.tmp/`. I
 Run these commands in PowerShell, proceeding only when each command succeeds:
 
 ```powershell
-git clone --branch custom/ludusavi-backups https://github.com/CedricS789/hydra.git hydra-ludusavi
+git clone https://github.com/CedricS789/hydra.git hydra-ludusavi
 Set-Location -LiteralPath .\hydra-ludusavi
 npm install --prefix .tmp/tooling --cache .tmp/npm-cache --no-audit --no-fund yarn@1.22.22
 node .tmp/tooling/node_modules/yarn/bin/yarn.js install --frozen-lockfile --ignore-scripts --non-interactive --cache-folder .tmp/yarn-cache
@@ -265,7 +265,7 @@ Compatible official updates are handled by automation. The following manual proc
 Start from a clean working tree. Replace `vNEXT` below with an actual published official release tag:
 
 ```powershell
-git switch custom/ludusavi-backups
+git switch main
 git fetch upstream --tags
 git switch -c integrate/vNEXT
 git merge vNEXT
@@ -277,7 +277,7 @@ Update the version in `package.json` together with `upstreamTag` and `releaseTag
 
 Run focused tests and type checks, build, and test native loading, save preview, full/differential and plain-file archives, retention, process-exit behavior, manual restoration and its snapshot, validation, advanced rules, transfers, failures, log cleanup, startup, and disabling. Separately verify account sign-in, debrid, Steam/Epic, friends/community, playtime, achievements, themes, and external upload. A clean merge and compilation do not establish service compatibility. Keep a previous installer available; downgrades do not necessarily reverse data migrations.
 
-Commit the reviewed integration, merge it into `custom/ludusavi-backups`, and push. The scheduled official-release check reads the default branch; an integration branch alone does not advance its recorded base.
+Commit the reviewed integration, merge it into `main`, and push. The scheduled official-release check reads the default branch; an integration branch alone does not advance its recorded base.
 
 ### Build and publish
 
