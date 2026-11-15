@@ -15,7 +15,7 @@ export function getUpdatePreparation(
 ): NonNullable<LocalReleaseState["preparation"]> {
   const value = { officialTag: latest?.tag ?? baseTag, url };
   if (!latest) return { ...value, phase: "unknown" };
-  const prefix = `v${latest.tag.replace(/^v/, "")}-rev.`;
+  const prefix = `v${latest.tag.replace(/^v/, "")}-remix.`;
   if (
     latest.tag !== baseTag &&
     adapted.some(

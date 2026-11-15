@@ -6,9 +6,18 @@ Hydra with Ludusavi Integrated keeps Hydra's catalogue, library, launch controls
 
 **Current source:** `4.4.1-remix.2`, based on official Hydra `v4.4.1`. This README describes the source in this repository. Check [Releases](https://github.com/CedricS789/hydra/releases) for available installers; a source update does not automatically create a downloadable release.
 
-## Quick Start: build the setup
+## Requirements
 
-Build the Windows installer from this source checkout. You need Windows x64, Git, Node.js, and Yarn Classic 1.22.22. The full native build also needs stable Rust, Visual Studio C++ Build Tools, and a Windows SDK. See the [build guide](docs/LOCAL-EDITION.md#build-on-windows) for the complete prerequisites.
+To install the finished app, you only need **Windows 10/11 (x64)** — download the setup `.exe` from [Releases](https://github.com/CedricS789/hydra/releases) and go to [Install and configure backups](#install-and-configure-backups).
+
+To build from source:
+
+- **Windows 10/11 (x64)**
+- **[Git](https://git-scm.com/download/win)**
+- **[Node.js](https://nodejs.org/en/download)** (v22 LTS)
+- **[Rust](https://www.rust-lang.org/tools/install)** and **[Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)** (_Desktop development with C++_ workload) — _or installed official [Hydra `v4.4.1`](https://github.com/hydralauncher/hydra/releases/tag/v4.4.1) if using `--reuse-installed-native`_
+
+## Quick Start: build the setup
 
 Clone the project and prepare its dependencies in PowerShell:
 
@@ -30,7 +39,7 @@ node scripts/build-local.cjs
 
 This builds the native components and the app, then packages the setup EXE.
 
-**Optional faster route:** if official Hydra is installed in `%LOCALAPPDATA%\Programs\Hydra`, its version matches `upstreamTag` in `src/shared/local-edition.json` (currently `v4.4.1`), and this project has no native-code changes, the build script can reuse Hydra's native components instead of compiling them again:
+**Optional faster route:** if official Hydra is installed in `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra`, its version matches `upstreamTag` in `src/shared/local-edition.json` (currently `v4.4.1`), and this project has no native-code changes, the build script can reuse Hydra's native components instead of compiling them again:
 
 ```powershell
 node scripts/build-local.cjs --reuse-installed-native
@@ -161,10 +170,16 @@ node node_modules/electron/install.js
 node scripts/write-local-build-config.cjs
 ```
 
-Run each command only after the previous one succeeds. The configuration script writes ignored `.env.production` with public service addresses; no account token is required. With the native toolchain ready, build the installer:
+Run each command only after the previous one succeeds. The configuration script writes ignored `.env.production` with public service addresses; no account token is required. With the full native toolchain from [Requirements](#requirements) ready, build the installer:
 
 ```powershell
 node scripts/build-local.cjs
+```
+
+Or, when official Hydra `v4.4.1` is installed in `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra` and native code is unchanged, reuse its compiled native components without Rust/C++:
+
+```powershell
+node scripts/build-local.cjs --reuse-installed-native
 ```
 
 The helper type-checks and compiles the application, packages it, verifies the package, and copies the final files into `dist/`. It does not install or publish them. Build from a clean, committed revision; source comparison requires that revision to be available in the configured GitHub repository.
@@ -255,6 +270,6 @@ node scripts/build-local.cjs
 node scripts/build-local.cjs --reuse-installed-native
 ```
 
-The build script checks the version at `%LOCALAPPDATA%\Programs\Hydra`; use the full build command above if it does not match or if native code has changed.
+The build script checks the version at `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra`; use the full build command above if it does not match or if native code has changed.
 
 See [Maintenance and updates](#maintenance-and-updates) and [Build from source](#build-from-source) for prerequisites, options, and details.

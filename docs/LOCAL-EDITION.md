@@ -171,7 +171,7 @@ For application-layer or packaging changes that leave native code unchanged:
 node scripts/build-local.cjs --reuse-installed-native
 ```
 
-This route requires official Hydra installed at `%LOCALAPPDATA%\Programs\Hydra` with the exact version specified by `upstreamTag` in `src/shared/local-edition.json`, currently v4.4.1. The helper checks that version and reuses its native addon, LevelDB binding, Ludusavi, and Epic runtime while compiling this fork's TypeScript and renderer.
+This route requires official Hydra installed at `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra` with the exact version specified by `upstreamTag` in `src/shared/local-edition.json`, currently v4.4.1. The helper checks that version and reuses its native addon, LevelDB binding, Ludusavi, and Epic runtime while compiling this fork's TypeScript and renderer.
 
 The version check cannot establish that native source was left unchanged. Do not use this shortcut after native changes or an upstream-base update without separately verifying compatibility.
 
@@ -289,7 +289,7 @@ Commit the reviewed integration, merge it into `custom/ludusavi-backups`, and pu
 
 The manual workflow builds native components from source; successful installer validation remains necessary. No GitHub account token is embedded in the application. Pushing source alone does not distribute an update.
 
-The official-release check is scheduled every six hours, subject to GitHub scheduling, and reports when integration is needed. It never automatically merges, publishes, or installs an official build. Maintainers can configure GitHub notifications for workflow failures.
+The official-release workflow is scheduled every six hours, subject to GitHub scheduling, and can also be triggered on demand with `node scripts/update-from-official.mjs`. Maintainers can configure GitHub notifications for workflow failures.
 
 ## Source map
 

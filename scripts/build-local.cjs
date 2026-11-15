@@ -71,12 +71,21 @@ function packageFromAsar(archive) {
   }
 }
 function reuseInstalled() {
-  const installed = path.join(
-    process.env.LOCALAPPDATA,
-    "Programs",
-    "Hydra",
-    "resources"
+  const candidates = [
+    process.env.LOCALAPPDATA &&
+      path.join(process.env.LOCALAPPDATA, "Programs", "Hydra", "resources"),
+    process.env.PROGRAMFILES &&
+      path.join(process.env.PROGRAMFILES, "Hydra", "resources"),
+    process.env["PROGRAMFILES(X86)"] &&
+      path.join(process.env["PROGRAMFILES(X86)"], "Hydra", "resources"),
+  ].filter(Boolean);
+  const installed = candidates.find((dir) =>
+    fs.existsSync(path.join(dir, "app.asar"))
   );
+  if (!installed)
+    throw Error(
+      "Official Hydra was not found in %LOCALAPPDATA%\\Programs\\Hydra or %ProgramFiles%\\Hydra. Use the full source build otherwise."
+    );
   const pkg = packageFromAsar(path.join(installed, "app.asar"));
   if (`v${pkg.version}` !== edition.upstreamTag)
     throw Error(
