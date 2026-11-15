@@ -18,6 +18,30 @@ Hydra with Ludusavi Integrated keeps Hydra's catalogue, library, launch controls
 - [Detailed setup, build, and maintenance guide](docs/LOCAL-EDITION.md)
 - [Release notes](docs/LOCAL-RELEASE-NOTES.md)
 
+## Important commands
+
+These commands are for the person maintaining the GitHub project. **Installer users do not need to run them**; update the app from **Settings → Releases and changes**.
+
+**Check for an official release and update the GitHub project, then publish the adapted release when needed:**
+
+```powershell
+node scripts/update-from-official.mjs
+```
+
+**Check status without starting a build or publication:**
+
+```powershell
+node scripts/update-from-official.mjs --check
+```
+
+**Build the Windows installer from the current source:**
+
+```powershell
+node scripts/build-local.cjs
+```
+
+See [Maintenance and updates](#maintenance-and-updates) and [Build from source](#build-from-source) for prerequisites, options, and details.
+
 ## Install and configure backups
 
 1. Download a custom setup EXE from this repository's [published releases](https://github.com/CedricS789/hydra/releases), if available, or [build from source](#build-from-source).
