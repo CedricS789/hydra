@@ -122,7 +122,7 @@ export async function plan(root) {
     throw new Error("Official release is not stable.");
   const version = officialVersion(release.tag_name);
   const newer = compareVersions(release.tag_name, edition.upstreamTag) > 0;
-  const tag = `v${version}-rev.1`;
+  const tag = `v${version}-remix.1`;
   const published = newer
     ? gh(
         root,
@@ -214,7 +214,7 @@ export function prepare(root, tag, upstreamSha) {
   const pkg = read(root, "package.json");
   for (const key of ["name", "description", "repository", "author"])
     if (key in previousPackage) pkg[key] = previousPackage[key];
-  pkg.version = `${version}-rev.1`;
+  pkg.version = `${version}-remix.1`;
   write(root, "package.json", pkg);
   const currentEdition = read(root, "src/shared/local-edition.json");
   Object.assign(currentEdition, edition, {

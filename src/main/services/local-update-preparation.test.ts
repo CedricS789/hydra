@@ -53,7 +53,7 @@ test("disabled automation and unavailable status are reported honestly", () => {
 });
 
 test("a published adapted update is available rather than perpetually preparing", () => {
-  const custom = [{ ...release, tag: "v4.4.2-rev.1" }];
+  const custom = [{ ...release, tag: "v4.4.2-remix.1" }];
   assert.equal(
     getUpdatePreparation("v4.4.1", release, url, undefined, undefined, custom)
       .phase,

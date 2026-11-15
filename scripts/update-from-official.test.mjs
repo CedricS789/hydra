@@ -9,12 +9,12 @@ import {
 const repository = "Fixture/hydra";
 const branch = "custom/ludusavi-backups";
 function completedRelease() {
-  const exe = "hydra-ludusavi-4.4.2-rev.1-setup.exe";
+  const exe = "hydra-ludusavi-4.4.2-remix.1-setup.exe";
   return {
-    tag_name: "v4.4.2-rev.1",
+    tag_name: "v4.4.2-remix.1",
     draft: false,
     prerelease: false,
-    html_url: "https://github.com/Fixture/hydra/releases/tag/v4.4.2-rev.1",
+    html_url: "https://github.com/Fixture/hydra/releases/tag/v4.4.2-remix.1",
     assets: [exe, `${exe}.blockmap`, "latest.yml"].map((name) => ({
       name,
       state: "uploaded",
@@ -147,7 +147,7 @@ test("one command dispatches, waits, and verifies both source and public install
   const f = fixture();
   const result = await updateFromOfficial({}, f.dependencies);
   assert.equal(result.phase, "complete");
-  assert.match(result.url, /releases\/tag\/v4.4.2-rev.1$/);
+  assert.match(result.url, /releases\/tag\/v4.4.2-remix.1$/);
   const requests = f.calls.filter((call) => call.method === "POST");
   assert.equal(requests.length, 1);
   assert.deepEqual(requests[0].body, {
@@ -214,7 +214,7 @@ test("failed workflows and incomplete source sync cannot be reported as success"
 });
 
 test("release verification rejects drafts, unfinished assets, and missing metadata", () => {
-  const plan = { releaseTag: "v4.4.2-rev.1", version: "4.4.2-rev.1" };
+  const plan = { releaseTag: "v4.4.2-remix.1", version: "4.4.2-remix.1" };
   assert.throws(
     () => verifyPublishedRelease({ ...completedRelease(), draft: true }, plan),
     /unavailable/

@@ -69,12 +69,12 @@ function fixture(conflict = false) {
   git(root, "checkout", "main");
   put(root, "package.json", {
     name: "hydralauncher-local",
-    version: "4.4.1-rev.2",
+    version: "4.4.1-remix.2",
     description: "Custom",
     dependencies: { original: "1" },
     devDependencies: { esbuild: "1" },
   });
-  put(root, "README.md", "Custom 4.4.1-rev.2 based on v4.4.1\n");
+  put(root, "README.md", "Custom 4.4.1-remix.2 based on v4.4.1\n");
   put(
     root,
     ".github/workflows/release.yml",
@@ -88,7 +88,7 @@ function fixture(conflict = false) {
     repository: "Fixture/hydra",
     upstreamRepository: "Fixture/upstream",
     upstreamTag: "v4.4.1",
-    releaseTag: "v4.4.1-rev.2",
+    releaseTag: "v4.4.1-remix.2",
   });
   put(
     root,
@@ -146,7 +146,7 @@ test("real Git adaptation preserves custom code and identity while importing off
   const manifest = prepare(root, "v4.4.2", upstreamSha);
   const pkg = read(root, "package.json");
   assert.equal(pkg.name, "hydralauncher-local");
-  assert.equal(pkg.version, "4.4.2-rev.1");
+  assert.equal(pkg.version, "4.4.2-remix.1");
   assert.deepEqual(pkg.dependencies, { original: "2", added: "1" });
   assert.deepEqual(pkg.devDependencies, { esbuild: "1" });
   assert.equal(
@@ -155,7 +155,7 @@ test("real Git adaptation preserves custom code and identity while importing off
   );
   assert.match(
     fs.readFileSync(path.join(root, "README.md"), "utf8"),
-    /Custom 4.4.2-rev.1 based on v4.4.2/
+    /Custom 4.4.2-remix.1 based on v4.4.2/
   );
   assert.equal(
     fs.readFileSync(path.join(root, ".github/workflows/release.yml"), "utf8"),

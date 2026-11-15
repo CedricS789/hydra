@@ -198,7 +198,7 @@ Open the title-bar version or **Settings → Releases and changes**.
 - Select an official published release, choose **See changes (+/−)**, and select a file. Red is the official snapshot; green is the installed custom snapshot. The comparison uses complete source snapshots rather than commit history or a merge-base diff.
 - The view retrieves up to 30 releases. Binary files and text above 1 MB have no text preview. Internet access is required, GitHub API limits apply, and the embedded custom source revision must be available in the configured repository.
 
-The browser excludes drafts and releases marked prerelease on GitHub. A custom version string containing `-rev.N` does not require enabling GitHub's prerelease checkbox.
+The browser excludes drafts and releases marked prerelease on GitHub. A version string containing `-remix.N` does not require enabling GitHub's prerelease checkbox.
 
 ### Automatic preparation for every installation
 
@@ -273,7 +273,7 @@ git merge vNEXT
 
 Resolve conflicts while preserving backup-only boundaries, process-exit evidence, queue/lock behavior, custom settings loading, updater repository, and stable application identifiers. `git merge --abort` cancels an unresolved merge; it does not undo a completed merge.
 
-Update the version in `package.json` together with `upstreamTag` and `releaseTag` in `src/shared/local-edition.json`. For example, official `v4.4.2` can become custom `4.4.2-rev.1` with release tag `v4.4.2-rev.1`. Increase the revision for subsequent custom releases of that base. Update release notes, public service defaults, resource packaging, toolchain requirements, and documentation as needed.
+Update the version in `package.json` together with `upstreamTag` and `releaseTag` in `src/shared/local-edition.json`. For example, official `v4.4.2` can become `4.4.2-remix.1` with release tag `v4.4.2-remix.1`. Increase the remix sequence for later releases based on that same official version. Update release notes, public service defaults, resource packaging, toolchain requirements, and documentation as needed.
 
 Run focused tests and type checks, build, and test native loading, save preview, full/differential and plain-file archives, retention, process-exit behavior, manual restoration and its snapshot, validation, advanced rules, transfers, failures, log cleanup, startup, and disabling. Separately verify account sign-in, debrid, Steam/Epic, friends/community, playtime, achievements, themes, and external upload. A clean merge and compilation do not establish service compatibility. Keep a previous installer available; downgrades do not necessarily reverse data migrations.
 

@@ -75,7 +75,7 @@ export async function inspectRemoteUpdate(api, repository) {
   if (official.draft || official.prerelease)
     throw new Error("The official release is not stable.");
   const version = officialVersion(official.tag_name);
-  const releaseTag = `v${version}-rev.1`;
+  const releaseTag = `v${version}-remix.1`;
   const newer = compareVersions(official.tag_name, edition.upstreamTag) > 0;
   const published = newer
     ? await api(`repos/${repository}/releases/tags/${releaseTag}`, {
@@ -88,7 +88,7 @@ export async function inspectRemoteUpdate(api, repository) {
     upstreamTag: official.tag_name,
     baseTag: edition.upstreamTag,
     releaseTag,
-    version: `${version}-rev.1`,
+    version: `${version}-remix.1`,
     phase: !newer
       ? "current"
       : published && !published.draft

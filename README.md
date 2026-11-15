@@ -4,7 +4,7 @@ A Windows game launcher based on [Hydra Launcher by Los Broxas](https://github.c
 
 Hydra with Ludusavi Integrated keeps Hydra's catalogue, library, launch controls, playtime tracking, achievements, themes, and integration code. It adds backup and recovery settings inside the launcher, access to the complete save-tool manager, custom release updates, and a source comparison against official Hydra releases. The project is **Hydra + Ludusavi Integrated**, also described as **Hydra with Ludusavi Integrated**; everyday app screens display **Hydra Ludusavi**.
 
-**Current source:** `4.4.1-rev.2`, based on official Hydra `v4.4.1`. This README describes the source in this repository. Check [Releases](https://github.com/CedricS789/hydra/releases) for available installers; a source update does not automatically create a downloadable release.
+**Current source:** `4.4.1-remix.2`, based on official Hydra `v4.4.1`. This README describes the source in this repository. Check [Releases](https://github.com/CedricS789/hydra/releases) for available installers; a source update does not automatically create a downloadable release.
 
 ## Quick Start: build the setup
 
@@ -169,8 +169,8 @@ For the current version, successful output is:
 
 ```text
 dist/
-  hydra-ludusavi-4.4.1-rev.2-setup.exe
-  hydra-ludusavi-4.4.1-rev.2-setup.exe.blockmap
+  hydra-ludusavi-4.4.1-remix.2-setup.exe
+  hydra-ludusavi-4.4.1-remix.2-setup.exe.blockmap
   latest.yml
 ```
 

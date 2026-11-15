@@ -1,4 +1,4 @@
-# Hydra + Ludusavi Integrated — 4.4.1-rev.2
+# Hydra + Ludusavi Integrated — 4.4.1-remix.2
 
 Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright and the MIT license are retained. These notes describe the source version. Installer availability is listed on the repository's published releases page.
 
@@ -22,7 +22,7 @@ Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright a
 - Check, download, and install controls for custom releases. The updater uses the configured custom repository.
 - Short display name **Hydra Ludusavi**, with the full name in formal installer details. Existing internal identifiers remain stable for settings and installer compatibility.
 - Theme import, CSS editing, and active-theme loading retained. Additional panels may require theme CSS adjustments.
-- Installer filename `hydra-ludusavi-4.4.1-rev.2-setup.exe`.
+- Installer filename `hydra-ludusavi-4.4.1-remix.2-setup.exe`.
 
 - Everyday labels use **Save backups**, with Ludusavi credited in settings. The game-page shortcut preselects the library game.
 - Version browsing, file/registry restore previews, explicit expiring confirmation, stopped-game checks, selected-version validation, and a separate pre-restore snapshot.
