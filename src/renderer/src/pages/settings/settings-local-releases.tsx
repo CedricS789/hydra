@@ -93,6 +93,21 @@ export function SettingsLocalReleases() {
         })}
       </p>
       <p className="local-edition__notice">{t("update_notice")}</p>
+      {state?.preparation && (
+        <div className="local-edition__notice">
+          <p role="status">
+            {t(`preparation_${state.preparation.phase}`, {
+              tag: state.preparation.officialTag,
+            })}
+          </p>
+          <Button
+            theme="outline"
+            onClick={() => window.electron.openExternal(state.preparation!.url)}
+          >
+            {t("view_preparation")}
+          </Button>
+        </div>
+      )}
       <div className="local-edition__row">
         <Button
           disabled={working || update.phase === "downloading"}

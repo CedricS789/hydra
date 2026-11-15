@@ -117,6 +117,17 @@ export interface LocalReleaseState {
   upstreamTag: string;
   custom: LocalRelease[];
   upstream: LocalRelease[];
+  preparation?: {
+    phase:
+      | "current"
+      | "available"
+      | "preparing"
+      | "failed"
+      | "disabled"
+      | "unknown";
+    officialTag: string;
+    url: string;
+  };
 }
 
 export interface ReleaseSourceFile {

@@ -201,6 +201,25 @@ Open the title-bar version or **Settings → Releases and changes**.
 
 The browser excludes drafts and releases marked prerelease on GitHub. A custom version string containing `-rev.N` does not require enabling GitHub's prerelease checkbox.
 
+### Automatic preparation for every installation
+
+The default-branch workflow **Automatic updates from official Hydra** replaces the earlier report-only release check. It polls the latest stable official release every six hours and skips already integrated or older versions. For a new release it prepares a candidate with preserved app identity, Ludusavi hooks, display settings, and controlled workflow definitions. Independent package metadata changes are merged structurally; competing dependency or source edits stop preparation instead of selecting one side silently.
+
+The Windows job has read-only repository permissions and no persisted checkout credentials. It installs dependencies, tests merge/conflict behavior and save guards, exercises real synthetic backup/recovery operations, compiles the application and native dependencies, verifies packaging, and checks that packaged native modules load in the matching Electron runtime. The publisher is a separate job executing the original controller revision with write permission; it validates artifact checksums, installer metadata, candidate ancestry, unchanged controlling workflows, and the expected repository revision before creating a draft, uploading assets, and publishing. Existing public releases are never replaced.
+
+Successful publication offers one finished installer to all installed copies, including the project owner's. No user maintains a private fork or compiles locally to consume it. The workflow archives its source and fast-forwards the default branch automatically. If publication completed but the final source synchronization failed, a later check retries synchronization without replacing the published installer.
+
+One initial installer containing the custom updater is required to bootstrap distribution; it may be distributed directly or through the optional manual release workflow. This code does not make an already distributed older EXE contain newer updater screens. An incompatible upstream change can still require a targeted repair. Failures are visible through workflow logs and the app's preparation status; users keep the working version. Public API/account compatibility is not proven by build success alone.
+
+The schedule runs on the default branch and requires Actions to remain enabled. Public repository schedules may be disabled by GitHub after 60 days without repository activity. See [GitHub scheduling](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule). The settings show a disabled workflow rather than implying that updates are being prepared. Preparation is not instantaneous: scheduling, queues, and compilation add delay.
+
+The tests can be run without building an installer:
+
+```powershell
+node --test scripts/automatic-upstream-release.test.mjs
+node --import ./scripts/register-ts-node.mjs --test src/main/services/local-update-preparation.test.ts
+```
+
 ## Maintain a fork
 
 ### Repository configuration
@@ -213,7 +232,9 @@ git remote add upstream https://github.com/hydralauncher/hydra.git
 
 When publishing from a separate fork, configure its repository consistently in `package.json`, `src/shared/local-edition.json`, and `electron-builder.yml`. The source-comparison service uses the edition repository; updater settings and published assets must point to the intended fork. Review app identifiers deliberately before making a separately installed derivative.
 
-### Integrate an official release
+### Repair an adaptation or prepare a custom-only change
+
+Compatible official updates are handled by automation. The following manual procedure is for an exception or a deliberate custom change; it is not required on each release by installed users.
 
 Start from a clean working tree. Replace `vNEXT` below with an actual published official release tag:
 

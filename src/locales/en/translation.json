@@ -3854,12 +3854,12 @@
     "title": "Releases and changes",
     "description": "Update Hydra Ludusavi and compare your installed custom source with official Hydra releases.",
     "installed": "Installed: {{version}} · Based on official {{base}}",
-    "update_notice": "Updates install only rebuilt Hydra Ludusavi releases. New official releases must first be integrated and tested in this fork.",
+    "update_notice": "Official Hydra releases are adapted, checked, and built automatically on GitHub for everyone using this app. Download the finished update here; no source checkout or build tools are needed.",
     "check": "Check for release updates",
     "download": "Download {{version}}",
     "install": "Install update and restart",
     "custom_releases": "Hydra Ludusavi releases",
-    "no_custom_releases": "No custom releases have been published yet. The updater becomes available once an installer release is published.",
+    "no_custom_releases": "No adapted installer has been published yet. Automatic preparation publishes finished installers after processing compatible official releases.",
     "official_release": "Official Hydra releases",
     "choose_release": "Compare with official release",
     "release_notes": "Release notes",
@@ -3881,6 +3881,13 @@
     "packaged_required": "Updates are available in an installed Hydra Ludusavi build.",
     "check_first": "Check for an available update first.",
     "game_running": "Close all games and wait for backups to finish before installing an update.",
-    "phase_unpublished": "No custom installer release has been published yet. You can still inspect official releases and source changes."
+    "phase_unpublished": "No custom installer release has been published yet. You can still inspect official releases and source changes.",
+    "view_preparation": "View update preparation",
+    "preparation_current": "This build is based on the latest listed official release, {{tag}}.",
+    "preparation_preparing": "Official {{tag}} is awaiting a verified adapted build. Keep using your current app while preparation completes.",
+    "preparation_failed": "Preparation of official {{tag}} stopped. No incomplete update was published; your current app remains usable.",
+    "preparation_disabled": "Automatic preparation is disabled on GitHub. A repository administrator must re-enable it; installed users do not need to build anything.",
+    "preparation_unknown": "Automatic preparation status could not be verified. You can still check for published app updates.",
+    "preparation_available": "An adapted release based on official {{tag}} has been published. Check for the finished app update below."
   }
 }

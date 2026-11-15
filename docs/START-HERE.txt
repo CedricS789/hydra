@@ -70,9 +70,15 @@ alone does not prove a game is installed or identify its executable.
 RESULTS, UPDATES, AND REMOVAL
 If a backup fails, expand its result, check the paths, and use "Open logs".
 Newer builds offer "Clear results and logs" without deleting save backups.
-Custom release updates are available only when a compatible installer has
-been published to this fork. New official Hydra releases are not merged or
-rebuilt automatically; maintaining the custom source remains a manual task.
+You and every other installed user use the same update buttons in Settings >
+Releases and changes. Official releases are adapted, tested, and built on
+GitHub automatically; you download the finished update. You do not need
+Git, Node.js, a local project folder, or a maintained fork to receive it.
+Install the current custom setup once to start this update route.
+Preparation takes time. If a conflict or check fails, no incomplete update
+is published and you keep the working version. The settings show preparation
+status and a link to its details. Incompatible upstream changes may need a
+targeted repair; arbitrary future versions are not guaranteed compatible.
 To stop automation, turn off automatic backups and save the settings. Disable
 "Run at startup" in General settings if desired. Uninstall through Windows
 Settings > Apps > Installed apps. Your chosen backup folder is managed

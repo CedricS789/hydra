@@ -1,4 +1,4 @@
-name: Check official Hydra releases
+name: Automatic updates from official Hydra
 
 on:
   schedule:
@@ -8,21 +8,145 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: hydra-automatic-upstream-release
+  cancel-in-progress: false
+
 jobs:
-  check:
+  plan:
+    if: github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
+    outputs:
+      phase: ${{ steps.plan.outputs.phase }}
+      upstream_tag: ${{ steps.plan.outputs.upstream_tag }}
+      release_tag: ${{ steps.plan.outputs.release_tag }}
+      base_sha: ${{ steps.plan.outputs.base_sha }}
     steps:
       - uses: actions/checkout@v4
-      - name: Compare published releases with our base
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.21.0
+      - name: Detect the latest stable official release
+        id: plan
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
+        run: node scripts/automatic-upstream-release.mjs plan
+
+  build:
+    needs: plan
+    if: needs.plan.outputs.phase == 'build'
+    runs-on: windows-2022
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.base_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.21.0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Fetch official source and prepare a candidate
+        shell: pwsh
+        env:
+          UPSTREAM_TAG: ${{ needs.plan.outputs.upstream_tag }}
+          HUSKY: "0"
         run: |
-          latest=$(gh api repos/hydralauncher/hydra/releases/latest --jq .tag_name)
-          base=$(node -p "require('./src/shared/local-edition.json').upstreamTag")
-          printf '## Official release check\n\nOur base: `%s`\n\nLatest official release: `%s`\n\n' "$base" "$latest" >> "$GITHUB_STEP_SUMMARY"
-          if [ "$base" != "$latest" ]; then
-            printf 'A new official release needs integration. Follow docs/LOCAL-EDITION.md. This check never installs unmodified official binaries or publishes an untested merge.\n' >> "$GITHUB_STEP_SUMMARY"
-            echo 'New official release requires integration.'
-            exit 1
-          fi
+          $edition = Get-Content src/shared/local-edition.json -Raw | ConvertFrom-Json
+          $remote = "https://github.com/$($edition.upstreamRepository).git"
+          git config user.name 'Hydra Ludusavi updates'
+          git config user.email 'updates@users.noreply.github.com'
+          git fetch --no-tags $remote "refs/tags/$($edition.upstreamTag):refs/tags/$($edition.upstreamTag)" "refs/tags/$($env:UPSTREAM_TAG):refs/tags/$($env:UPSTREAM_TAG)"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not fetch official release source.' }
+          $env:UPSTREAM_SHA = git rev-parse "$($env:UPSTREAM_TAG)^{commit}"
+          node scripts/automatic-upstream-release.mjs prepare
+          if ($LASTEXITCODE -ne 0) { throw 'Automatic adaptation stopped. No update will be published.' }
+      - name: Install dependencies without executing package hooks
+        shell: pwsh
+        env:
+          ELECTRON_CACHE: ${{ github.workspace }}/.tmp/electron-cache
+          HUSKY: "0"
+        run: |
+          corepack enable
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive --cache-folder .tmp/yarn-cache
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed.' }
+          node node_modules/electron/install.js
+          if ($LASTEXITCODE -ne 0) { throw 'Electron preparation failed.' }
+      - name: Configure services and prepare the save tool
+        shell: pwsh
+        run: |
+          node scripts/write-local-build-config.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Service configuration failed.' }
+          node scripts/postinstall.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Save-tool preparation failed.' }
+      - name: Check adaptation, backup guards, and achievement behavior
+        run: node --import ./scripts/register-ts-node.mjs --test scripts/automatic-upstream-release.test.mjs src/main/services/local-update-preparation.test.ts src/shared/achievement-list.test.ts src/main/services/ludusavi-local-tracker.test.ts src/main/services/ludusavi-local-queue.test.ts src/main/services/ludusavi-local-log.test.ts src/main/services/ludusavi-local-api.test.ts src/main/services/ludusavi-local-config.test.ts src/main/services/ludusavi-local-validation.test.ts src/main/services/ludusavi-local-discovery-core.test.ts src/main/services/local-release-source.test.ts
+      - name: Exercise real isolated backup and recovery operations
+        run: node scripts/test-save-manager-integration.mjs
+      - name: Compile and verify the adapted application
+        run: node scripts/build-local.cjs
+      - name: Check native modules in the matching Electron runtime
+        run: node scripts/check-packaged-native.cjs
+      - name: Stage the verified installer, metadata, and source
+        run: node scripts/automatic-upstream-release.mjs stage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-upstream-update
+          path: .tmp/automatic-release/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error
+      - name: Explain a stopped update
+        if: failure()
+        shell: pwsh
+        run: |
+          '## Update preparation stopped' >> $env:GITHUB_STEP_SUMMARY
+          'No installer was published. Existing installations remain on their working version. Consult the failing step before retrying.' >> $env:GITHUB_STEP_SUMMARY
+
+  publish:
+    needs: [plan, build]
+    if: needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # Execute controller scripts from the original trusted revision, never
+      # candidate scripts or scripts supplied inside the downloaded artifact.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.base_sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.21.0
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-upstream-update
+          path: .tmp/automatic-release
+      - name: Publish the update for all installed copies
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/automatic-upstream-release.mjs publish
+
+  finish-source-sync:
+    needs: plan
+    if: needs.plan.outputs.phase == 'sync'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.base_sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.21.0
+      - name: Finish cataloguing an already published update
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.plan.outputs.release_tag }}
+        run: node scripts/automatic-upstream-release.mjs sync

@@ -4,6 +4,9 @@ Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright a
 
 ## Features
 
+- Official releases now drive shared automatic preparation: adapt source, test, compile, verify native loading and artifacts, publish a finished update, and catalogue source automatically. The owner and all installed users consume the same update without local developer tools.
+- Preparation status distinguishes pending, failed, disabled, and unavailable automation. Conflicts and failed checks block publication while retaining the working installed version. One initial installer containing these changes must still be built and distributed.
+
 - Project renamed **Hydra + Ludusavi Integrated**, displayed as **Hydra Ludusavi** in everyday UI and described as **Hydra with Ludusavi Integrated**.
 - Subscription-linked Hydra Points counters, locked placeholders, and score badges are hidden in achievement lists, comparisons, profiles, and Big Picture. Unlock tracking and stored scoring data are preserved.
 
@@ -34,7 +37,7 @@ Backups start disabled. Configure a destination, preview detection, inspect an a
 
 The build helper supports full native compilation and optional reuse of unchanged native components from an exactly matching official Hydra installation. The GitHub Windows workflow uses the full-source route. See the [setup and build guide](LOCAL-EDITION.md).
 
-The official-release check reports new upstream versions; integration, testing, and custom release publication remain manual. Installers are unsigned unless signing is configured.
+The official-release workflow now prepares compatible updates automatically for every installation. Targeted repairs may be needed for incompatible upstream changes; successful tests do not prove all live account services. Installers are unsigned unless signing is configured.
 
 ## Known limits
 

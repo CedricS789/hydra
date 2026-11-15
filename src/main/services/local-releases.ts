@@ -13,6 +13,7 @@ import {
 } from "./local-release-source";
 import { getTrackedGamesRunning } from "./game-running-state";
 import { getLudusaviLocalState } from "./ludusavi-local";
+import { getUpdatePreparation } from "./local-update-preparation";
 
 const { autoUpdater } = updater;
 const sourceRef = import.meta.env.MAIN_VITE_SOURCE_REF || edition.releaseTag;
@@ -74,12 +75,45 @@ export const getLocalReleases = async (
     releases(edition.repository, force),
     releases(edition.upstreamRepository, force),
   ]);
+  const workflowPath = `${edition.repository}/actions/workflows/upstream-release-check.yml`;
+  let preparation = getUpdatePreparation(
+    edition.upstreamTag,
+    upstream[0],
+    `https://github.com/${edition.repository}/actions/workflows/upstream-release-check.yml`,
+    undefined,
+    undefined,
+    custom
+  );
+  try {
+    const [workflow, runs] = await Promise.all([
+      github<{ state: string }>(workflowPath, force),
+      github<{
+        workflow_runs: {
+          status: string;
+          conclusion: string | null;
+          created_at: string;
+          html_url: string;
+        }[];
+      }>(`${workflowPath}/runs?per_page=1`, force),
+    ]);
+    preparation = getUpdatePreparation(
+      edition.upstreamTag,
+      upstream[0],
+      preparation.url,
+      workflow,
+      runs.workflow_runs[0],
+      custom
+    );
+  } catch {
+    // Public workflow metadata can be unavailable independently of release downloads.
+  }
   return {
     custom,
     upstream,
     version: app.getVersion(),
     sourceRef,
     upstreamTag: edition.upstreamTag,
+    preparation,
   };
 };
 
