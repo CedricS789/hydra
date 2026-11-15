@@ -36,38 +36,6 @@ node scripts/build-local.cjs
 
 The completed installer and update files are copied to `dist/`. The build does not install or publish them. For installer use and backup setup, see [Install and configure backups](#install-and-configure-backups); for other project topics, see [Features and limitations](#features-and-limitations), [Screenshots](#screenshots), and [Maintenance and updates](#maintenance-and-updates).
 
-## Important commands
-
-These commands are for the person maintaining the GitHub project. **Installer users do not need to run them**; update the app from **Settings → Releases and changes**.
-
-**Check for an official release and update the GitHub project, then publish the adapted release when needed:**
-
-```powershell
-node scripts/update-from-official.mjs
-```
-
-**Check status without starting a build or publication:**
-
-```powershell
-node scripts/update-from-official.mjs --check
-```
-
-**Build the Windows installer from the current source:**
-
-```powershell
-node scripts/build-local.cjs
-```
-
-**Faster build when the installed official Hydra matches this source's exact upstream version and native code is unchanged:**
-
-```powershell
-node scripts/build-local.cjs --reuse-installed-native
-```
-
-This reuses native components from the official Hydra installation at `%LOCALAPPDATA%\Programs\Hydra`. Use it only when that installation matches `upstreamTag` in `src/shared/local-edition.json` and you have not changed native code. Otherwise, use the full build command above.
-
-See [Maintenance and updates](#maintenance-and-updates) and [Build from source](#build-from-source) for prerequisites, options, and details.
-
 ## Install and configure backups
 
 1. Download a custom setup EXE from this repository's [published releases](https://github.com/CedricS789/hydra/releases), if available, or [build from source](#build-from-source).
@@ -254,3 +222,35 @@ Disable automatic backups in **Settings → Save backups** and save. Disable **R
 Hydra Launcher is created by **Los Broxas** and its [contributors](https://github.com/hydralauncher/hydra/graphs/contributors). This unofficial fork is not maintained or endorsed by the upstream developers. Hydra uses Electron, React, TypeScript, and Rust, with libtorrent providing the torrent engine.
 
 Hydra retains its [MIT License](LICENSE). Ludusavi and other bundled components retain their own licenses and notices.
+
+## Important commands
+
+These commands are for the person maintaining the GitHub project. **Installer users do not need to run them**; update the app from **Settings → Releases and changes**.
+
+**Check for an official release and update the GitHub project, then publish the adapted release when needed:**
+
+```powershell
+node scripts/update-from-official.mjs
+```
+
+**Check status without starting a build or publication:**
+
+```powershell
+node scripts/update-from-official.mjs --check
+```
+
+**Build the Windows installer from the current source:**
+
+```powershell
+node scripts/build-local.cjs
+```
+
+**Faster build when the installed official Hydra matches this source's exact upstream version and native code is unchanged:**
+
+```powershell
+node scripts/build-local.cjs --reuse-installed-native
+```
+
+This reuses native components from the official Hydra installation at `%LOCALAPPDATA%\Programs\Hydra`. Use it only when that installation matches `upstreamTag` in `src/shared/local-edition.json` and you have not changed native code. Otherwise, use the full build command above.
+
+See [Maintenance and updates](#maintenance-and-updates) and [Build from source](#build-from-source) for prerequisites, options, and details.
