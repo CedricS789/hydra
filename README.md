@@ -17,9 +17,46 @@ To build from source:
 - **[Node.js](https://nodejs.org/en/download)** (v22 LTS)
 - **[Rust](https://www.rust-lang.org/tools/install)** and **[Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)**
 
+## Quick Start: build from source
+
+Run these commands one by one in PowerShell (wait for each to finish before running the next):
+
+```powershell
+git clone --branch custom/ludusavi-backups https://github.com/CedricS789/hydra.git hydra-ludusavi
+Set-Location -LiteralPath .\hydra-ludusavi
+npm install --prefix .tmp/tooling --cache .tmp/npm-cache --no-audit --no-fund yarn@1.22.22
+node .tmp/tooling/node_modules/yarn/bin/yarn.js install --frozen-lockfile --ignore-scripts --non-interactive --cache-folder .tmp/yarn-cache
+$env:ELECTRON_CACHE = Join-Path (Get-Location).Path '.tmp/electron-cache'
+node node_modules/electron/install.js
+node scripts/write-local-build-config.cjs
+```
+
+Then build the Windows installer:
+
+```powershell
+node scripts/build-local.cjs
+```
+
+**Faster shortcut (no Rust/C++ required):** if official Hydra `v4.4.1` is already installed in `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra` and you haven't changed native Rust/C++ code, reuse its native files:
+
+```powershell
+node scripts/build-local.cjs --reuse-installed-native
+```
+
+When finished, the installer and update metadata are placed in `dist/`:
+
+```text
+dist/
+  hydra-ludusavi-4.4.1-remix.2-setup.exe
+  hydra-ludusavi-4.4.1-remix.2-setup.exe.blockmap
+  latest.yml
+```
+
+See the [build & architecture guide](docs/LOCAL-EDITION.md#build-on-windows) for tests, internal identifiers, and troubleshooting.
+
 ## Install and set up backups
 
-1. **Download and install** `hydra-ludusavi-4.4.1-remix.2-setup.exe` from [Releases](https://github.com/CedricS789/hydra/releases) (or [build it from source](#build-from-source)).
+1. **Download and install** `hydra-ludusavi-4.4.1-remix.2-setup.exe` from [Releases](https://github.com/CedricS789/hydra/releases) (or from `dist/` after [building from source](#quick-start-build-from-source)).
    - Exit any running Hydra instance from the system tray first.
    - This edition stores its data separately (`%APPDATA%\hydralauncher-local`) and does not copy your official Hydra library or settings.
 2. **Add your games** normally or via **Settings → Save backups → Discover saved games**, and set each game's real `.exe` path.
@@ -63,43 +100,6 @@ These captures show the interface rendered with sample data (see [screenshot det
 ### Release source comparison
 
 ![Historical prototype source comparison with synthetic example code](docs/screenshots/source-diff-prototype.png)
-
-## Build from source
-
-Run these commands one by one in PowerShell (wait for each to finish before running the next):
-
-```powershell
-git clone --branch custom/ludusavi-backups https://github.com/CedricS789/hydra.git hydra-ludusavi
-Set-Location -LiteralPath .\hydra-ludusavi
-npm install --prefix .tmp/tooling --cache .tmp/npm-cache --no-audit --no-fund yarn@1.22.22
-node .tmp/tooling/node_modules/yarn/bin/yarn.js install --frozen-lockfile --ignore-scripts --non-interactive --cache-folder .tmp/yarn-cache
-$env:ELECTRON_CACHE = Join-Path (Get-Location).Path '.tmp/electron-cache'
-node node_modules/electron/install.js
-node scripts/write-local-build-config.cjs
-```
-
-Then build the Windows installer:
-
-```powershell
-node scripts/build-local.cjs
-```
-
-**Faster shortcut (no Rust/C++ required):** if official Hydra `v4.4.1` is already installed in `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra` and you haven't changed native Rust/C++ code, you can reuse its native files:
-
-```powershell
-node scripts/build-local.cjs --reuse-installed-native
-```
-
-When finished, the installer and update metadata are placed in `dist/`:
-
-```text
-dist/
-  hydra-ludusavi-4.4.1-remix.2-setup.exe
-  hydra-ludusavi-4.4.1-remix.2-setup.exe.blockmap
-  latest.yml
-```
-
-See the [build & architecture guide](docs/LOCAL-EDITION.md#build-on-windows) for tests, internal identifiers, and troubleshooting.
 
 ## Updates and maintenance
 
