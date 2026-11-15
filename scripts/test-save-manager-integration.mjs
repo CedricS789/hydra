@@ -125,6 +125,10 @@ await build({
   ],
 });
 const service = await import(pathToFileURL(bundle).href);
+assert.equal((await service.getLudusaviLocalSettings()).enabled, false);
+store.delete("ludusaviLocalSettings");
+assert.equal((await service.getLudusaviLocalSettings()).enabled, true);
+store.set("ludusaviLocalSettings", settings);
 const progress = path.join(source, "progress.sav");
 await fs.writeFile(progress, "version one");
 const backup = await service.enqueueLudusaviLocalBackup(key, false);

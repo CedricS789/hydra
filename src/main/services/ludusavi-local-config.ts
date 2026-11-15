@@ -32,6 +32,8 @@ export function managedSaveConfig(
   settings: LudusaviLocalSettings
 ): SaveEngineConfig {
   const config = structuredClone(base);
+  // Bundled binaries are updated through Hydra releases, not the native GUI.
+  config.release = { ...(config.release as object), check: false };
   config.manifest = config.manifest ?? { enable: true };
   config.backup = {
     ...config.backup,

@@ -40,6 +40,7 @@ test("advanced rules survive managed configuration while implicit remote sync st
   assert.deepEqual(result.redirects, base.redirects);
   assert.equal(result.restore?.path, "D:/Backups");
   assert.equal(result.cloud?.synchronize, false);
+  assert.deepEqual(result.release, { check: false });
   assert.deepEqual(result.cloud?.remote, base.cloud.remote);
   assert.equal(base.cloud.synchronize, true);
   assert.equal(

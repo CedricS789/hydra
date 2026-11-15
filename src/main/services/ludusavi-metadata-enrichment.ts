@@ -318,21 +318,28 @@ const enrichSingleEntry = async (
 };
 
 export const enrichDetectedSaveGames = async (
-  entries: DetectedSaveGame[]
+  entries: DetectedSaveGame[],
+  report?: (completed: number, total: number, titles: string[]) => void
 ): Promise<DetectedSaveGame[]> => {
   const results = new Array<DetectedSaveGame>(entries.length);
   const concurrency = 6;
   let index = 0;
+  let completed = 0;
+  const active = new Set<string>();
 
   const worker = async () => {
     while (index < entries.length) {
       const current = index++;
+      active.add(entries[current].title);
+      report?.(completed, entries.length, [...active]);
       try {
         results[current] = await enrichSingleEntry(entries[current]);
       } catch {
         // Metadata is optional: preserve save results if a provider fails.
         results[current] = entries[current];
       }
+      active.delete(entries[current].title);
+      report?.(++completed, entries.length, [...active]);
     }
   };
 

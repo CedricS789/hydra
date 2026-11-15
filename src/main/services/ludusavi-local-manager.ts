@@ -54,11 +54,17 @@ async function removeSaveScratch(directory: string) {
   await fs.rm(actual, { recursive: true, force: true });
 }
 
-async function command(binary: string, args: string[], lock?: Lock) {
+async function command(
+  binary: string,
+  args: string[],
+  lock?: Lock,
+  env?: NodeJS.ProcessEnv
+) {
   const operation = execute(binary, args, {
     windowsHide: true,
     timeout: 10 * 60_000,
     maxBuffer: 32 * 1024 * 1024,
+    env,
   });
   // With no game arguments, Ludusavi accepts names from stdin. Signal EOF so
   // whole-library scans do not wait indefinitely on an unused input pipe.

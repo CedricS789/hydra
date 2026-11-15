@@ -11,7 +11,10 @@ Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright a
 - Project renamed **Hydra + Ludusavi Integrated**, displayed as **Hydra Ludusavi** in everyday UI and described as **Hydra with Ludusavi Integrated**.
 - Subscription-linked Hydra Points counters, locked placeholders, and score badges are hidden in achievement lists, comparisons, profiles, and Big Picture. Unlock tracking and stored scoring data are preserved.
 
-- Versioned backups created by bundled Ludusavi 0.29.0 after the observed game and captured game-directory child processes exit.
+- Versioned backups created by bundled Ludusavi 0.31.0 after the observed game and captured game-directory child processes exit.
+- Discovery reports native scan progress and active titles, followed by metadata-matching progress. Native scan logs created for progress reporting are removed afterward.
+- Expanded sections have more space below their headings. New configurations enable automatic backups by default while preserving existing preferences.
+- The bundled engine version is checked during build preparation. Native update prompts are disabled; engine binaries are updated through Hydra Ludusavi releases, separately from save manifests.
 - Configurable destination, full/differential retention, ZIP/plain-file formats, compression, exit delay, additional save folders, and tracking executables.
 - Automatic backup-only operation, a serialized queue, destination lock, results, logs, and failure notifications.
 - **Clear results and logs** removes saved history and both backup logs after confirmation, preserving saves, archives, and configuration. Clearing is blocked during queued/running operations. History is limited to 50 results and each of the two log files to 2 MiB.
@@ -35,7 +38,7 @@ Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright a
 
 ## Setup and build
 
-Backups start disabled. Configure a destination, preview detection, inspect an archive, and verify a real game-exit backup before enabling everyday automation. Keep Hydra Ludusavi running while playing. No automatic restoration is provided.
+Automatic backups are enabled for new configurations, and existing preferences are preserved. Configure a destination, preview detection, inspect an archive, and verify a real game-exit backup before relying on everyday automation. Keep Hydra Ludusavi running while playing. No automatic restoration is provided.
 
 The build helper supports full native compilation and optional reuse of unchanged native components from an exactly matching official Hydra installation. The GitHub Windows workflow uses the full-source route. See the [setup and build guide](LOCAL-EDITION.md).
 

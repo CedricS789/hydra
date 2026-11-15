@@ -27,7 +27,7 @@ It keeps all of Hydra's launcher features—game catalogue, library management, 
 1. **Add your games:** Open **Settings → Save backups → Discover saved games**, then choose **Scan local saves** or **Find backed-up games**. Click **Add to My Games** for one result or **Add all to My Games**. Store metadata and artwork are matched when available; unmatched titles become custom entries. Games do not need to be installed or have an `.exe` to appear in the library or manage backups. Set the real executable in the game's options before launching it or using automatic backups after exit.
 2. **Pick a backup folder:** Go to **Settings → Save backups** and choose where your backups should be stored (for example, a folder inside OneDrive or on another drive).
 3. **Run a quick test:** With your game closed, click **Preview save detection** and then **Back up now** to confirm your save files are detected properly.
-4. **Turn on automatic backups:** Check **Enable automatic backups** and click **Save**.
+4. **Review automatic backups:** They are checked by default for new configurations. Existing preferences are preserved. Confirm the checkbox and click **Save** after reviewing your destination and game executable.
 
 From now on, whenever you close a game, Hydra Ludusavi waits a few seconds for the game process to finish and automatically backs up your saves in the background. Keep the app running in your system tray while playing.
 
@@ -45,6 +45,8 @@ When a new official version of Hydra comes out, this repository automatically ad
 - **Save discovery:** Scan your PC or existing backup folder, match Steam/Hydra catalogue/Epic metadata and artwork, and add one or all discovered games to My Games, including uninstalled games. Metadata lookup is optional; unavailable services fall back to a custom entry.
 - **ZIP or plain-file backups:** Choose your archive format, compression, and how many full and differential versions to keep per game.
 - **Advanced controls:** The collapsed panel at the bottom of Save backups contains retention, archive format, custom paths, YAML rules, the full Ludusavi manager, Rclone, and logs.
+- **Discovery progress:** Follow the native scan's completed steps and active titles, then the separate metadata/artwork matching stage. Preparation and archive listing show an indeterminate bar when no step count is available.
+- **Bundled engine updates:** Ludusavi 0.31.0 ships with the app. Engine binaries are updated through Hydra Ludusavi releases; installing standalone Ludusavi does not replace the bundled binary. Manifest updates remain available independently.
 - **Optional Rclone transfers:** Preview and run manual uploads/downloads to Rclone remotes if you use Rclone alongside local backups.
 - **Release diff viewer:** Compare any official Hydra release against this edition directly inside **Settings → Releases and changes**.
 - **Distraction-free UI:** Hides Hydra Cloud upsells and Hydra Points badges while keeping achievement unlock tracking and custom themes.
@@ -54,6 +56,8 @@ When a new official version of Hydra comes out, this repository automatically ad
 ![Save backup settings](docs/screenshots/save-backups.png)
 
 ![Discover saved games](docs/screenshots/discovered-games.png)
+
+![Save discovery progress with sample data](docs/screenshots/discovery-progress.png)
 
 ![Saved versions and management controls](docs/screenshots/saved-versions.png)
 

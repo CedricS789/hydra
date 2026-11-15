@@ -26,6 +26,13 @@ export interface DetectedSaveGame {
   matchingGameKeys: string[];
 }
 
+export interface SaveDiscoveryProgress {
+  phase: "preparing" | "scanning" | "metadata" | "complete" | "failed";
+  completed: number;
+  total?: number;
+  currentTitles: string[];
+}
+
 export interface AddDetectedSaveGameRequest {
   entryId: string;
   targetGameKey?: string;

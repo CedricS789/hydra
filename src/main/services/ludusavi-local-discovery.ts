@@ -7,6 +7,7 @@ import type {
   DetectedSaveGame,
   Game,
   GameShop,
+  SaveDiscoveryProgress,
 } from "@types";
 import { gamesSublevel } from "../level/sublevels/games";
 import { db } from "../level/level";
@@ -26,6 +27,13 @@ import {
 } from "./ludusavi-local-discovery-core";
 import { updateGameRecord } from "./game-record-updater";
 import { updateGameExecutablePath } from "../helpers/update-executable-path";
+import { monitorSaveScan } from "./ludusavi-scan-progress";
+
+let progress: SaveDiscoveryProgress | undefined;
+export const getSaveDiscoveryProgress = () => progress;
+const reportProgress = (value: SaveDiscoveryProgress) => {
+  progress = value;
+};
 
 let discovery:
   | { entries: DetectedSaveGame[]; context: string; expiresAt: number }
@@ -37,12 +45,16 @@ const normalizeExe = (value: string) =>
 
 export const scanDetectedSaveGames = (
   source: "saves" | "backups",
-  enrich?: (entries: DetectedSaveGame[]) => Promise<DetectedSaveGame[]>
+  enrich?: (
+    entries: DetectedSaveGame[],
+    report: (completed: number, total: number, titles: string[]) => void
+  ) => Promise<DetectedSaveGame[]>
 ) => {
   if (source !== "saves" && source !== "backups")
     throw new Error("Choose local saves or existing backups.");
   return tools.queue.enqueue(`discovery:scan:${source}`, async () => {
     discovery = undefined;
+    reportProgress({ phase: "preparing", completed: 0, currentTitles: [] });
     const settings = await getLudusaviLocalSettings();
     const lock = await acquireSaveBackupLock(settings.destination);
     try {
@@ -84,8 +96,11 @@ export const scanDetectedSaveGames = (
               settings.destination,
             ]
           : ["backups", "--api", "--path", settings.destination];
-      const data = JSON.parse(
-        await runSaveToolCommand(
+      const stopMonitoring = await monitorSaveScan(configDir, reportProgress);
+      reportProgress({ phase: "scanning", completed: 0, currentTitles: [] });
+      let output: string;
+      try {
+        output = await runSaveToolCommand(
           binary,
           [
             "--config",
@@ -95,9 +110,13 @@ export const scanDetectedSaveGames = (
               : "--no-manifest-update",
             ...args,
           ],
-          lock
-        )
-      ) as SaveApiResponse;
+          lock,
+          { ...process.env, RUST_LOG: "ludusavi::cli=trace" }
+        );
+      } finally {
+        await stopMonitoring();
+      }
+      const data = JSON.parse(output) as SaveApiResponse;
       if (source === "saves")
         data.games = Object.fromEntries(
           Object.entries(data.games ?? {}).filter(
@@ -131,13 +150,37 @@ export const scanDetectedSaveGames = (
         library,
         settings
       );
-      const entries = enrich ? await enrich(baseEntries) : baseEntries;
+      reportProgress({
+        phase: "metadata",
+        completed: 0,
+        total: baseEntries.length,
+        currentTitles: [],
+      });
+      const entries = enrich
+        ? await enrich(baseEntries, (completed, total, currentTitles) =>
+            reportProgress({
+              phase: "metadata",
+              completed,
+              total,
+              currentTitles,
+            })
+          )
+        : baseEntries;
       discovery = {
         entries,
         context: fingerprint({ settings, config }),
         expiresAt: Date.now() + 15 * 60_000,
       };
+      reportProgress({
+        phase: "complete",
+        completed: entries.length,
+        total: entries.length,
+        currentTitles: [],
+      });
       return entries;
+    } catch (error) {
+      reportProgress({ phase: "failed", completed: 0, currentTitles: [] });
+      throw error;
     } finally {
       await lock.release();
     }

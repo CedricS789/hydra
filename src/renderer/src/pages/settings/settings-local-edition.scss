@@ -483,6 +483,35 @@
 
   summary {
     cursor: pointer;
+    line-height: 1.5;
+  }
+
+  summary:not(.local-edition__advanced-summary) {
+    padding-block: 6px;
+  }
+
+  details[open] > summary {
+    margin-bottom: 12px;
+  }
+
+  &__scan-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    line-height: 1.5;
+    padding: 12px 14px;
+    border: 1px solid rgba(130, 181, 232, 0.35);
+    border-radius: 6px;
+    progress {
+      width: 100%;
+      height: 12px;
+      accent-color: #82b5e8;
+    }
+  }
+
+  &__scan-titles {
+    overflow-wrap: anywhere;
+    color: #cbd5e1;
   }
 
   pre {

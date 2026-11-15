@@ -2,6 +2,7 @@ import { registerEvent } from "./register-event";
 import {
   scanDetectedSaveGames,
   addDetectedSaveGame,
+  getSaveDiscoveryProgress,
 } from "../services/ludusavi-local-discovery";
 import { enrichDetectedSaveGames } from "../services/ludusavi-metadata-enrichment";
 import { addGameToLibrary } from "./library/add-game-to-library";
@@ -52,6 +53,7 @@ registerEvent("clearLudusaviLocalLogs", () => clearLudusaviLocalLogs());
 registerEvent("scanDetectedSaveGames", (_event, source) =>
   scanDetectedSaveGames(source, enrichDetectedSaveGames)
 );
+registerEvent("getSaveDiscoveryProgress", () => getSaveDiscoveryProgress());
 registerEvent("addDetectedSaveGame", (event, request) =>
   addDetectedSaveGame(request, {
     allowUninstalledCustom: true,

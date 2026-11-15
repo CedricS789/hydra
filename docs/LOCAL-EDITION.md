@@ -28,7 +28,7 @@ See the [repository README](../README.md) for an overview and screenshots, and [
 8. Enable automatic backups and save. Launch the game through Hydra Ludusavi, make a save, quit the actual game, and check that one result and the expected backup appear after the delay.
 9. Verify the sync client's upload separately, if applicable. Enable **Run at startup** and **Start minimized** in General settings only after the workflow has been checked.
 
-Keep Hydra Ludusavi running in its tray while playing. Fully quitting it disables observation. Automatic backups start disabled and never trigger restoration.
+Keep Hydra Ludusavi running in its tray while playing. Fully quitting it disables observation. Automatic backups are enabled for new configurations; existing enabled/disabled preferences are preserved. Review the destination and each game's executable before playing. Automatic operations never restore saves.
 
 ### Add detected games to the library
 

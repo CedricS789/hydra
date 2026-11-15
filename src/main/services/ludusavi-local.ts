@@ -51,7 +51,7 @@ const logPath = () => path.join(folder(), "backup.log");
 const keyOf = (game: Game) => levelKeys.game(game.shop, game.objectId);
 
 const defaults = (): LudusaviLocalSettings => ({
-  enabled: false,
+  enabled: true,
   destination: path.join(
     process.env.OneDriveConsumer || path.join(os.homedir(), "OneDrive"),
     "Games Data",

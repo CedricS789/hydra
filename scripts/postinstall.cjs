@@ -3,12 +3,23 @@ const axios = require("axios"),
   path = require("node:path");
 const { extract } = require("@electron-internal/extract-zip");
 const { pipeline } = require("node:stream/promises");
-const version = "0.29.0";
+const version = require("../src/shared/save-engine.json").version;
 (async () => {
   const platform = process.platform;
   const binary = platform === "win32" ? "ludusavi.exe" : "ludusavi";
   const target = path.join(process.cwd(), "ludusavi");
-  if (fs.existsSync(path.join(target, binary))) return;
+  if (fs.existsSync(path.join(target, binary))) {
+    const installed = require("node:child_process").spawnSync(
+      path.join(target, binary),
+      ["--version"],
+      { encoding: "utf8", windowsHide: true }
+    );
+    if (
+      installed.status === 0 &&
+      installed.stdout.trim() === `ludusavi ${version}`
+    )
+      return;
+  }
   const archive =
     platform === "win32"
       ? `ludusavi-v${version}-win64.zip`

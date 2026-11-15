@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, TextField } from "@renderer/components";
-import type { DetectedSaveGame, LudusaviLocalState } from "@types";
+import type {
+  DetectedSaveGame,
+  LudusaviLocalState,
+  SaveDiscoveryProgress,
+} from "@types";
 
 interface Props {
   games: LudusaviLocalState["games"];
@@ -30,6 +34,8 @@ export function SettingsSaveDiscovery({
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [working, setWorking] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [progress, setProgress] = useState<SaveDiscoveryProgress>();
   const [bulkProgress, setBulkProgress] = useState<{
     current: number;
     total: number;
@@ -39,6 +45,25 @@ export function SettingsSaveDiscovery({
   const [notice, setNotice] = useState("");
   const generation = useRef(0);
   const disabled = working || busy;
+
+  useEffect(() => {
+    if (!scanning) return;
+    let mounted = true;
+    const poll = async () => {
+      try {
+        const value = await window.electron.getSaveDiscoveryProgress();
+        if (mounted) setProgress(value);
+      } catch {
+        /* Progress reporting must not interrupt discovery. */
+      }
+    };
+    void poll();
+    const timer = setInterval(() => void poll(), 500);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [scanning]);
 
   useEffect(() => {
     generation.current++;
@@ -181,14 +206,20 @@ export function SettingsSaveDiscovery({
               disabled={disabled}
               onClick={() =>
                 action(async (current) => {
-                  const value =
-                    await window.electron.scanDetectedSaveGames(source);
-                  if (!current()) return;
-                  setEntries(value);
-                  setSelected(undefined);
-                  setQuery("");
-                  setStatusFilter("all");
-                  setNotice(t("discovery_count", { count: value.length }));
+                  setProgress(undefined);
+                  setScanning(true);
+                  try {
+                    const value =
+                      await window.electron.scanDetectedSaveGames(source);
+                    if (!current()) return;
+                    setEntries(value);
+                    setSelected(undefined);
+                    setQuery("");
+                    setStatusFilter("all");
+                    setNotice(t("discovery_count", { count: value.length }));
+                  } finally {
+                    setScanning(false);
+                  }
                 })
               }
             >
@@ -215,10 +246,29 @@ export function SettingsSaveDiscovery({
           {notice}
         </p>
       )}
-      {working && !bulkProgress && (
-        <p role="status" className="local-edition__status-banner">
-          {t("discovery_working")}
-        </p>
+      {scanning && (
+        <div
+          role="status"
+          className="local-edition__scan-progress"
+          aria-live="polite"
+        >
+          <span>{t(`discovery_phase_${progress?.phase ?? "preparing"}`)}</span>
+          <progress
+            aria-label={t("discovery_progress")}
+            max={progress?.total || undefined}
+            value={progress?.total ? progress.completed : undefined}
+          />
+          {progress?.total !== undefined && (
+            <span>
+              {progress.completed} / {progress.total}
+            </span>
+          )}
+          {!!progress?.currentTitles.length && (
+            <span className="local-edition__scan-titles">
+              {progress.currentTitles.join(" · ")}
+            </span>
+          )}
+        </div>
       )}
 
       {!!entries.length && (

@@ -200,6 +200,9 @@ declare global {
     scanDetectedSaveGames: (
       source: "saves" | "backups"
     ) => Promise<import("@types").DetectedSaveGame[]>;
+    getSaveDiscoveryProgress: () => Promise<
+      import("@types").SaveDiscoveryProgress | undefined
+    >;
     addDetectedSaveGame: (
       request: import("@types").AddDetectedSaveGameRequest
     ) => Promise<{

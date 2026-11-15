@@ -1941,6 +1941,8 @@ contextBridge.exposeInMainWorld("electron", {
   clearLudusaviLocalLogs: () => ipcRenderer.invoke("clearLudusaviLocalLogs"),
   scanDetectedSaveGames: (source: "saves" | "backups") =>
     ipcRenderer.invoke("scanDetectedSaveGames", source),
+  getSaveDiscoveryProgress: () =>
+    ipcRenderer.invoke("getSaveDiscoveryProgress"),
   addDetectedSaveGame: (request: import("@types").AddDetectedSaveGameRequest) =>
     ipcRenderer.invoke("addDetectedSaveGame", request),
   listSaveBackupVersions: (key: string) =>

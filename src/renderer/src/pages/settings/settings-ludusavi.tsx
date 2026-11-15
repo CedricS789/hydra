@@ -6,6 +6,7 @@ import "./settings-local-edition.scss";
 import { SettingsSaveManager } from "./settings-save-manager";
 import { SettingsSaveDiscovery } from "./settings-save-discovery";
 import { useLibrary } from "@renderer/hooks/use-library";
+import saveEngine from "../../../../shared/save-engine.json";
 
 export function SettingsLudusavi() {
   const { t } = useTranslation("ludusavi");
@@ -291,7 +292,8 @@ export function SettingsLudusavi() {
 
         <div className="local-edition__advanced-body">
           <p className="local-edition__notice">
-            {t("engine_credit")} {t("backup_only_notice")}
+            {t("engine_credit", { version: saveEngine.version })}{" "}
+            {t("backup_only_notice")} {t("engine_update_policy")}
           </p>
 
           {/* Retention & Archive Format */}
