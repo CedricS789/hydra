@@ -355,6 +355,64 @@ console.log(
 );
 
 const rcloneIndex = process.argv.indexOf("--rclone");
+// New one-click path: synthetic store/custom identities, no executables.
+const previousLibrary = new Map(libraryGames);
+libraryGames.clear();
+const importEntries = await service.scanDetectedSaveGames(
+  "backups",
+  async (entries) =>
+    ["steam", "epic", "launchbox", "custom"].map((shop) => ({
+      ...entries[0],
+      id: `uninstalled-${shop}`,
+      title: `Uninstalled ${shop}`,
+      matchingGameKeys: [],
+      matchedShop: shop,
+      matchedObjectId: shop === "epic" ? "sandbox:item" : "12345",
+      steamId: shop === "steam" ? "12345" : undefined,
+    }))
+);
+let storeCreates = 0;
+const uninstalledCreators = {
+  ...creators,
+  allowUninstalledCustom: true,
+  addSteam: async () => {
+    throw Error("Store artwork path must handle Steam too");
+  },
+  addStore: async (shop, objectId, title) => {
+    storeCreates++;
+    const storeKey = `${shop}:${objectId}`;
+    libraryGames.set(storeKey, {
+      shop,
+      objectId,
+      title,
+      executablePath: null,
+      isDeleted: false,
+    });
+    return storeKey;
+  },
+};
+for (const imported of importEntries) {
+  const firstImport = await service.addDetectedSaveGame(
+    { entryId: imported.id },
+    uninstalledCreators
+  );
+  const again = await service.addDetectedSaveGame(
+    { entryId: imported.id },
+    uninstalledCreators
+  );
+  assert.equal(firstImport.gameKey, again.gameKey);
+  assert.equal(firstImport.executableRequired, true);
+  assert.ok(!libraryGames.get(firstImport.gameKey).executablePath);
+}
+assert.equal(storeCreates, 3);
+assert.equal(libraryGames.size, 4);
+assert.equal((await service.getLudusaviLocalSettings()).enabled, false);
+console.log(
+  "PASS: one-click uninstalled Steam/Epic/LaunchBox/custom imports and repeated bulk imports need no executable, preserve save bindings, and create no duplicates."
+);
+libraryGames.clear();
+for (const [gameKey, record] of previousLibrary)
+  libraryGames.set(gameKey, record);
 const rcloneArgument =
   rcloneIndex < 0 ? undefined : process.argv[rcloneIndex + 1];
 if (rcloneIndex >= 0 && !rcloneArgument)

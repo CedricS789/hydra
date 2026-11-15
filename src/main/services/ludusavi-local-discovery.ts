@@ -35,7 +35,10 @@ const fingerprint = (value: unknown) =>
 const normalizeExe = (value: string) =>
   path.win32.normalize(value).toLowerCase();
 
-export const scanDetectedSaveGames = (source: "saves" | "backups") => {
+export const scanDetectedSaveGames = (
+  source: "saves" | "backups",
+  enrich?: (entries: DetectedSaveGame[]) => Promise<DetectedSaveGame[]>
+) => {
   if (source !== "saves" && source !== "backups")
     throw new Error("Choose local saves or existing backups.");
   return tools.queue.enqueue(`discovery:scan:${source}`, async () => {
@@ -121,13 +124,14 @@ export const scanDetectedSaveGames = (source: "saves" | "backups") => {
       } catch {
         /* Archives remain usable without a cached manifest or store ID. */
       }
-      const entries = detectedSaveGames(
+      const baseEntries = detectedSaveGames(
         data,
         manifest,
         source,
         library,
         settings
       );
+      const entries = enrich ? await enrich(baseEntries) : baseEntries;
       discovery = {
         entries,
         context: fingerprint({ settings, config }),
@@ -142,7 +146,18 @@ export const scanDetectedSaveGames = (source: "saves" | "backups") => {
 
 export interface DetectedGameCreators {
   addSteam: (id: string, title: string) => Promise<void>;
-  addCustom: (title: string, executable: string) => Promise<string>;
+  addStore?: (
+    shop: "steam" | "epic" | "launchbox",
+    objectId: string,
+    title: string,
+    entry: DetectedSaveGame
+  ) => Promise<string>;
+  addCustom: (
+    title: string,
+    executable: string,
+    entry?: DetectedSaveGame
+  ) => Promise<string>;
+  allowUninstalledCustom?: boolean;
   executableAssigned?: (shop: GameShop, objectId: string) => Promise<void>;
 }
 
@@ -201,14 +216,28 @@ export const addDetectedSaveGame = (
           throw new Error("The selected library entry no longer exists.");
       } else {
         // Exact store identity or an identical executable is safe for deduplication.
+        const normTitle = entry.title.normalize("NFC").trim().toLowerCase();
         game = library.find(
           (item) =>
             (entry.steamId &&
               item.shop === "steam" &&
               item.objectId === entry.steamId) ||
+            (entry.matchedShop &&
+              entry.matchedShop !== "custom" &&
+              entry.matchedObjectId &&
+              item.shop === entry.matchedShop &&
+              item.objectId === entry.matchedObjectId) ||
             (executable &&
               item.executablePath &&
-              normalizeExe(item.executablePath) === normalizeExe(executable))
+              normalizeExe(item.executablePath) === normalizeExe(executable)) ||
+            (creators.allowUninstalledCustom &&
+              (
+                settings.games[`${item.shop}:${item.objectId}`]
+                  ?.manifestTitle ?? item.title
+              )
+                .normalize("NFC")
+                .trim()
+                .toLowerCase() === normTitle)
         );
       }
       if (
@@ -232,16 +261,30 @@ export const addDetectedSaveGame = (
           "This entry already has an executable. Change it through the game's normal options if needed."
         );
       let key = game ? `${game.shop}:${game.objectId}` : "";
-      if (!game && entry.steamId) {
+      if (!game && entry.steamId && !creators.addStore) {
         await creators.addSteam(entry.steamId, entry.title);
         key = `steam:${entry.steamId}`;
         game = await gamesSublevel.get(key);
+      } else if (
+        !game &&
+        entry.matchedShop &&
+        entry.matchedShop !== "custom" &&
+        entry.matchedObjectId &&
+        creators.addStore
+      ) {
+        key = await creators.addStore(
+          entry.matchedShop,
+          entry.matchedObjectId,
+          entry.title,
+          entry
+        );
+        game = await gamesSublevel.get(key);
       } else if (!game) {
-        if (!executable)
+        if (!executable && !creators.allowUninstalledCustom)
           throw new Error(
             "No reliable store ID is available. Choose the executable to create a custom library entry, or link an existing game."
           );
-        key = await creators.addCustom(entry.title, executable);
+        key = await creators.addCustom(entry.title, executable ?? "", entry);
         game = await gamesSublevel.get(key);
       }
       if (!game)
@@ -275,6 +318,10 @@ export const addDetectedSaveGame = (
         },
         { valueEncoding: "json" }
       );
+      if (creators.allowUninstalledCustom) {
+        entry.matchedGameKey = key;
+        entry.matchedTitle = game.title;
+      }
       // Keep remaining results usable without requiring another expensive scan.
       const prepared = await tools.prepareBaseConfig(
         await getLudusaviLocalSettings()

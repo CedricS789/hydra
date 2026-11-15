@@ -4,10 +4,10 @@ The PNGs are unaltered captures of actual React settings components rendered in 
 
 | Image                       | Scope                                                                                              |
 | --------------------------- | -------------------------------------------------------------------------------------------------- |
-| `save-backups.png`          | Current Save backups settings, engine credit, destination, retention, formats, and game selection. |
-| `discovered-games.png`      | Current discovery component and library add/link review using synthetic entries, IDs, and paths.   |
-| `saved-versions.png`        | Current version selection, validation/recovery buttons, advanced/remote sections, and log cleanup. |
-| `restore-preview.png`       | Current affected-file preview and disabled restore confirmation before acknowledgement.            |
+| `save-backups.png`          | Current cards for automatic backups, discovery, and game management, with the advanced drawer collapsed. |
+| `discovered-games.png`      | Current one-click and bulk library imports with synthetic Steam/Epic/custom entries and placeholder artwork. |
+| `saved-versions.png`        | Earlier layout showing version selection, validation/recovery, remote controls, and log cleanup. |
+| `restore-preview.png`       | Earlier layout showing affected files and disabled restore confirmation before acknowledgement. |
 | `source-diff-prototype.png` | Historical source-comparison display test with synthetic example code and earlier branding.        |
 
 Example Game, paths, versions, statuses, and code comparisons are synthetic. They do not establish account access, published release availability, actual game backup success, or completed cloud synchronization. The current settings captures use Hydra Ludusavi source version `4.4.1-remix.2`. The historical source-diff capture retains Hydra Local prototype wording; normal comparison retrieves real source snapshots.

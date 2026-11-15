@@ -25,7 +25,8 @@ const applyArtworkSelection = async <T extends ShopAssets | null>(
 export const getGameAssets = async (
   objectId: string,
   shop: GameShop,
-  options?: GameAssetsOptions
+  options?: GameAssetsOptions,
+  timeout?: number
 ) => {
   if (shop === "custom") {
     return null;
@@ -67,6 +68,7 @@ export const getGameAssets = async (
     null,
     {
       needsAuth: false,
+      timeout,
     }
   ).then(async (assets) => {
     if (!assets) return null;

@@ -91,7 +91,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Save-tool preparation failed.' }
       - name: Check adaptation, backup guards, and achievement behavior
         run: node --import ./scripts/register-ts-node.mjs --test scripts/update-from-official.test.mjs scripts/automatic-upstream-release.test.mjs src/main/services/local-update-preparation.test.ts src/shared/achievement-list.test.ts src/main/services/ludusavi-local-tracker.test.ts src/main/services/ludusavi-local-queue.test.ts src/main/services/ludusavi-local-log.test.ts src/main/services/ludusavi-local-api.test.ts src/main/services/ludusavi-local-config.test.ts src/main/services/ludusavi-local-validation.test.ts src/main/services/ludusavi-local-discovery-core.test.ts src/main/services/local-release-source.test.ts
-      - name: Exercise real isolated backup and recovery operations
+      - name: Check save discovery metadata enrichment
+        run: node --test scripts/ludusavi-metadata-enrichment.test.mjs
+      - name: Exercise real backup and recovery operations
         run: node scripts/test-save-manager-integration.mjs
       - name: Compile and verify the adapted application
         run: node scripts/build-local.cjs

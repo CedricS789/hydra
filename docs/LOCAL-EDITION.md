@@ -34,7 +34,9 @@ Keep Hydra Ludusavi running in its tray while playing. Fully quitting it disable
 
 Open **Settings → Save backups → Discover saved games**. **Scan local saves** runs a read-only save preview; **Find backed-up games** lists entries with versions in the selected destination. Results contain actual detected data or archives, not the entire supported-game catalogue. Saves and archives may belong to uninstalled games and do not reliably identify a launch executable.
 
-Choose **Review entry**, then select **New entry in My Games** or an existing library game. A Steam ID reported by the save definitions uses Hydra's normal Steam library identity. Without a verified store ID, choose the real `.exe` to create a custom entry, or link to an existing entry. A Steam entry may be added without an executable for backup management; launching and automatic game-exit backups still require the real executable.
+Choose **Add to My Games** for one detected result or **Add all to My Games** for all results not already in the library. Manifest Steam IDs take priority; otherwise metadata is matched against Hydra's Steam/LaunchBox catalogue and the Epic storefront. Unmatched or offline results can be added as custom entries. No executable is required for these imports, including uninstalled games. Launching and automatic backups after exit still require the real executable. Use **Review entry** to link a result to an existing library game or optionally assign its executable.
+
+The main panel contains cards for automatic backups, save discovery, and game backups/recovery. The collapsed advanced panel at the bottom contains retention, formats, custom paths, the full Ludusavi manager, YAML rules, remote transfers, and logs.
 
 Linking preserves the existing game's shop/ID, title, playtime, achievements, and executable. Duplicate store identities and executable paths are checked before creating entries. A chosen executable fills an empty path but never replaces an existing one through this screen. Normal Steam creation follows Hydra's usual library/account behavior; discovery does not invoke a restore or change the global automatic-backup switch.
 

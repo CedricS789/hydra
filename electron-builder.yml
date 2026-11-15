@@ -42,6 +42,7 @@ files:
   - "!{tsconfig.json,tsconfig.node.json,tsconfig.web.json,tsconfig.test.json}"
   - "!scripts/register-ts-node.mjs"
   - "!scripts/test-save-manager-integration.mjs"
+  - "!scripts/ludusavi-metadata-enrichment.test.mjs"
   - "!scripts/automatic-upstream-release.mjs"
   - "!scripts/automatic-upstream-release.test.mjs"
   - "!scripts/check-packaged-native.cjs"

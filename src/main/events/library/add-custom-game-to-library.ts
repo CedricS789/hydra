@@ -6,24 +6,29 @@ import type { GameShop } from "@types";
 export const addCustomGameToLibrary = async (
   _event: Electron.IpcMainInvokeEvent,
   title: string,
-  executablePath: string,
-  iconUrl?: string,
-  logoImageUrl?: string,
-  libraryHeroImageUrl?: string
+  executablePath?: string | null,
+  iconUrl?: string | null,
+  logoImageUrl?: string | null,
+  libraryHeroImageUrl?: string | null,
+  coverImageUrl?: string | null
 ) => {
   const objectId = randomUUID();
   const shop: GameShop = "custom";
   const gameKey = levelKeys.game(shop, objectId);
+  const normalizedExecutable = executablePath?.trim() || null;
 
-  const existingGames = await gamesSublevel.iterator().all();
-  const existingGame = existingGames.find(
-    ([_key, game]) => game.executablePath === executablePath && !game.isDeleted
-  );
-
-  if (existingGame) {
-    throw new Error(
-      "A game with this executable path already exists in your library"
+  if (normalizedExecutable) {
+    const existingGames = await gamesSublevel.iterator().all();
+    const existingGame = existingGames.find(
+      ([_key, game]) =>
+        game.executablePath === normalizedExecutable && !game.isDeleted
     );
+
+    if (existingGame) {
+      throw new Error(
+        "A game with this executable path already exists in your library"
+      );
+    }
   }
 
   const assets = {
@@ -33,10 +38,10 @@ export const addCustomGameToLibrary = async (
     title,
     iconUrl: iconUrl || null,
     libraryHeroImageUrl: libraryHeroImageUrl || "",
-    libraryImageUrl: iconUrl || "",
+    libraryImageUrl: libraryHeroImageUrl || iconUrl || "",
     logoImageUrl: logoImageUrl || "",
     logoPosition: null,
-    coverImageUrl: iconUrl || "",
+    coverImageUrl: coverImageUrl || iconUrl || "",
     downloadSources: [],
   };
   await gamesShopAssetsSublevel.put(gameKey, assets);
@@ -53,8 +58,8 @@ export const addCustomGameToLibrary = async (
     playTimeInMilliseconds: 0,
     lastTimePlayed: null,
     addedToLibraryAt: new Date(),
-    executablePath,
-    executablePathUpdatedAt: new Date(),
+    executablePath: normalizedExecutable,
+    executablePathUpdatedAt: normalizedExecutable ? new Date() : null,
     launchOptions: null,
     favorite: false,
     automaticCloudSync: false,

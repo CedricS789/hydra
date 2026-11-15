@@ -24,7 +24,7 @@ It keeps all of Hydra's launcher features—game catalogue, library management, 
 
 ### Step 2: Set up automatic save backups
 
-1. **Add your games:** Add games to your library as usual—or open **Settings → Save backups → Discover saved games** to scan your PC for existing game saves—and make sure each game has its `.exe` path set.
+1. **Add your games:** Open **Settings → Save backups → Discover saved games**, then choose **Scan local saves** or **Find backed-up games**. Click **Add to My Games** for one result or **Add all to My Games**. Store metadata and artwork are matched when available; unmatched titles become custom entries. Games do not need to be installed or have an `.exe` to appear in the library or manage backups. Set the real executable in the game's options before launching it or using automatic backups after exit.
 2. **Pick a backup folder:** Go to **Settings → Save backups** and choose where your backups should be stored (for example, a folder inside OneDrive or on another drive).
 3. **Run a quick test:** With your game closed, click **Preview save detection** and then **Back up now** to confirm your save files are detected properly.
 4. **Turn on automatic backups:** Check **Enable automatic backups** and click **Save**.
@@ -42,9 +42,9 @@ When a new official version of Hydra comes out, this repository automatically ad
 
 - **Automatic backups on game exit:** Tracks the game `.exe` (and child processes in the game folder) and backs up saves automatically once the game closes.
 - **Version history & safe restores:** Browse past save backups, inspect their files, and restore any version with a confirmation preview. Current saves are snapshotted to `.hydra-restore-safety/` before a restore runs.
-- **Save discovery:** Scan your PC or existing backup folder to quickly add or link games to your Hydra library.
+- **Save discovery:** Scan your PC or existing backup folder, match Steam/Hydra catalogue/Epic metadata and artwork, and add one or all discovered games to My Games, including uninstalled games. Metadata lookup is optional; unavailable services fall back to a custom entry.
 - **ZIP or plain-file backups:** Choose your archive format, compression, and how many full and differential versions to keep per game.
-- **Full Ludusavi GUI access:** Click **Open full manager** anytime to open Ludusavi's complete native interface with your shared settings, or edit custom YAML rules directly.
+- **Advanced controls:** The collapsed panel at the bottom of Save backups contains retention, archive format, custom paths, YAML rules, the full Ludusavi manager, Rclone, and logs.
 - **Optional Rclone transfers:** Preview and run manual uploads/downloads to Rclone remotes if you use Rclone alongside local backups.
 - **Release diff viewer:** Compare any official Hydra release against this edition directly inside **Settings → Releases and changes**.
 - **Distraction-free UI:** Hides Hydra Cloud upsells and Hydra Points badges while keeping achievement unlock tracking and custom themes.
@@ -81,8 +81,8 @@ You only need this section if you want to build the Windows `.exe` installer you
 - **[Node.js](https://nodejs.org/en/download)** (v22 LTS)
 
 **Plus one of the following for the native module (`hydra-native`):**
-- **For Option A (Full build):** **[Rust](https://www.rust-lang.org/tools/install)** (`cargo`) and **[Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)** (with the *Desktop development with C++* workload).
-- **For Option B (Fast build without Rust/C++):** The matching **[official Hydra Launcher](https://github.com/hydralauncher/hydra/releases)** version (`upstreamTag` in `src/shared/local-edition.json`) installed on your PC in `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra`.
+- **Option A (Full build):** **[Rust](https://www.rust-lang.org/tools/install)** (`cargo`) and **[Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)** (with the *Desktop development with C++* workload).
+- **Option B (Fast build without Rust/C++):** The matching **[official Hydra Launcher](https://github.com/hydralauncher/hydra/releases)** version (`upstreamTag` in `src/shared/local-edition.json`) installed on your PC in `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra`.
 
 ### Step 1: Clone and install dependencies
 

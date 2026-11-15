@@ -9,6 +9,7 @@ import {
 } from "@main/level";
 import { clearFinishedDownload } from "@main/helpers";
 import { AchievementWatcherManager } from "@main/services/achievements/achievement-watcher-manager";
+import { getGameAssets } from "../catalogue/get-game-assets";
 
 const lookupCachedPlatform = async (
   shop: GameShop,
@@ -42,7 +43,9 @@ export const addGameToLibrary = async (
   const gameKey = levelKeys.game(shop, objectId);
   let game = await gamesSublevel.get(gameKey);
 
-  const gameAssets = await gamesShopAssetsSublevel.get(gameKey);
+  const gameAssets =
+    (await gamesShopAssetsSublevel.get(gameKey)) ??
+    (await getGameAssets(objectId, shop, undefined, 4000).catch(() => null));
 
   const resolvedPlatform =
     platform ??

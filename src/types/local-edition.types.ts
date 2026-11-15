@@ -15,6 +15,14 @@ export interface DetectedSaveGame {
   versions: number;
   filePaths: string[];
   steamId?: string;
+  matchedShop?: "steam" | "epic" | "launchbox" | "custom";
+  matchedObjectId?: string;
+  matchedGameKey?: string;
+  matchedTitle?: string;
+  iconUrl?: string | null;
+  coverImageUrl?: string | null;
+  libraryHeroImageUrl?: string | null;
+  logoImageUrl?: string | null;
   matchingGameKeys: string[];
 }
 
