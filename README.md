@@ -44,7 +44,7 @@ When a new official version of Hydra comes out, this repository automatically ad
 - **Version history & safe restores:** Browse past save backups, inspect their files, and restore any version with a confirmation preview. Current saves are snapshotted to `.hydra-restore-safety/` before a restore runs.
 - **Save discovery:** Scan your PC or existing backup folder, match Steam/Hydra catalogue/Epic metadata and artwork, and add one or all discovered games to My Games, including uninstalled games. Metadata lookup is optional; unavailable services fall back to a custom entry.
 - **ZIP or plain-file backups:** Choose your archive format, compression, and how many full and differential versions to keep per game.
-- **Advanced controls:** The collapsed panel at the bottom of Save backups contains retention, archive format, custom paths, YAML rules, the full Ludusavi manager, Rclone, and logs.
+- **Advanced controls:** Use **Open advanced settings** at the bottom of Save backups for retention, archive format, custom paths, YAML rules, the full Ludusavi manager, Rclone, and logs. These open in a separate view with a **Back to save backups** button. Its **Game to configure** selection is independent of the main backup/recovery selection; each game still has one saved configuration.
 - **Discovery progress:** Follow the native scan's completed steps and active titles, then the separate metadata/artwork matching stage. Preparation and archive listing show an indeterminate bar when no step count is available.
 - **Bundled engine updates:** Ludusavi 0.31.0 ships with the app. Engine binaries are updated through Hydra Ludusavi releases; installing standalone Ludusavi does not replace the bundled binary. Manifest updates remain available independently.
 - **Optional Rclone transfers:** Preview and run manual uploads/downloads to Rclone remotes if you use Rclone alongside local backups.
@@ -58,6 +58,8 @@ When a new official version of Hydra comes out, this repository automatically ad
 ![Discover saved games](docs/screenshots/discovered-games.png)
 
 ![Save discovery progress with sample data](docs/screenshots/discovery-progress.png)
+
+![Advanced backup settings with an independent game selector](docs/screenshots/advanced-backups.png)
 
 ![Saved versions and management controls](docs/screenshots/saved-versions.png)
 
@@ -80,12 +82,14 @@ You only need this section if you want to build the Windows `.exe` installer you
 ### Requirements
 
 **Required for all builds:**
+
 - **Windows 10/11 (x64)**
 - **[Git](https://git-scm.com/download/win)**
 - **[Node.js](https://nodejs.org/en/download)** (v22 LTS)
 
 **Plus one of the following for the native module (`hydra-native`):**
-- **Option A (Full build):** **[Rust](https://www.rust-lang.org/tools/install)** (`cargo`) and **[Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)** (with the *Desktop development with C++* workload).
+
+- **Option A (Full build):** **[Rust](https://www.rust-lang.org/tools/install)** (`cargo`) and **[Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)** (with the _Desktop development with C++_ workload).
 - **Option B (Fast build without Rust/C++):** The matching **[official Hydra Launcher](https://github.com/hydralauncher/hydra/releases)** version (`upstreamTag` in `src/shared/local-edition.json`) installed on your PC in `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra`.
 
 ### Step 1: Clone and install dependencies

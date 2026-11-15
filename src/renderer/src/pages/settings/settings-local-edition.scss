@@ -1,8 +1,57 @@
+@use "../../scss/globals.scss";
+
 .local-edition {
   display: flex;
   flex-direction: column;
   gap: 18px;
   min-width: 0;
+
+  &--backups {
+    width: 100%;
+    max-width: 1280px;
+    line-height: 1.5;
+
+    .local-edition__card-header > div:first-child {
+      flex: 1 1 320px;
+      min-width: 0;
+    }
+
+    .local-edition__card-header > .local-edition__actions {
+      flex: 0 1 auto;
+      align-self: flex-start;
+    }
+
+    .local-edition__row {
+      align-items: center;
+    }
+    .local-edition__hint {
+      max-width: 88ch;
+    }
+    .local-edition__notice p {
+      margin: 0;
+      max-width: 88ch;
+    }
+    .local-edition__notice p + p {
+      margin-top: 10px;
+    }
+    .local-edition__versions-box .local-edition__card-header {
+      display: flex;
+      flex-direction: column;
+      > div:first-child {
+        flex: none;
+      }
+    }
+    .button {
+      line-height: 1.4;
+      max-width: 100%;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .local-edition__game-status .local-edition__badge {
+      white-space: normal;
+      max-width: 100%;
+    }
+  }
 
   &__card {
     display: flex;
@@ -351,18 +400,17 @@
   }
 
   &__game-bar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 14px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+    align-items: start;
+    gap: 16px;
     padding-bottom: 12px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   }
 
   &__game-select {
-    flex: 1;
-    min-width: 240px;
+    min-width: 0;
+    width: 100%;
   }
 
   &__game-status {
@@ -370,6 +418,62 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 6px;
+  }
+
+  &__game-auto-control {
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+  }
+
+  &__advanced-entry {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 20px;
+    padding-block: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    > p {
+      flex: 1 1 320px;
+    }
+  }
+
+  &__advanced-view {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-width: 0;
+  }
+  &__main-view {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-width: 0;
+  }
+  &__main-view[hidden],
+  &__advanced-view[hidden] {
+    display: none;
+  }
+  &__engine-information {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 88ch;
+    p {
+      margin: 0;
+    }
+  }
+  &__view-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: globals.$background-color;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 12px;
+    padding-block: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   &__exe-pill {
@@ -442,7 +546,7 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    padding: 16px 18px;
+    padding: 0;
   }
 
   &__advanced-group {

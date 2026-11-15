@@ -34,7 +34,8 @@ Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright a
 - Manual Rclone upload/download previews and confirmations, with remote completion recorded separately from local backup completion. No automatic download or restoration is enabled.
 
 - **Discover saved games** scans local save data or archives, matches Steam/Hydra catalogue/Epic metadata and artwork, and offers one-click **Add to My Games** or bulk **Add all to My Games**. Store and custom entries can be added without an executable, including uninstalled games. Metadata failures preserve the detected save entry.
-- Save backups uses structured cards and a collapsed advanced drawer for retention, formats, paths, the native manager, YAML, remote transfers, and logs.
+- Save backups uses structured cards and a separate advanced view opened through **Open advanced settings**. Its own **Game to configure** selector leaves the main backup/recovery game unchanged. Returning preserves selections, discovery results, and edits. A single toolbar saves settings; the engine's YAML editor retains its own validation/save control.
+- Backup actions sit below the main game controls, checkbox/dropdown alignment and wrapping adapt to window width, and **Executable not set** replaces the misleading not-installed badge.
 - Linking keeps existing identity, playtime, achievements, title, and executable, while storing the canonical save association for future backups and recovery. Duplicate IDs/paths and stale scan results are checked. No executable is guessed from a save folder, and the global automatic-backup setting is preserved.
 
 ## Setup and build

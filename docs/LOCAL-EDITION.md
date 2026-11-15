@@ -22,7 +22,7 @@ See the [repository README](../README.md) for an overview and screenshots, and [
 2. Install a custom setup EXE from a published release, or build one using the instructions below. Official Hydra and this fork use separate application data; configuration is not silently copied.
 3. Configure the library and each game's actual executable. Use the game process rather than a store client or a bootstrap program that immediately hands off.
 4. Open **Settings → Save backups** and choose an absolute filesystem destination using **Browse**. A local drive, a folder managed by OneDrive or another sync client, or a mounted server share can be selected. This panel does not configure remote servers or cloud credentials.
-5. Choose retention and the exit delay. Initial values are 10 full versions and 10 seconds.
+5. If needed, use **Open advanced settings** at the bottom of Save backups to change retention and the exit delay. Initial values are 10 full versions and 10 seconds. Save, then choose **Back to save backups**.
 6. Run **Preview save detection** for a game. Inspect the source paths. If necessary, add its save folders; a registry-only result is insufficient to verify game progress.
 7. While the game is stopped, run **Back up now** and inspect the created archive. Verify expected save files and contents before relying on automatic backups.
 8. Enable automatic backups and save. Launch the game through Hydra Ludusavi, make a save, quit the actual game, and check that one result and the expected backup appear after the delay.
@@ -36,7 +36,11 @@ Open **Settings → Save backups → Discover saved games**. **Scan local saves*
 
 Choose **Add to My Games** for one detected result or **Add all to My Games** for all results not already in the library. Manifest Steam IDs take priority; otherwise metadata is matched against Hydra's Steam/LaunchBox catalogue and the Epic storefront. Unmatched or offline results can be added as custom entries. No executable is required for these imports, including uninstalled games. Launching and automatic backups after exit still require the real executable. Use **Review entry** to link a result to an existing library game or optionally assign its executable.
 
-The main panel contains cards for automatic backups, save discovery, and game backups/recovery. The collapsed advanced panel at the bottom contains retention, formats, custom paths, the full Ludusavi manager, YAML rules, remote transfers, and logs.
+The main panel contains cards for automatic backups, save discovery, and game backups/recovery. **Open advanced settings** at the bottom opens a separate view for retention, formats, custom paths, the full Ludusavi manager, YAML rules, remote transfers, and logs. Use the toolbar to save or return to the main panel.
+
+The main **Game to back up or restore** selector controls manual backups and saved-version browsing. The advanced **Game to configure** selector controls which game's custom save folders and process-tracking paths you edit. These selections are independent and retained while switching views, along with discovery results and pending edits. Each game still has one saved configuration; changing its paths affects future backups for that game. Global destination and retention settings apply to all games.
+
+**Executable not set** means the library entry has no configured launch path; it does not establish whether the game is installed. Manual detection, backups, and recovery remain available. Automatic backups after exit require the actual game executable to be configured in its game options.
 
 Linking preserves the existing game's shop/ID, title, playtime, achievements, and executable. Duplicate store identities and executable paths are checked before creating entries. A chosen executable fills an empty path but never replaces an existing one through this screen. Normal Steam creation follows Hydra's usual library/account behavior; discovery does not invoke a restore or change the global automatic-backup switch.
 
@@ -168,6 +172,7 @@ node scripts/build-local.cjs
 The helper prepares native dependencies, Ludusavi, and the Epic runtime, checks TypeScript, compiles the application, builds a Windows x64 NSIS installer, and verifies the packaged result. It does not install or publish it. Prefer the helper over directly running `yarn build:local`, which skips some preparation and verification.
 
 If the native toolchain is missing:
+
 - Without Rust (`cargo`), the build fails with `Error: spawn cargo ENOENT`.
 - Without Visual Studio C++ Build Tools, the build fails with `linker 'link.exe' not found` or `Visual C++ redistributable DLLs were not found in Build Tools`.
 
@@ -182,6 +187,7 @@ node scripts/build-local.cjs --reuse-installed-native
 The helper checks the installed version and reuses its native addon, LevelDB binding, Ludusavi, and Epic runtime while compiling this fork's TypeScript and renderer.
 
 If the installed official Hydra requirement is not met:
+
 - If official Hydra is not installed in either path, the build fails with `Official Hydra was not found in %LOCALAPPDATA%\Programs\Hydra or %ProgramFiles%\Hydra. Use the full source build otherwise.`
 - If the installed version does not match `upstreamTag`, the build fails with `Installed Hydra must match the exact upstream base. Use the full source build otherwise.`
 
