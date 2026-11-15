@@ -4,7 +4,6 @@
 
 It keeps all of Hydra's launcher features—game catalogue, library management, playtime tracking, achievements, and custom themes—while adding automatic local save backups to any folder you choose (such as OneDrive, a second drive, or a NAS) without needing a subscription.
 
-- **Current version:** `4.4.1-remix.2` (based on official Hydra `v4.4.1`)
 - **Want to use the app?** Follow [1. Quick Start (Install from Release)](#1-quick-start-install-from-release)
 - **Want to compile it yourself?** Jump to [2. Build from Source](#2-build-from-source)
 
@@ -19,7 +18,7 @@ It keeps all of Hydra's launcher features—game catalogue, library management, 
 ### Step 1: Install the app
 
 1. Close any running copy of Hydra from the Windows system tray.
-2. Download `hydra-ludusavi-4.4.1-remix.2-setup.exe` from [Releases](https://github.com/CedricS789/hydra/releases) and run the installer.
+2. Download the latest `hydra-ludusavi-*-setup.exe` from [Releases](https://github.com/CedricS789/hydra/releases) and run the installer.
 
 > **Note:** Hydra Ludusavi uses its own data folder (`%APPDATA%\hydralauncher-local`), so it won't overwrite or interfere with an existing official Hydra installation.
 
@@ -105,7 +104,7 @@ node scripts/build-local.cjs
 
 **Option B — Fast build without Rust/C++ (reuses official Hydra's native binaries):**
 
-If you have official Hydra `v4.4.1` installed in `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra` and haven't modified native Rust/C++ files:
+If you have the matching official Hydra version (`upstreamTag` in `src/shared/local-edition.json`) installed in `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra` and haven't modified native Rust/C++ files:
 
 ```powershell
 node scripts/build-local.cjs --reuse-installed-native
@@ -115,8 +114,8 @@ Once the build finishes, your installer files will be in `dist/`:
 
 ```text
 dist/
-  hydra-ludusavi-4.4.1-remix.2-setup.exe
-  hydra-ludusavi-4.4.1-remix.2-setup.exe.blockmap
+  hydra-ludusavi-<version>-setup.exe
+  hydra-ludusavi-<version>-setup.exe.blockmap
   latest.yml
 ```
 
