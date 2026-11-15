@@ -4,12 +4,12 @@
 
 It keeps all of Hydra's launcher features—game catalogue, library management, playtime tracking, achievements, and custom themes—while adding automatic local save backups to any folder you choose (such as OneDrive, a second drive, or a NAS) without needing a subscription.
 
-- **Want to use the app?** Follow [1. Quick Start (Install from Release)](#1-quick-start-install-from-release)
-- **Want to compile it yourself?** Jump to [2. Build from Source](#2-build-from-source)
+- **Want to use the app?** Follow [Quick Start (Install from Release)](#quick-start-install-from-release)
+- **Want to compile it yourself?** Jump to [Build from Source](#build-from-source)
 
 ---
 
-## 1. Quick Start (Install from Release)
+## Quick Start (Install from Release)
 
 ### Requirements
 
@@ -69,7 +69,7 @@ Turn off automatic backups in **Settings → Save backups** (and **Run at startu
 
 ---
 
-## 2. Build from Source
+## Build from Source
 
 You only need this section if you want to build the Windows `.exe` installer yourself or maintain the fork.
 
