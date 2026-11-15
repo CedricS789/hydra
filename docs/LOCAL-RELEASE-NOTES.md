@@ -4,6 +4,7 @@ Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright a
 
 ## Features
 
+- Added `node scripts/update-from-official.mjs`: check the online project and official release, reuse an active update or request one, follow progress, and verify both source synchronization and completed public release assets. `--check` is read-only; `--no-wait` returns a progress link. Compilation remains on GitHub.
 - Official releases now drive shared automatic preparation: adapt source, test, compile, verify native loading and artifacts, publish a finished update, and catalogue source automatically. The owner and all installed users consume the same update without local developer tools.
 - Preparation status distinguishes pending, failed, disabled, and unavailable automation. Conflicts and failed checks block publication while retaining the working installed version. One initial installer containing these changes must still be built and distributed.
 

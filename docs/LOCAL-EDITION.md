@@ -220,6 +220,33 @@ node --test scripts/automatic-upstream-release.test.mjs
 node --import ./scripts/register-ts-node.mjs --test src/main/services/local-update-preparation.test.ts
 ```
 
+### Run an update on demand
+
+For the repository owner, the single entry point is:
+
+```powershell
+node scripts/update-from-official.mjs
+```
+
+Install Node.js and [GitHub CLI](https://cli.github.com/), then sign in once with `gh auth login`. The signed-in account needs Actions write access to the project. No local Rust/C++ toolchain, dependency installation, or native compilation is needed for this command. Compilation and public release publication run on GitHub using the existing workflow. Only files already pushed to the online project are used.
+
+The command reads the online default branch and edition settings, then compares its recorded base with the latest stable official release. If already current, it exits without dispatching a build or creating a release. Otherwise it follows an active run or dispatches a new one, prints the progress URL, and waits for completion. Modern dispatch responses identify the run directly; older responses are correlated by a unique request identifier. It verifies both the finished public release's installer/update assets and the updated online project before reporting success. Workflow failures, incomplete publication, and incomplete source synchronization remain errors. Re-running can complete synchronization after publication.
+
+```powershell
+node scripts/update-from-official.mjs --check
+node scripts/update-from-official.mjs --no-wait
+```
+
+`--check` is read-only. `--no-wait` requests or follows the update and prints its progress link without waiting for compilation. The normal command can re-enable an inactivity-disabled workflow, but will not override a deliberate manual disable. Waiting stops after four hours; closing the terminal or stopping the command does not cancel an already dispatched GitHub run. The local checkout is used to locate the project, while online source remains authoritative; it is not automatically pulled into a working tree with personal edits.
+
+The existing six-hour schedule remains available alongside this entry point. Installed users do not run this script, clone the repository, sign into GitHub, or build anything. Every installed copy consumes the same finished releases through the application's update controls.
+
+Test the entry point without dispatching a workflow:
+
+```powershell
+node --test scripts/update-from-official.test.mjs
+```
+
 ## Maintain a fork
 
 ### Repository configuration

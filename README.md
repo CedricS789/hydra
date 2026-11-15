@@ -171,6 +171,16 @@ The internal package name `hydralauncher-local` and app ID `gg.hydralauncher.hyd
 
 ## Maintenance and updates
 
+To run the update process on demand from this checkout:
+
+```powershell
+node scripts/update-from-official.mjs
+```
+
+This command reads the project's current state on GitHub, checks the latest stable official release, and starts the shared update workflow only when needed. GitHub performs the adaptation, checks, compilation, and publication; the command follows its progress and verifies the public installer assets and updated source before reporting completion. If an update is already running, it follows that run. An older local checkout does not cause a repeat build because online project settings determine the recorded base.
+
+The command requires Node.js and [GitHub CLI](https://cli.github.com/) signed in once with `gh auth login` and permission to run Actions in this repository. Add `--check` for a read-only check, or `--no-wait` to start the update and receive its progress link. It can resume a workflow paused for inactivity; a deliberate manual disable is respected. This command is for the repository owner. Installer recipients continue to use the app's update buttons and need no development tools or GitHub account.
+
 Official Hydra releases are the source of app updates. The shared [automatic preparation workflow](https://github.com/CedricS789/hydra/actions/workflows/upstream-release-check.yml) checks for a newer stable release every six hours, subject to GitHub scheduling. It merges the official source into a candidate, preserves this integration and app identity, runs checks, compiles on Windows, and publishes a finished adapted installer only after those steps succeed. The source catalogue is then advanced automatically.
 
 **Every installed user follows the same route:** open **Settings → Releases and changes**, check, download, and install the available update. Neither the project owner nor other recipients need a local clone, Git, Node.js, or routine manual merging/building for compatible official updates. The application downloads the shared finished release rather than compiling on the user's computer. A first installer containing these changes must be built and distributed once; compatible official updates are then prepared and published automatically.

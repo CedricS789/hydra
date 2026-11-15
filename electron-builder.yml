@@ -45,6 +45,8 @@ files:
   - "!scripts/automatic-upstream-release.mjs"
   - "!scripts/automatic-upstream-release.test.mjs"
   - "!scripts/check-packaged-native.cjs"
+  - "!scripts/update-from-official.mjs"
+  - "!scripts/update-from-official.test.mjs"
 asarUnpack:
   - resources/**
   - node_modules/sharp/**
