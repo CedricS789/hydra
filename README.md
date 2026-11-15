@@ -15,7 +15,7 @@ To build from source:
 - **Windows 10/11 (x64)**
 - **[Git](https://git-scm.com/download/win)**
 - **[Node.js](https://nodejs.org/en/download)** (v22 LTS)
-- **[Rust](https://www.rust-lang.org/tools/install)** and **[Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)** (_Desktop development with C++_ workload) — _or installed official [Hydra `v4.4.1`](https://github.com/hydralauncher/hydra/releases/tag/v4.4.1) if using `--reuse-installed-native`_
+- **[Rust](https://www.rust-lang.org/tools/install)** and **[Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)**
 
 ## Quick Start: build the setup
 
