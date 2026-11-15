@@ -169,13 +169,13 @@ If the native toolchain is missing:
 
 ### Reuse matching installed native components
 
-For application-layer or packaging changes that leave native code unchanged:
+For application-layer or packaging changes that leave native code unchanged, first download and install the matching official Hydra release from [Official Hydra Releases](https://github.com/hydralauncher/hydra/releases) (matching `upstreamTag` in [`src/shared/local-edition.json`](../src/shared/local-edition.json), currently v4.4.1) into `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra`, then run:
 
 ```powershell
 node scripts/build-local.cjs --reuse-installed-native
 ```
 
-This route requires official Hydra installed at `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra` with the exact version specified by `upstreamTag` in `src/shared/local-edition.json`, currently v4.4.1. The helper checks that version and reuses its native addon, LevelDB binding, Ludusavi, and Epic runtime while compiling this fork's TypeScript and renderer.
+The helper checks the installed version and reuses its native addon, LevelDB binding, Ludusavi, and Epic runtime while compiling this fork's TypeScript and renderer.
 
 If the installed official Hydra requirement is not met:
 - If official Hydra is not installed in either path, the build fails with `Official Hydra was not found in %LOCALAPPDATA%\Programs\Hydra or %ProgramFiles%\Hydra. Use the full source build otherwise.`

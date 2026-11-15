@@ -113,7 +113,10 @@ node scripts/build-local.cjs
 
 #### Option B — Fast build without Rust/C++ (requires matching official Hydra installed)
 
-Since this fork only modifies TypeScript/React code and leaves official Hydra's native Rust/C++ module untouched, you can reuse the prebuilt native binaries from your installed official Hydra instead of compiling them:
+Since this fork only modifies TypeScript/React code and leaves official Hydra's native Rust/C++ module untouched, you can reuse the prebuilt native binaries from an installed copy of official Hydra instead of compiling them from source.
+
+1. First, download and install the matching official Hydra version (specified by `upstreamTag` in [`src/shared/local-edition.json`](src/shared/local-edition.json)) from the **[Official Hydra Releases page](https://github.com/hydralauncher/hydra/releases)** into its default location (`%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra`).
+2. Run the build with `--reuse-installed-native`:
 
 ```powershell
 node scripts/build-local.cjs --reuse-installed-native
