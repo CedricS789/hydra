@@ -40,6 +40,14 @@ node scripts/update-from-official.mjs --check
 node scripts/build-local.cjs
 ```
 
+**Faster build when the installed official Hydra matches this source's exact upstream version and native code is unchanged:**
+
+```powershell
+node scripts/build-local.cjs --reuse-installed-native
+```
+
+This reuses native components from the official Hydra installation at `%LOCALAPPDATA%\Programs\Hydra`. Use it only when that installation matches `upstreamTag` in `src/shared/local-edition.json` and you have not changed native code. Otherwise, use the full build command above.
+
 See [Maintenance and updates](#maintenance-and-updates) and [Build from source](#build-from-source) for prerequisites, options, and details.
 
 ## Install and configure backups
