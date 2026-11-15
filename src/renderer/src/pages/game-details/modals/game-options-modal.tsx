@@ -1460,7 +1460,7 @@ export function GameOptionsModal({
                   }
                   onOpenGlobalSettings={() => {
                     onClose();
-                    navigate("/settings?tab=local_backups");
+                    navigate("/settings?tab=advanced");
                   }}
                 />
               )}

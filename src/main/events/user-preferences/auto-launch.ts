@@ -1,12 +1,18 @@
 import { registerEvent } from "../register-event";
 import AutoLaunch from "auto-launch";
 import { app } from "electron";
-import { logger } from "@main/services";
 
 const autoLaunch = async (
   _event: Electron.IpcMainInvokeEvent,
   autoLaunchProps: { enabled: boolean; minimized: boolean }
 ) => {
+  await applyAutoLaunch(autoLaunchProps);
+};
+
+export const applyAutoLaunch = async (autoLaunchProps: {
+  enabled: boolean;
+  minimized: boolean;
+}) => {
   if (!app.isPackaged) return;
 
   const appLauncher = new AutoLaunch({
@@ -15,13 +21,9 @@ const autoLaunch = async (
   });
 
   if (autoLaunchProps.enabled) {
-    appLauncher.enable().catch((err) => {
-      logger.error(err);
-    });
+    await appLauncher.enable();
   } else {
-    appLauncher.disable().catch((err) => {
-      logger.error(err);
-    });
+    await appLauncher.disable();
   }
 };
 

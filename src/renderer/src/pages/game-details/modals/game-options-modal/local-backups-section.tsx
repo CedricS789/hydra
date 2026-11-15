@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryGame, LudusaviLocalResult } from "@types";
 import { formatBytes } from "@shared";
-import { Button, CheckboxField } from "@renderer/components";
+import { Button } from "@renderer/components";
 import { useDate, useLudusaviLocalState } from "@renderer/hooks";
-import { SettingsSaveManager } from "@renderer/pages/settings/settings-save-manager";
 import { getLocalSavePresentation } from "../../cloud-save-v2/local-save-presentation";
 import "@renderer/pages/settings/settings-local-edition.scss";
 
@@ -32,9 +31,6 @@ export function LocalBackupsSection({
   const [notice, setNotice] = useState("");
   const [lastActionResult, setLastActionResult] =
     useState<LudusaviLocalResult | null>(null);
-  const [savePathsText, setSavePathsText] = useState("");
-  const [trackingPathsText, setTrackingPathsText] = useState("");
-  const [pathsDirty, setPathsDirty] = useState(false);
 
   const gameSettings = state?.settings.games[gameKey] ?? {
     enabled: true,
@@ -43,17 +39,10 @@ export function LocalBackupsSection({
   };
 
   useEffect(() => {
-    setPathsDirty(false);
     setError("");
     setNotice("");
     setLastActionResult(null);
   }, [gameKey]);
-
-  useEffect(() => {
-    if (!state || pathsDirty) return;
-    setSavePathsText(gameSettings.savePaths.join("\n"));
-    setTrackingPathsText(gameSettings.trackingPaths.join("\n"));
-  }, [state, pathsDirty, gameSettings.savePaths, gameSettings.trackingPaths]);
 
   if (!state) {
     return (
@@ -90,21 +79,6 @@ export function LocalBackupsSection({
     } finally {
       setWorking(false);
     }
-  };
-
-  const persistPendingPaths = async () => {
-    if (!pathsDirty) return;
-    await window.electron.saveLudusaviGameSettings(gameKey, {
-      savePaths: savePathsText
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean),
-      trackingPaths: trackingPathsText
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean),
-    });
-    setPathsDirty(false);
   };
 
   const statusText = (() => {
@@ -182,25 +156,12 @@ export function LocalBackupsSection({
             )}
           </div>
           <Button theme="outline" onClick={onOpenGlobalSettings}>
-            {t("open_global_settings")}
+            {t("open_advanced_save_settings")}
           </Button>
         </div>
 
-        <CheckboxField
-          label={t("enable_game")}
-          checked={gameSettings.enabled !== false}
-          disabled={busy}
-          onChange={(e) => {
-            const checked = e.target.checked;
-            void runAction(async () => {
-              await window.electron.saveLudusaviGameSettings(gameKey, {
-                enabled: checked,
-              });
-            });
-          }}
-        />
         <p className="local-edition__hint">
-          {t("game_auto_backup_description")}
+          {t("automatic_backup_controlled_in_advanced")}
         </p>
 
         {!game.executablePath && (
@@ -220,7 +181,6 @@ export function LocalBackupsSection({
             disabled={busy}
             onClick={() =>
               void runAction(async () => {
-                await persistPendingPaths();
                 const res = await window.electron.runLudusaviLocalBackup(
                   gameKey,
                   true
@@ -235,7 +195,6 @@ export function LocalBackupsSection({
             disabled={busy}
             onClick={() =>
               void runAction(async () => {
-                await persistPendingPaths();
                 const res = await window.electron.runLudusaviLocalBackup(
                   gameKey,
                   false
@@ -248,121 +207,6 @@ export function LocalBackupsSection({
           </Button>
         </div>
       </div>
-
-      <div className="local-edition__subcard">
-        <SettingsSaveManager
-          mode="versions"
-          gameKey={gameKey}
-          destination={state.settings.destination}
-          busy={busy}
-          beforeAction={persistPendingPaths}
-          refresh={refresh}
-          reloadSettings={async () => {
-            await refresh();
-          }}
-        />
-      </div>
-
-      <details className="local-edition__advanced">
-        <summary className="local-edition__advanced-summary">
-          <div>
-            <span className="local-edition__advanced-title">
-              {t("game_custom_paths_title")}
-            </span>
-            <span className="local-edition__advanced-subtitle">
-              {t("game_custom_paths_description")}
-            </span>
-          </div>
-        </summary>
-        <div className="local-edition__subcard">
-          {gameSettings.manifestTitle && (
-            <div className="local-edition__row">
-              <span className="local-edition__hint">
-                {t("linked_save_title", {
-                  title: gameSettings.manifestTitle,
-                })}
-              </span>
-              <Button
-                theme="outline"
-                disabled={busy}
-                onClick={() =>
-                  void runAction(async () => {
-                    await window.electron.saveLudusaviGameSettings(gameKey, {
-                      manifestTitle: undefined,
-                      steamId: undefined,
-                    });
-                  })
-                }
-              >
-                {t("unlink_save_title")}
-              </Button>
-            </div>
-          )}
-
-          <label className="local-edition__label">
-            {t("save_paths")}
-            <textarea
-              rows={3}
-              value={savePathsText}
-              onChange={(e) => {
-                setSavePathsText(e.target.value);
-                setPathsDirty(true);
-              }}
-            />
-          </label>
-
-          <label className="local-edition__label">
-            {t("tracking_paths")}
-            <textarea
-              rows={2}
-              value={trackingPathsText}
-              onChange={(e) => {
-                setTrackingPathsText(e.target.value);
-                setPathsDirty(true);
-              }}
-            />
-          </label>
-
-          <div className="local-edition__row">
-            <Button
-              theme="outline"
-              disabled={busy || !pathsDirty}
-              onClick={() =>
-                void runAction(async () => {
-                  await persistPendingPaths();
-                  setNotice(t("custom_paths_saved"));
-                })
-              }
-            >
-              {t("save_custom_paths")}
-            </Button>
-          </div>
-
-          <hr
-            style={{
-              width: "100%",
-              border: 0,
-              borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-            }}
-          />
-
-          <h4 className="local-edition__section-heading">
-            {t("remote_title")}
-          </h4>
-          <p className="local-edition__hint">{t("remote_description")}</p>
-          <SettingsSaveManager
-            mode="remote"
-            gameKey={gameKey}
-            destination={state.settings.destination}
-            busy={busy}
-            beforeAction={persistPendingPaths}
-            refresh={refresh}
-            reloadSettings={async () => {
-              await refresh();
-            }}
-          />
-        </div>
-      </details>
     </div>
   );
 }

@@ -209,3 +209,36 @@
     word-break: break-word;
   }
 }
+.repacks-modal__source-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  .repacks-modal__repack-button {
+    width: 100%;
+  }
+  .source-browser-entry {
+    align-self: flex-end;
+    margin-bottom: 8px;
+  }
+}
+
+.repacks-modal__repack-static {
+  padding: 16px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+}
+.repacks-modal__action-hint {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0;
+}
+.repacks-modal__source-entry > .button--outline {
+  align-self: flex-end;
+  margin-bottom: 8px;
+}

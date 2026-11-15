@@ -1,11 +1,6 @@
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useSettingsProfile } from "@renderer/context/settings/settings-draft.context";
+import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button, CheckboxField, SelectField } from "@renderer/components";
@@ -52,17 +47,19 @@ const buildForm = (preferences: UserPreferences | null) => ({
 
 export function SettingsContextNotifications() {
   const { t } = useTranslation("settings");
-  const { updateUserPreferences } = useContext(settingsContext);
+  const draft = useSettingsDraft();
+  const { updateUserPreferences: commitUserPreferences } =
+    useContext(settingsContext);
+  const updateUserPreferences = draft?.stage ?? commitUserPreferences;
 
-  const userPreferences = useAppSelector(
+  const savedPreferences = useAppSelector(
     (state) => state.userPreferences.value
   );
-
-  const volumeUpdateTimeoutRef = useRef<NodeJS.Timeout>();
+  const userPreferences = draft?.preferences ?? savedPreferences;
 
   const [form, setForm] = useState(() => buildForm(userPreferences));
 
-  const { userDetails, patchUser } = useUserDetails();
+  const { userDetails, patchUser } = useSettingsProfile(useUserDetails());
   const { isEnabled: isGlobalLeaderboardsEnabled } =
     useGlobalLeaderboardsFeature();
   const savedLeaderboardNotifications =
@@ -99,14 +96,6 @@ export function SettingsContextNotifications() {
     setForm((prev) => ({ ...prev, ...buildForm(userPreferences) }));
   }, [userPreferences]);
 
-  useEffect(() => {
-    return () => {
-      if (volumeUpdateTimeoutRef.current) {
-        clearTimeout(volumeUpdateTimeoutRef.current);
-      }
-    };
-  }, []);
-
   const handleChange = async (values: Partial<typeof form>) => {
     setForm((prev) => ({ ...prev, ...values }));
     await updateUserPreferences(values);
@@ -116,13 +105,7 @@ export function SettingsContextNotifications() {
     (newVolume: number) => {
       setForm((prev) => ({ ...prev, achievementSoundVolume: newVolume }));
 
-      if (volumeUpdateTimeoutRef.current) {
-        clearTimeout(volumeUpdateTimeoutRef.current);
-      }
-
-      volumeUpdateTimeoutRef.current = setTimeout(() => {
-        updateUserPreferences({ achievementSoundVolume: newVolume / 100 });
-      }, 300);
+      void updateUserPreferences({ achievementSoundVolume: newVolume / 100 });
     },
     [updateUserPreferences]
   );
@@ -148,7 +131,6 @@ export function SettingsContextNotifications() {
     const value = event.target.value as AchievementCustomNotificationPosition;
 
     await handleChange({ achievementCustomNotificationPosition: value });
-    window.electron.updateAchievementCustomNotificationWindow();
   };
 
   return (
@@ -269,8 +251,6 @@ export function SettingsContextNotifications() {
               achievementNotificationsEnabled:
                 !form.achievementNotificationsEnabled,
             });
-
-            window.electron.updateAchievementCustomNotificationWindow();
           }}
         />
 
@@ -283,8 +263,6 @@ export function SettingsContextNotifications() {
               achievementCustomNotificationsEnabled:
                 !form.achievementCustomNotificationsEnabled,
             });
-
-            window.electron.updateAchievementCustomNotificationWindow();
           }}
         />
 

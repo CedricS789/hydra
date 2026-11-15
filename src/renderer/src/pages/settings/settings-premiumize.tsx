@@ -1,3 +1,5 @@
+import { useSettingsOperationGuard } from "@renderer/context/settings/settings-draft.context";
+import { useSettingsFormGuard } from "@renderer/context/settings/settings-draft.context";
 import { useContext, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Button, CheckboxField, Link, TextField } from "@renderer/components";
@@ -18,19 +20,26 @@ export function SettingsPremiumize() {
   const { t } = useTranslation("settings");
 
   const [isLoading, setIsLoading] = useState(false);
+  useSettingsOperationGuard("settings-premiumize", isLoading);
   const [form, setForm] = useState(() => ({
     usePremiumize: Boolean(userPreferences?.premiumizeApiToken),
     premiumizeApiToken: userPreferences?.premiumizeApiToken ?? null,
   }));
 
+  const savedToken = userPreferences?.premiumizeApiToken ?? null;
   useEffect(() => {
-    if (userPreferences) {
-      setForm({
-        usePremiumize: Boolean(userPreferences.premiumizeApiToken),
-        premiumizeApiToken: userPreferences.premiumizeApiToken ?? null,
-      });
-    }
-  }, [userPreferences]);
+    setForm({
+      usePremiumize: Boolean(savedToken),
+      premiumizeApiToken: savedToken,
+    });
+  }, [savedToken]);
+
+  const dirty =
+    form.usePremiumize !== Boolean(userPreferences?.premiumizeApiToken) ||
+    (form.usePremiumize &&
+      form.premiumizeApiToken !==
+        (userPreferences?.premiumizeApiToken ?? null));
+  useSettingsFormGuard("provider-premiumize", dirty, "Premiumize connection");
 
   const handleFormSubmit: React.FormEventHandler<HTMLFormElement> = async (
     event
@@ -40,23 +49,17 @@ export function SettingsPremiumize() {
 
     try {
       if (form.usePremiumize) {
-        const user = await window.electron.authenticatePremiumize(
-          form.premiumizeApiToken!
-        );
-
-        showSuccessToast(
-          t("premiumize_account_linked"),
-          t("debrid_linked_message", { username: user.customer_id })
-        );
-      } else {
-        showSuccessToast(t("changes_saved"));
+        await window.electron.authenticatePremiumize(form.premiumizeApiToken!);
       }
 
-      updateUserPreferences({
+      await updateUserPreferences({
         premiumizeApiToken: form.usePremiumize ? form.premiumizeApiToken : null,
       });
-    } catch {
-      showErrorToast(t("debrid_invalid_token"));
+      showSuccessToast(t("changes_saved"));
+    } catch (err) {
+      showErrorToast(
+        err instanceof Error ? err.message : t("debrid_invalid_token")
+      );
     } finally {
       setIsLoading(false);
     }
@@ -69,12 +72,6 @@ export function SettingsPremiumize() {
       ...prev,
       usePremiumize: updatedValue,
     }));
-
-    if (!updatedValue) {
-      updateUserPreferences({
-        premiumizeApiToken: null,
-      });
-    }
   };
 
   const isButtonDisabled =
@@ -98,6 +95,7 @@ export function SettingsPremiumize() {
       <CheckboxField
         label={t("enable_premiumize")}
         checked={form.usePremiumize}
+        disabled={isLoading}
         onChange={togglePremiumize}
       />
 
@@ -110,7 +108,7 @@ export function SettingsPremiumize() {
             setForm({ ...form, premiumizeApiToken: event.target.value })
           }
           rightContent={
-            <Button type="submit" disabled={isButtonDisabled}>
+            <Button type="submit" disabled={isButtonDisabled || !dirty}>
               {t("save_changes")}
             </Button>
           }
@@ -121,6 +119,11 @@ export function SettingsPremiumize() {
             </Trans>
           }
         />
+      )}
+      {!form.usePremiumize && (
+        <Button type="submit" disabled={isLoading || !dirty}>
+          {t("save_changes")}
+        </Button>
       )}
     </form>
   );

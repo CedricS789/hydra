@@ -1,6 +1,7 @@
 import { updateGameRecord } from "@main/services/game-record-updater";
 import { registerEvent } from "../register-event";
 import path from "node:path";
+import { closeSourceBrowsers } from "@main/services/source-browser";
 
 import type { Game, UserPreferences } from "@types";
 import i18next from "i18next";
@@ -12,6 +13,7 @@ import {
   DownloadOrchestrator,
   ScreenshotInputService,
   Wine,
+  achievementNotificationPresenter,
 } from "@main/services";
 import {
   allowsDirectTorrent,
@@ -19,6 +21,7 @@ import {
 } from "../../../shared/direct-torrent-policy";
 import { setDirectTorrentAccess } from "@main/services/torrent-service";
 import { WindowManager } from "@main/services/window-manager";
+import { applyAutoLaunch } from "./auto-launch";
 import { getDownloadDirectoryPreferences } from "@shared";
 import {
   restoreDuckStationFileLogging,
@@ -239,6 +242,8 @@ const applyUserPreferences = async (
     }
   );
 
+  if (preferences.enableSourceBrowser === false) closeSourceBrowsers();
+
   if (Object.hasOwn(preferences, "allowDirectTorrent"))
     await setDirectTorrentAccess(updatedPreferences.allowDirectTorrent);
 
@@ -254,6 +259,24 @@ const applyUserPreferences = async (
 
   Wine.syncUserPreferences(updatedPreferences);
   ScreenshotInputService.syncUserPreferences(updatedPreferences);
+  if (
+    Object.keys(preferences).some(
+      (key) =>
+        key.startsWith("achievement") && key !== "achievementScreenshotsPath"
+    )
+  ) {
+    achievementNotificationPresenter.dispose();
+  }
+
+  if (
+    Object.hasOwn(preferences, "runAtStartup") ||
+    Object.hasOwn(preferences, "startMinimized")
+  ) {
+    await applyAutoLaunch({
+      enabled: Boolean(updatedPreferences.runAtStartup),
+      minimized: Boolean(updatedPreferences.startMinimized),
+    });
+  }
 
   await updateEmulatorAchievementTracking(preferences, updatedPreferences);
   await unlinkRetroAchievementsEmulatorAccount(preferences);

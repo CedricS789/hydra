@@ -122,6 +122,12 @@ export default function GameDetails() {
               automaticallyExtract,
               automaticallyDeleteArchiveFiles,
               fileSize: repack.fileSize,
+              repackTitle: repack.title,
+              sourcePageUrl: repack.sourcePageUrl,
+              downloadSourceId: repack.downloadSourceId,
+              downloadSourceName: repack.downloadSourceName,
+              repackFileSize: repack.fileSize,
+              uploadDate: repack.uploadDate,
               fileIndices,
               selectedFilesSize,
             };

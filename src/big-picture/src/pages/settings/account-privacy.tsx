@@ -1,3 +1,4 @@
+import { useSettingsProfile } from "@renderer/context/settings/settings-draft.context";
 import "./account-privacy.scss";
 
 import type {
@@ -44,20 +45,6 @@ interface SettingsSectionProps {
 const SETTINGS_TOAST_OPTIONS = {
   fallbackVisual: "settings" as const,
 };
-
-function getProfileVisibilityLabel(
-  value: ProfileVisibility,
-  t: (key: string) => string
-) {
-  switch (value) {
-    case "FRIENDS":
-      return t("friends_only");
-    case "PRIVATE":
-      return t("private");
-    default:
-      return t("public");
-  }
-}
 
 function getHydraCloudSectionContent(
   hasActiveSubscription: boolean,
@@ -109,10 +96,10 @@ export function AccountPrivacySettingsSection({
 }: Readonly<SettingsSectionProps>) {
   const { formatDate } = useDate();
   const { t } = useTranslation("settings");
-  const { showSuccessToast, showErrorToast } = useBigPictureToast();
+  const { showErrorToast } = useBigPictureToast();
   const { setFocus } = useNavigation();
   const { userDetails, hasActiveSubscription, patchUser, unblockUser } =
-    useUserDetails();
+    useSettingsProfile(useUserDetails());
   const [profileVisibility, setProfileVisibility] =
     useState<ProfileVisibility>("PUBLIC");
   const [souvenirsVisibility, setSouvenirsVisibility] =
@@ -241,10 +228,6 @@ export function AccountPrivacySettingsSection({
 
       try {
         await patchUser({ profileVisibility: value });
-        showSuccessToast("Profile visibility updated", {
-          ...SETTINGS_TOAST_OPTIONS,
-          message: `Your profile is now ${getProfileVisibilityLabel(value, t)}.`,
-        });
       } catch {
         setProfileVisibility(previousValue);
         showErrorToast(
@@ -260,8 +243,6 @@ export function AccountPrivacySettingsSection({
       patchUser,
       profileVisibility,
       showErrorToast,
-      showSuccessToast,
-      t,
       userDetails,
     ]
   );
@@ -277,12 +258,6 @@ export function AccountPrivacySettingsSection({
 
       try {
         await patchUser({ souvenirsVisibility: value });
-        showSuccessToast(t("souvenirs_visibility_updated"), {
-          ...SETTINGS_TOAST_OPTIONS,
-          message: t("souvenirs_visibility_updated_description", {
-            visibility: getProfileVisibilityLabel(value, t),
-          }),
-        });
       } catch {
         setSouvenirsVisibility(previousValue);
         showErrorToast(t("souvenir_visibility_failed"), SETTINGS_TOAST_OPTIONS);
@@ -294,7 +269,6 @@ export function AccountPrivacySettingsSection({
       isSavingVisibility,
       patchUser,
       showErrorToast,
-      showSuccessToast,
       souvenirsVisibility,
       t,
       userDetails,
@@ -312,16 +286,6 @@ export function AccountPrivacySettingsSection({
 
       try {
         await patchUser({ screenshotsVisibility: value });
-        showSuccessToast(
-          t("screenshots_visibility_updated", { ns: "big_picture" }),
-          {
-            ...SETTINGS_TOAST_OPTIONS,
-            message: t("screenshots_visibility_updated_description", {
-              ns: "big_picture",
-              visibility: getProfileVisibilityLabel(value, t),
-            }),
-          }
-        );
       } catch {
         setScreenshotsVisibility(previousValue);
         showErrorToast(
@@ -337,7 +301,6 @@ export function AccountPrivacySettingsSection({
       patchUser,
       screenshotsVisibility,
       showErrorToast,
-      showSuccessToast,
       t,
       userDetails,
     ]
@@ -354,7 +317,6 @@ export function AccountPrivacySettingsSection({
 
       try {
         await patchUser({ screenshotCommentsPolicy: value });
-        showSuccessToast(t("changes_saved"), SETTINGS_TOAST_OPTIONS);
       } catch {
         setScreenshotCommentsPolicy(previousValue);
         showErrorToast(
@@ -370,7 +332,6 @@ export function AccountPrivacySettingsSection({
       patchUser,
       screenshotCommentsPolicy,
       showErrorToast,
-      showSuccessToast,
       t,
       userDetails,
     ]
@@ -445,21 +406,13 @@ export function AccountPrivacySettingsSection({
 
       try {
         await patchUser({ allowCloudGifts });
-        showSuccessToast(t("changes_saved"), SETTINGS_TOAST_OPTIONS);
       } catch {
         showErrorToast(t("try_again"), SETTINGS_TOAST_OPTIONS);
       } finally {
         setIsSavingCloudGifts(false);
       }
     },
-    [
-      isSavingCloudGifts,
-      patchUser,
-      showErrorToast,
-      showSuccessToast,
-      t,
-      userDetails,
-    ]
+    [isSavingCloudGifts, patchUser, showErrorToast, t, userDetails]
   );
 
   const hydraCloudButtonOverrides = useMemo<FocusOverrides>(

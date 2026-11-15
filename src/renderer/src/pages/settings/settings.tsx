@@ -7,6 +7,13 @@ import { SettingsAccount } from "./settings-account";
 import { useFeature, useAppSelector, useUserDetails } from "@renderer/hooks";
 import { isClassicsEnabled } from "@shared";
 import { Fragment, useMemo } from "react";
+import {
+  SettingsDraftProvider,
+  SettingsSaveBar,
+  useSettingsDraft,
+} from "@renderer/context/settings/settings-draft.context";
+import { useAppDispatch } from "@renderer/hooks";
+import { setUserPreferences } from "@renderer/features";
 import "./settings.scss";
 import {
   BellIcon,
@@ -35,6 +42,19 @@ import { SettingsLudusavi } from "./settings-ludusavi";
 import { SettingsLocalReleases } from "./settings-local-releases";
 
 export default function Settings() {
+  const dispatch = useAppDispatch();
+  return (
+    <SettingsDraftProvider
+      inlineFooter
+      onSaved={(preferences) => dispatch(setUserPreferences(preferences))}
+    >
+      <SettingsContent />
+    </SettingsDraftProvider>
+  );
+}
+
+function SettingsContent() {
+  const draft = useSettingsDraft();
   const { t } = useTranslation("settings");
 
   const { userDetails } = useUserDetails();
@@ -254,7 +274,12 @@ export default function Settings() {
                   {selectedCategoryId !== "emulation" && (
                     <h2>{currentCategory.label}</h2>
                   )}
-                  {renderCategory()}
+                  <div className="settings__panel-body">
+                    <Fragment key={draft?.revision}>
+                      {renderCategory()}
+                    </Fragment>
+                  </div>
+                  <SettingsSaveBar />
                 </div>
               </div>
             </section>

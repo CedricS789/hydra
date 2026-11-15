@@ -1,3 +1,5 @@
+import { useSettingsOperationGuard } from "@renderer/context/settings/settings-draft.context";
+import { useSettingsFormGuard } from "@renderer/context/settings/settings-draft.context";
 import { useContext, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
@@ -25,6 +27,7 @@ export function SettingsRealDebrid() {
   const { updateUserPreferences } = useContext(settingsContext);
 
   const [isLoading, setIsLoading] = useState(false);
+  useSettingsOperationGuard("settings-real-debrid", isLoading);
   const [form, setForm] = useState(() => ({
     useRealDebrid: Boolean(userPreferences?.realDebridApiToken),
     realDebridApiToken: userPreferences?.realDebridApiToken ?? null,
@@ -34,14 +37,20 @@ export function SettingsRealDebrid() {
 
   const { t } = useTranslation("settings");
 
+  const savedToken = userPreferences?.realDebridApiToken ?? null;
   useEffect(() => {
-    if (userPreferences) {
-      setForm({
-        useRealDebrid: Boolean(userPreferences.realDebridApiToken),
-        realDebridApiToken: userPreferences.realDebridApiToken ?? null,
-      });
-    }
-  }, [userPreferences]);
+    setForm({
+      useRealDebrid: Boolean(savedToken),
+      realDebridApiToken: savedToken,
+    });
+  }, [savedToken]);
+
+  const dirty =
+    form.useRealDebrid !== Boolean(userPreferences?.realDebridApiToken) ||
+    (form.useRealDebrid &&
+      form.realDebridApiToken !==
+        (userPreferences?.realDebridApiToken ?? null));
+  useSettingsFormGuard("provider-real-debrid", dirty, "Real-Debrid connection");
 
   const handleFormSubmit: React.FormEventHandler<HTMLFormElement> = async (
     event
@@ -61,21 +70,17 @@ export function SettingsRealDebrid() {
           );
 
           return;
-        } else {
-          showSuccessToast(
-            t("real_debrid_account_linked"),
-            t("debrid_linked_message", { username: user.username })
-          );
         }
-      } else {
-        showSuccessToast(t("changes_saved"));
       }
 
-      updateUserPreferences({
+      await updateUserPreferences({
         realDebridApiToken: form.useRealDebrid ? form.realDebridApiToken : null,
       });
+      showSuccessToast(t("changes_saved"));
     } catch (err) {
-      showErrorToast(t("debrid_invalid_token"));
+      showErrorToast(
+        err instanceof Error ? err.message : t("debrid_invalid_token")
+      );
     } finally {
       setIsLoading(false);
     }
@@ -88,12 +93,6 @@ export function SettingsRealDebrid() {
       ...prev,
       useRealDebrid: updatedValue,
     }));
-
-    if (!updatedValue) {
-      updateUserPreferences({
-        realDebridApiToken: null,
-      });
-    }
   };
 
   const isButtonDisabled =
@@ -117,6 +116,7 @@ export function SettingsRealDebrid() {
       <CheckboxField
         label={t("enable_real_debrid")}
         checked={form.useRealDebrid}
+        disabled={isLoading}
         onChange={toggleRealDebrid}
       />
 
@@ -129,7 +129,7 @@ export function SettingsRealDebrid() {
             setForm({ ...form, realDebridApiToken: event.target.value })
           }
           rightContent={
-            <Button type="submit" disabled={isButtonDisabled}>
+            <Button type="submit" disabled={isButtonDisabled || !dirty}>
               {t("save_changes")}
             </Button>
           }
@@ -140,6 +140,11 @@ export function SettingsRealDebrid() {
             </Trans>
           }
         />
+      )}
+      {!form.useRealDebrid && (
+        <Button type="submit" disabled={isLoading || !dirty}>
+          {t("save_changes")}
+        </Button>
       )}
     </form>
   );

@@ -1,3 +1,8 @@
+import { useSettingsOperationGuard } from "@renderer/context/settings/settings-draft.context";
+import {
+  useSettingsDraft,
+  useSettingsFormGuard,
+} from "@renderer/context/settings/settings-draft.context";
 import "./integration-provider-section.scss";
 
 import type { UserPreferences } from "@types";
@@ -83,16 +88,22 @@ export function IntegrationProviderSection<TUser>({
     token: null,
   });
   const [isLoading, setIsLoading] = useState(false);
+  useSettingsOperationGuard(`provider-${id}`, isLoading);
   const [isTokenVisible, setIsTokenVisible] = useState(false);
   const [status, setStatus] = useState<IntegrationStatus>({ kind: "idle" });
+
+  const draft = useSettingsDraft();
+  const savedToken = userPreferences?.[tokenPreferenceKey] ?? null;
+  const dirty =
+    form.enabled !== Boolean(savedToken) ||
+    (form.enabled && form.token !== savedToken);
+  useSettingsFormGuard(`provider-${id}`, dirty, `${title} connection`);
 
   const checkboxFocusId = getIntegrationProviderCheckboxFocusId(id);
   const inputFocusId = getIntegrationProviderInputFocusId(id);
   const saveButtonFocusId = getIntegrationProviderSaveButtonFocusId(id);
 
   useEffect(() => {
-    const savedToken = userPreferences?.[tokenPreferenceKey] ?? null;
-
     setForm({
       enabled: Boolean(savedToken),
       token: savedToken,
@@ -116,10 +127,10 @@ export function IntegrationProviderSection<TUser>({
         token: savedToken,
       };
     });
-  }, [tokenPreferenceKey, userPreferences]);
+  }, [savedToken]);
 
   const persistPreference = async (token: string | null) => {
-    await globalThis.window.electron.updateUserPreferences({
+    await (draft?.commit ?? globalThis.window.electron.updateUserPreferences)({
       [tokenPreferenceKey]: token,
     });
   };
@@ -130,10 +141,6 @@ export function IntegrationProviderSection<TUser>({
       enabled,
     }));
     setStatus({ kind: "idle" });
-
-    if (!enabled) {
-      void persistPreference(null);
-    }
   };
 
   const handleTokenChange = (token: string) => {
@@ -149,7 +156,8 @@ export function IntegrationProviderSection<TUser>({
 
   const isProviderEnabled = form.enabled;
   const isTokenInputDisabled = !isProviderEnabled || isLoading;
-  const isSaveButtonDisabled = !isProviderEnabled || !form.token?.trim();
+  const isSaveButtonDisabled =
+    !dirty || (isProviderEnabled && !form.token?.trim());
 
   const checkboxNavigationOverrides = useMemo<FocusOverrides>(
     () => ({
@@ -159,9 +167,18 @@ export function IntegrationProviderSection<TUser>({
             type: "item",
             itemId: inputFocusId,
           }
-        : downTarget,
+        : dirty
+          ? { type: "item", itemId: saveButtonFocusId }
+          : downTarget,
     }),
-    [downTarget, inputFocusId, isProviderEnabled, upTarget]
+    [
+      downTarget,
+      inputFocusId,
+      isProviderEnabled,
+      upTarget,
+      dirty,
+      saveButtonFocusId,
+    ]
   );
 
   const inputNavigationOverrides = useMemo<FocusOverrides>(
@@ -199,14 +216,20 @@ export function IntegrationProviderSection<TUser>({
   ) => {
     event.preventDefault();
 
-    if (!form.enabled || !form.token?.trim()) {
+    if (form.enabled && !form.token?.trim()) {
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const user = await authenticate(form.token.trim());
+      if (!form.enabled) {
+        await persistPreference(null);
+        setStatus({ kind: "idle" });
+        showSuccessToast("Provider disconnected", SETTINGS_TOAST_OPTIONS);
+        return;
+      }
+      const user = await authenticate(form.token!.trim());
       const validationMessage = getValidationErrorMessage?.(user) ?? null;
 
       if (validationMessage) {
@@ -221,12 +244,12 @@ export function IntegrationProviderSection<TUser>({
         return;
       }
 
-      await persistPreference(form.token.trim());
+      await persistPreference(form.token!.trim());
       const identity = getSuccessIdentity(user);
       setStatus({
         kind: "success",
         identity,
-        token: form.token.trim(),
+        token: form.token!.trim(),
       });
       const successToastMessage =
         getSuccessToastMessage?.(user) ??
@@ -238,12 +261,18 @@ export function IntegrationProviderSection<TUser>({
         celebration: "confetti",
         message: successToastMessage,
       });
-    } catch {
+    } catch (error) {
       setStatus({
         kind: "error",
-        message: "Invalid API Token.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Could not save provider settings.",
       });
-      showErrorToast("Invalid API token", SETTINGS_TOAST_OPTIONS);
+      showErrorToast(
+        "Provider settings were not saved",
+        SETTINGS_TOAST_OPTIONS
+      );
     } finally {
       setIsLoading(false);
     }
@@ -278,6 +307,7 @@ export function IntegrationProviderSection<TUser>({
           <Checkbox
             id={`${id}-enabled`}
             label={checkboxLabel}
+            disabled={isLoading}
             checked={form.enabled}
             focusId={checkboxFocusId}
             navigationOverrides={checkboxNavigationOverrides}

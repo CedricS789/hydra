@@ -1,3 +1,4 @@
+import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import "./language-picker-modal.scss";
 
 import { CheckCircleIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
@@ -46,6 +47,9 @@ export function LanguagePickerModal({
   visible,
   onClose,
 }: Readonly<LanguagePickerModalProps>) {
+  const stagePreferences =
+    useSettingsDraft()?.stage ??
+    globalThis.window.electron.updateUserPreferences;
   const userPreferences = useUserPreferences();
   const { currentFocusId, setFocus } = useNavigation();
   const [searchTerm, setSearchTerm] = useState("");
@@ -174,12 +178,12 @@ export function LanguagePickerModal({
 
   const handleSelectLanguage = useCallback(
     async (localeKey: string) => {
-      await globalThis.window.electron.updateUserPreferences({
+      await stagePreferences({
         language: localeKey,
       });
       onClose();
     },
-    [onClose]
+    [onClose, stagePreferences]
   );
 
   return (

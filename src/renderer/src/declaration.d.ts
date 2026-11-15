@@ -187,6 +187,20 @@ declare global {
   };
 
   interface Electron {
+    openSourceBrowser: (
+      request: import("../../types/source-browser.types").SourceBrowserRequest
+    ) => Promise<import("@types").GameRepack | null>;
+    getSourceWebsiteProfiles: () => Promise<
+      Record<
+        string,
+        import("../../types/source-browser.types").SourceWebsiteProfile
+      >
+    >;
+    saveSourceWebsiteProfile: (
+      id: string,
+      profile: import("../../types/source-browser.types").SourceWebsiteProfile
+    ) => Promise<void>;
+    clearSourceWebsiteData: (id: string) => Promise<void>;
     getLudusaviLocalState: () => Promise<import("@types").LudusaviLocalState>;
     saveLudusaviLocalSettings: (
       settings: import("@types").LudusaviLocalSettings
@@ -1164,6 +1178,10 @@ declare global {
     onScreenshotInputStatusChange: (
       cb: (status: ScreenshotInputStatus) => void
     ) => () => Electron.IpcRenderer;
+    confirmSettingsChanges: (
+      kind: "save" | "discard",
+      changes: string[]
+    ) => Promise<boolean>;
     autoLaunch: (autoLaunchProps: {
       enabled: boolean;
       minimized: boolean;

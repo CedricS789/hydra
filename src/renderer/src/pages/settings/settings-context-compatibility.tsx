@@ -1,3 +1,4 @@
+import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import { useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GAMEMODE_SITE_URL, MANGOHUD_SITE_URL } from "@shared";
@@ -24,12 +25,16 @@ let lastKnownCanInstallCommonRedist = false;
 export function SettingsContextCompatibility() {
   const { t } = useTranslation("settings");
   const { t: tGameDetails } = useTranslation("game_details");
-  const { updateUserPreferences } = useContext(settingsContext);
+  const draft = useSettingsDraft();
+  const { updateUserPreferences: commitUserPreferences } =
+    useContext(settingsContext);
+  const updateUserPreferences = draft?.stage ?? commitUserPreferences;
   const shouldShowCommonRedist = window.electron.platform === "win32";
 
-  const userPreferences = useAppSelector(
+  const savedPreferences = useAppSelector(
     (state) => state.userPreferences.value
   );
+  const userPreferences = draft?.preferences ?? savedPreferences;
 
   const [canInstallCommonRedist, setCanInstallCommonRedist] = useState(
     () => lastKnownCanInstallCommonRedist
@@ -137,7 +142,7 @@ export function SettingsContextCompatibility() {
         setDefaultWinePrefixBasePath("");
         setDefaultWinePrefixPath(userPreferences?.defaultWinePrefixPath ?? "");
       });
-  }, []);
+  }, [userPreferences?.defaultWinePrefixPath]);
 
   useEffect(() => {
     if (window.electron.platform !== "linux") return;

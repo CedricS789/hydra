@@ -1,6 +1,7 @@
+import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import "./behavior-section.scss";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Checkbox, VerticalFocusGroup } from "../../components";
 import type { FocusOverrides } from "../../services";
@@ -58,6 +59,9 @@ const buildForm = (preferences: UserPreferences | null): BehaviorForm =>
     : DEFAULT_FORM;
 
 export function BehaviorSection({ className }: Readonly<BehaviorSectionProps>) {
+  const stagePreferences =
+    useSettingsDraft()?.stage ??
+    globalThis.window.electron.updateUserPreferences;
   const userPreferences = useUserPreferences();
   const showRunAtStartup = !globalThis.window.electron.isPortableVersion;
   const [form, setForm] = useState<BehaviorForm>(() =>
@@ -72,19 +76,18 @@ export function BehaviorSection({ className }: Readonly<BehaviorSectionProps>) {
 
   const isLinux = globalThis.window.electron.platform === "linux";
 
-  const updateUserPreferences = async (
-    values: Partial<BehaviorForm>,
-    autoLaunchOptions?: { enabled: boolean; minimized: boolean }
-  ) => {
-    const nextForm = { ...form, ...values };
-    setForm(nextForm);
+  const updateUserPreferences = useCallback(
+    async (
+      values: Partial<BehaviorForm>,
+      _autoLaunchOptions?: { enabled: boolean; minimized: boolean }
+    ) => {
+      const nextForm = { ...form, ...values };
+      setForm(nextForm);
 
-    await globalThis.window.electron.updateUserPreferences(values);
-
-    if (autoLaunchOptions) {
-      globalThis.window.electron.autoLaunch(autoLaunchOptions);
-    }
-  };
+      await stagePreferences(values);
+    },
+    [form, stagePreferences]
+  );
 
   const items = useMemo<BehaviorItem[]>(() => {
     const baseItems: BehaviorItem[] = [
@@ -165,7 +168,17 @@ export function BehaviorSection({ className }: Readonly<BehaviorSectionProps>) {
     ];
 
     return baseItems;
-  }, [form, isLinux, showRunAtStartup]);
+  }, [
+    form.enableAutoInstall,
+    form.hideToTrayOnGameStart,
+    form.launchToLibraryPage,
+    form.preferQuitInsteadOfHiding,
+    form.runAtStartup,
+    form.startMinimized,
+    isLinux,
+    showRunAtStartup,
+    updateUserPreferences,
+  ]);
 
   const navigationOverridesByFocusId = useMemo<
     Record<string, FocusOverrides>

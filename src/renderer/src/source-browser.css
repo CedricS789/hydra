@@ -1,0 +1,137 @@
+:root {
+  color-scheme: dark;
+  font:
+    13px/1.5 system-ui,
+    sans-serif;
+  color: #e5e7eb;
+  background: #141414;
+}
+* {
+  box-sizing: border-box;
+}
+[hidden] {
+  display: none !important;
+}
+body {
+  margin: 0;
+}
+header {
+  height: 146px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #383838;
+}
+header strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 10px;
+}
+.navigation,
+#navigate,
+#add {
+  display: flex;
+  gap: 7px;
+}
+#navigate {
+  flex: 1;
+}
+#navigate input,
+#add input {
+  min-width: 0;
+  flex: 1;
+}
+button,
+input,
+select {
+  font: inherit;
+  border: 1px solid #454545;
+  border-radius: 6px;
+  background: #222;
+  color: #eee;
+  padding: 8px 10px;
+}
+button {
+  cursor: pointer;
+  white-space: nowrap;
+}
+button:hover {
+  background: #343434;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 2px solid #e5bb48;
+  outline-offset: 2px;
+}
+#status,
+aside > p {
+  color: #afb4bd;
+  font-size: 12px;
+}
+aside {
+  position: absolute;
+  right: 0;
+  top: 146px;
+  bottom: 0;
+  width: 390px;
+  padding: 16px;
+  overflow: auto;
+  border-left: 1px solid #383838;
+}
+aside h2 {
+  font-size: 15px;
+}
+form label {
+  display: block;
+  margin: 12px 0;
+}
+form label > input:not([type="checkbox"]),
+form label > select {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+}
+.ack {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+details {
+  padding: 12px;
+  border: 1px solid #414141;
+  border-radius: 6px;
+}
+summary {
+  cursor: pointer;
+}
+#error {
+  color: #ff9990;
+  overflow-wrap: anywhere;
+}
+#status.source-browser-error {
+  color: #ff9990;
+}
+#links {
+  padding-left: 22px;
+}
+#links li {
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+#links span {
+  display: block;
+  margin-bottom: 6px;
+}
+#links button {
+  margin-right: 6px;
+  padding: 4px 7px;
+}
+#review-button {
+  width: 100%;
+}

@@ -1,3 +1,4 @@
+import { useSettingsOperationGuard } from "@renderer/context/settings/settings-draft.context";
 import { useContext, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, CheckboxField, TextField } from "@renderer/components";
@@ -14,6 +15,7 @@ export function SettingsDirectTorrents({ children }: { children: ReactNode }) {
   const [acknowledged, setAcknowledged] = useState(false);
   const [confirmation, setConfirmation] = useState("");
   const [working, setWorking] = useState(false);
+  useSettingsOperationGuard("settings-direct-torrents", working);
   const [error, setError] = useState("");
   const changeAccess = async (allow: boolean) => {
     setWorking(true);

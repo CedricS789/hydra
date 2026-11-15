@@ -1060,6 +1060,8 @@ contextBridge.exposeInMainWorld("electron", {
   },
   autoLaunch: (autoLaunchProps: { enabled: boolean; minimized: boolean }) =>
     ipcRenderer.invoke("autoLaunch", autoLaunchProps),
+  confirmSettingsChanges: (kind: "save" | "discard", changes: string[]) =>
+    ipcRenderer.invoke("confirmSettingsChanges", kind, changes),
   authenticateRealDebrid: (apiToken: string) =>
     ipcRenderer.invoke("authenticateRealDebrid", apiToken),
   authenticatePremiumize: (apiToken: string) =>
@@ -1738,6 +1740,17 @@ contextBridge.exposeInMainWorld("electron", {
   isStaging: () => ipcRenderer.invoke("isStaging"),
   isPortableVersion: Boolean(process.env.PORTABLE_EXECUTABLE_FILE),
   openExternal: (src: string) => ipcRenderer.invoke("openExternal", src),
+  openSourceBrowser: (
+    request: import("../types/source-browser.types").SourceBrowserRequest
+  ) => ipcRenderer.invoke("openSourceBrowser", request),
+  getSourceWebsiteProfiles: () =>
+    ipcRenderer.invoke("getSourceWebsiteProfiles"),
+  saveSourceWebsiteProfile: (
+    id: string,
+    profile: import("../types/source-browser.types").SourceWebsiteProfile
+  ) => ipcRenderer.invoke("saveSourceWebsiteProfile", id, profile),
+  clearSourceWebsiteData: (id: string) =>
+    ipcRenderer.invoke("clearSourceWebsiteData", id),
   openCheckout: (options?: OpenCheckoutOptions) =>
     ipcRenderer.invoke("openCheckout", options),
   notifyCloudGiftResolved: (giftId: string) =>

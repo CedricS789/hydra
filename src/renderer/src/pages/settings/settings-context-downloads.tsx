@@ -1,3 +1,7 @@
+import {
+  useSettingsDraft,
+  useSettingsFormGuard,
+} from "@renderer/context/settings/settings-draft.context";
 import { useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -37,11 +41,15 @@ const buildForm = (preferences: UserPreferences | null) => ({
 
 export function SettingsContextDownloads() {
   const { t } = useTranslation("settings");
-  const { updateUserPreferences } = useContext(settingsContext);
+  const draft = useSettingsDraft();
+  const { updateUserPreferences: commitUserPreferences } =
+    useContext(settingsContext);
+  const updateUserPreferences = draft?.stage ?? commitUserPreferences;
 
-  const userPreferences = useAppSelector(
+  const savedPreferences = useAppSelector(
     (state) => state.userPreferences.value
   );
+  const userPreferences = draft?.preferences ?? savedPreferences;
 
   const parseLimitInputToBytesPerSecond = (
     value: string,
@@ -51,9 +59,9 @@ export function SettingsContextDownloads() {
 
     if (!trimmed) return null;
 
-    const parsed = Number.parseFloat(trimmed);
-    if (Number.isNaN(parsed)) return undefined;
-    if (parsed <= 0) return null;
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed) || parsed < 0) return undefined;
+    if (parsed === 0) return null;
 
     return useMegabytes
       ? Math.floor(parsed * 1024 * 1024)
@@ -61,12 +69,24 @@ export function SettingsContextDownloads() {
   };
 
   const [form, setForm] = useState(() => buildForm(userPreferences));
+  const [speedEditing, setSpeedEditing] = useState(false);
+  const [speedError, setSpeedError] = useState("");
+  useSettingsFormGuard(
+    "download-speed",
+    Boolean(speedError),
+    "Invalid download speed limit (correct the value)"
+  );
 
   useEffect(() => {
     if (!userPreferences) return;
 
-    setForm(buildForm(userPreferences));
-  }, [userPreferences]);
+    setForm((previous) => ({
+      ...buildForm(userPreferences),
+      ...(speedEditing
+        ? { maxDownloadSpeedMegabytes: previous.maxDownloadSpeedMegabytes }
+        : {}),
+    }));
+  }, [userPreferences, speedEditing]);
 
   const handleChange = (values: Partial<typeof form>) => {
     setForm((prev) => ({ ...prev, ...values }));
@@ -80,10 +100,13 @@ export function SettingsContextDownloads() {
     );
 
     if (parsedBytesPerSecond === undefined) {
-      setForm((prev) => ({ ...prev, maxDownloadSpeedMegabytes: "" }));
-      updateUserPreferences({ maxDownloadSpeedBytesPerSecond: null });
+      setSpeedError(
+        "Enter a valid non-negative download limit, or leave it empty for unlimited speed."
+      );
       return;
     }
+    setSpeedError("");
+    setSpeedEditing(false);
 
     if (parsedBytesPerSecond === null) {
       setForm((prev) => ({ ...prev, maxDownloadSpeedMegabytes: "" }));
@@ -143,14 +166,30 @@ export function SettingsContextDownloads() {
           })}
           value={form.maxDownloadSpeedMegabytes}
           onChange={(event) => {
+            const value = event.target.value;
             setForm((prev) => ({
               ...prev,
-              maxDownloadSpeedMegabytes: event.target.value,
+              maxDownloadSpeedMegabytes: value,
             }));
+            const parsed = parseLimitInputToBytesPerSecond(
+              value,
+              form.showDownloadSpeedInMegabytes
+            );
+            setSpeedError(
+              parsed === undefined
+                ? "Enter a valid non-negative download limit."
+                : ""
+            );
+            if (parsed !== undefined)
+              void updateUserPreferences({
+                maxDownloadSpeedBytesPerSecond: parsed,
+              });
           }}
+          onFocus={() => setSpeedEditing(true)}
           onBlur={handleMaxDownloadSpeedBlur}
           placeholder={t("max_download_speed_unlimited")}
         />
+        {speedError && <p role="alert">{speedError}</p>}
 
         <CheckboxField
           label={t("extract_files_by_default")}

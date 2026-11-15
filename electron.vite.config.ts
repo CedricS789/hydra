@@ -7,6 +7,7 @@ import {
 } from "electron-vite";
 import JavaScriptObfuscator from "javascript-obfuscator";
 import { randomInt } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { resolve } from "path";
 import { transformWithEsbuild, type Plugin } from "vite";
 import svgr from "vite-plugin-svgr";
@@ -96,6 +97,19 @@ export default defineConfig(({ mode }) => {
         minify,
       },
       plugins: [
+        {
+          name: "source-browser-preload",
+          generateBundle() {
+            this.emitFile({
+              type: "asset",
+              fileName: "source-browser.cjs",
+              source: readFileSync(
+                resolve("src/preload/source-browser.cjs"),
+                "utf8"
+              ),
+            });
+          },
+        },
         externalizeDepsPlugin(),
         ...(isProduction ? [obfuscate()] : []),
       ],
@@ -126,6 +140,12 @@ export default defineConfig(({ mode }) => {
       build: {
         minify,
         sourcemap,
+        rollupOptions: {
+          input: {
+            index: resolve("src/renderer/index.html"),
+            "source-browser": resolve("src/renderer/source-browser.html"),
+          },
+        },
       },
       esbuild: {
         keepNames: !isProduction,

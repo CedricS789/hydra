@@ -1,3 +1,4 @@
+import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import "./compatibility.scss";
 
 import type { ProtonVersion, UserPreferences } from "@types";
@@ -87,6 +88,9 @@ function getProtonSourceDescription(version: ProtonVersion | null) {
 export function CompatibilitySettingsSection({
   className,
 }: Readonly<SettingsSectionProps>) {
+  const stagePreferences =
+    useSettingsDraft()?.stage ??
+    globalThis.window.electron.updateUserPreferences;
   const userPreferences = useUserPreferences();
   const { showSuccessToast } = useBigPictureToast();
   const [form, setForm] = useState<CompatibilityForm>(() =>
@@ -213,9 +217,9 @@ export function CompatibilitySettingsSection({
             : (values.defaultProtonPath ?? ""),
       }));
 
-      await globalThis.window.electron.updateUserPreferences(values);
+      await stagePreferences(values);
     },
-    []
+    [stagePreferences]
   );
 
   const handleInstallCommonRedist = useCallback(async () => {
@@ -424,21 +428,22 @@ export function CompatibilitySettingsSection({
 
     return nextItems;
   }, [
-    canInstallCommonRedist,
-    canUseBehaviorSection,
-    canUseCommonRedistSection,
+    shouldRenderProtonSection,
+    shouldRenderBehaviorSection,
+    shouldRenderCommonRedistSection,
+    protonOptions,
+    form.defaultProtonPath,
     form.autoRunGamemode,
     form.autoRunMangohud,
-    form.defaultProtonPath,
-    gamemodeAvailable,
-    handleInstallCommonRedist,
-    installingCommonRedist,
-    mangohudAvailable,
-    protonOptions,
-    shouldRenderCommonRedistSection,
-    shouldRenderBehaviorSection,
-    shouldRenderProtonSection,
     updateCompatibilityPreferences,
+    canUseBehaviorSection,
+    gamemodeAvailable,
+    mangohudAvailable,
+    handleOpenExternalLink,
+    canUseCommonRedistSection,
+    canInstallCommonRedist,
+    installingCommonRedist,
+    handleInstallCommonRedist,
   ]);
 
   const activeItems = useMemo(

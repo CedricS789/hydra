@@ -1,6 +1,11 @@
 import ReactDOM from "react-dom/client";
 import { StrictMode } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import {
+  createBrowserRouter,
+  createRoutesFromElements,
+  RouterProvider,
+  Route,
+} from "react-router-dom";
 import App from "./app";
 import Catalogue from "./pages/catalogue/catalogue";
 import ComponentLab from "./pages/component-lab/component-lab";
@@ -21,25 +26,29 @@ if (!rootElement) {
 
 await initializeBigPictureI18n();
 
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <>
+      <Route path="/" element={<App />}>
+        <Route index element={<Home />} />
+        <Route path="catalogue" element={<Catalogue />} />
+        <Route path="component-lab" element={<ComponentLab />} />
+        <Route path="downloads" element={<Downloads />} />
+        <Route path="settings" element={<Settings />} />
+        <Route path="library" element={<LibraryPage />} />
+        <Route path="profile/:userId?" element={<Profile />} />
+        <Route path="game/:shop/:objectId" element={<Game />} />
+        <Route
+          path="game/:shop/:objectId/achievements"
+          element={<GameAchievements />}
+        />
+      </Route>
+    </>
+  )
+);
+
 ReactDOM.createRoot(rootElement).render(
   <StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<App />}>
-          <Route index element={<Home />} />
-          <Route path="catalogue" element={<Catalogue />} />
-          <Route path="component-lab" element={<ComponentLab />} />
-          <Route path="downloads" element={<Downloads />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="library" element={<LibraryPage />} />
-          <Route path="profile/:userId?" element={<Profile />} />
-          <Route path="game/:shop/:objectId" element={<Game />} />
-          <Route
-            path="game/:shop/:objectId/achievements"
-            element={<GameAchievements />}
-          />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <RouterProvider router={router} />
   </StrictMode>
 );

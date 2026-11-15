@@ -1,3 +1,4 @@
+import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import "./download-directories-section.scss";
 
 import type { DiskUsage, UserPreferences } from "@types";
@@ -298,22 +299,28 @@ function openDirectoryMenuFromElement(
   });
 }
 
-function persistDownloadDirectoryPreferences(
-  nextPreferences: Pick<
-    UserPreferences,
-    "downloadsPath" | "downloadDirectories" | "optionalDownloadsPaths"
-  >
-) {
-  return globalThis.window.electron.updateUserPreferences({
-    downloadsPath: nextPreferences.downloadsPath,
-    downloadDirectories: nextPreferences.downloadDirectories,
-    optionalDownloadsPaths: nextPreferences.optionalDownloadsPaths,
-  });
-}
-
 export function DownloadDirectoriesSection({
   className,
 }: Readonly<DownloadDirectoriesSectionProps>) {
+  const stagePreferences =
+    useSettingsDraft()?.stage ??
+    globalThis.window.electron.updateUserPreferences;
+  const persistDownloadDirectoryPreferences = useCallback(
+    function (
+      nextPreferences: Pick<
+        UserPreferences,
+        "downloadsPath" | "downloadDirectories" | "optionalDownloadsPaths"
+      >
+    ) {
+      return stagePreferences({
+        downloadsPath: nextPreferences.downloadsPath,
+        downloadDirectories: nextPreferences.downloadDirectories,
+        optionalDownloadsPaths: nextPreferences.optionalDownloadsPaths,
+      });
+    },
+    [stagePreferences]
+  );
+
   const { t } = useTranslation("big_picture");
   const userPreferences = useUserPreferences();
   const [defaultDownloadsPath, setDefaultDownloadsPath] = useState("");
@@ -472,7 +479,7 @@ export function DownloadDirectoriesSection({
 
       await persistDownloadDirectoryPreferences(nextPreferences);
     },
-    [defaultDownloadsPath, userPreferences]
+    [defaultDownloadsPath, persistDownloadDirectoryPreferences, userPreferences]
   );
 
   const handleAddDirectory = useCallback(async () => {
@@ -497,7 +504,7 @@ export function DownloadDirectoriesSection({
 
       await persistDownloadDirectoryPreferences(nextPreferences);
     },
-    [defaultDownloadsPath, userPreferences]
+    [defaultDownloadsPath, persistDownloadDirectoryPreferences, userPreferences]
   );
 
   const handleFilePickerClose = useCallback(() => {
@@ -517,7 +524,7 @@ export function DownloadDirectoriesSection({
       setDirectoryMenu(null);
       await persistDownloadDirectoryPreferences(nextPreferences);
     },
-    [defaultDownloadsPath, userPreferences]
+    [defaultDownloadsPath, persistDownloadDirectoryPreferences, userPreferences]
   );
 
   const menuItems = useMemo<Array<ContextMenuItem>>(() => {

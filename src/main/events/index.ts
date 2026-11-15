@@ -10,6 +10,7 @@ import {
 
 import "./auth";
 import "./local-edition";
+import "./source-browser";
 import "./autoupdater";
 import "./big-picture";
 import "./catalogue";

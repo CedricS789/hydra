@@ -1,3 +1,5 @@
+import { useSettingsOperationGuard } from "@renderer/context/settings/settings-draft.context";
+import { useSettingsFormGuard } from "@renderer/context/settings/settings-draft.context";
 import { useContext, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
@@ -24,6 +26,7 @@ export function SettingsTorBox() {
   const { updateUserPreferences } = useContext(settingsContext);
 
   const [isLoading, setIsLoading] = useState(false);
+  useSettingsOperationGuard("settings-torbox", isLoading);
   const [form, setForm] = useState(() => ({
     useTorBox: Boolean(userPreferences?.torBoxApiToken),
     torBoxApiToken: userPreferences?.torBoxApiToken ?? null,
@@ -33,14 +36,16 @@ export function SettingsTorBox() {
 
   const { t } = useTranslation("settings");
 
+  const savedToken = userPreferences?.torBoxApiToken ?? null;
   useEffect(() => {
-    if (userPreferences) {
-      setForm({
-        useTorBox: Boolean(userPreferences.torBoxApiToken),
-        torBoxApiToken: userPreferences.torBoxApiToken ?? null,
-      });
-    }
-  }, [userPreferences]);
+    setForm({ useTorBox: Boolean(savedToken), torBoxApiToken: savedToken });
+  }, [savedToken]);
+
+  const dirty =
+    form.useTorBox !== Boolean(userPreferences?.torBoxApiToken) ||
+    (form.useTorBox &&
+      form.torBoxApiToken !== (userPreferences?.torBoxApiToken ?? null));
+  useSettingsFormGuard("provider-torbox", dirty, "TorBox connection");
 
   const handleFormSubmit: React.FormEventHandler<HTMLFormElement> = async (
     event
@@ -50,23 +55,17 @@ export function SettingsTorBox() {
 
     try {
       if (form.useTorBox) {
-        const user = await window.electron.authenticateTorBox(
-          form.torBoxApiToken!
-        );
-
-        showSuccessToast(
-          t("torbox_account_linked"),
-          t("debrid_linked_message", { username: user.email })
-        );
-      } else {
-        showSuccessToast(t("changes_saved"));
+        await window.electron.authenticateTorBox(form.torBoxApiToken!);
       }
 
-      updateUserPreferences({
+      await updateUserPreferences({
         torBoxApiToken: form.useTorBox ? form.torBoxApiToken : null,
       });
+      showSuccessToast(t("changes_saved"));
     } catch (err) {
-      showErrorToast(t("debrid_invalid_token"));
+      showErrorToast(
+        err instanceof Error ? err.message : t("debrid_invalid_token")
+      );
     } finally {
       setIsLoading(false);
     }
@@ -82,12 +81,6 @@ export function SettingsTorBox() {
       ...prev,
       useTorBox: updatedValue,
     }));
-
-    if (!updatedValue) {
-      updateUserPreferences({
-        torBoxApiToken: null,
-      });
-    }
   };
 
   return (
@@ -105,6 +98,7 @@ export function SettingsTorBox() {
       <CheckboxField
         label={t("enable_torbox")}
         checked={form.useTorBox}
+        disabled={isLoading}
         onChange={toggleTorBox}
       />
 
@@ -118,7 +112,7 @@ export function SettingsTorBox() {
           }
           placeholder={t("api_token")}
           rightContent={
-            <Button type="submit" disabled={isButtonDisabled}>
+            <Button type="submit" disabled={isButtonDisabled || !dirty}>
               {t("save_changes")}
             </Button>
           }
@@ -128,6 +122,11 @@ export function SettingsTorBox() {
             </Trans>
           }
         />
+      )}
+      {!form.useTorBox && (
+        <Button type="submit" disabled={isLoading || !dirty}>
+          {t("save_changes")}
+        </Button>
       )}
     </form>
   );

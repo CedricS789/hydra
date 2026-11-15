@@ -27,7 +27,9 @@ import {
   type DownloadOptionsSortBy,
 } from "../../../helpers";
 import { SourceAnchor } from "../../common/source-anchor";
-import { DownloadSourceOption } from "../../common/download-source-option";
+import { BigPictureReleaseDownloadOption } from "./release-download-option";
+import { SourceWebsiteSearch } from "@renderer/components/source-website-search";
+import { getDownloadOptionInteraction } from "../../../../../shared/download-option-interaction";
 import { SteamDownloadOption } from "../../common/download-source-option/steam-download-option";
 import { canDownloadOnSteam, isSteamImportedGame } from "@renderer/helpers";
 import { useIsNonSteamExecutable } from "@renderer/hooks/use-non-steam-executable";
@@ -105,6 +107,7 @@ interface SteamDownloadOptionData {
 }
 
 interface DownloadGameSourceListProps {
+  game: DownloadGameModalProps["game"];
   onClose: () => void;
   steamOption: SteamDownloadOptionData | null;
   epicOption: SteamDownloadOptionData | null;
@@ -818,6 +821,7 @@ function DownloadGameModalSession({
   const renderSourceListStep = useCallback(
     () => (
       <DownloadGameSourceList
+        game={game}
         onClose={onClose}
         steamOption={steamOption}
         epicOption={epicOption}
@@ -837,6 +841,7 @@ function DownloadGameModalSession({
     ),
     [
       downloadOptions,
+      game,
       emptyStateReason,
       handleNextStep,
       handleToggleSource,
@@ -998,6 +1003,7 @@ function DownloadGameModalSession({
 }
 
 function DownloadGameSourceList({
+  game,
   onClose,
   steamOption,
   epicOption,
@@ -1014,6 +1020,7 @@ function DownloadGameSourceList({
   selectedSortOption,
   onSelectedSortOptionChange,
 }: Readonly<DownloadGameSourceListProps>) {
+  const sourceBrowserPreferences = useUserPreferences();
   const { t } = useTranslation("big_picture");
   const navigate = useNavigate();
   const currentFocusId = useNavigationStore((state) => state.currentFocusId);
@@ -1354,6 +1361,23 @@ function DownloadGameSourceList({
                 />
               ))}
 
+            {!isSourceListLoading &&
+              (showStructuralEmptyState || showSearchEmptyState) && (
+                <SourceWebsiteSearch
+                  enabled={
+                    sourceBrowserPreferences?.enableSourceBrowser !== false
+                  }
+                  shop={game.shop}
+                  objectId={game.objectId}
+                  gameTitle={game.title}
+                  onReview={onSelectOption}
+                  renderButton={({ id, label, ...props }) => (
+                    <Button key={id} focusId={`empty-${id}`} {...props}>
+                      {label}
+                    </Button>
+                  )}
+                />
+              )}
             {showStructuralEmptyState && (
               <EmptyState
                 className="download-game-modal__source-list-empty-state"
@@ -1428,8 +1452,20 @@ function DownloadGameSourceList({
 
             {showDownloadOptions &&
               sortedDownloadOptions.map((option, index) => (
-                <DownloadSourceOption
+                <BigPictureReleaseDownloadOption
                   key={option.id}
+                  mode={getDownloadOptionInteraction(sourceBrowserPreferences)}
+                  browsingEnabled={
+                    sourceBrowserPreferences?.enableSourceBrowser !== false
+                  }
+                  request={{
+                    shop: game.shop,
+                    objectId: game.objectId,
+                    gameTitle: game.title,
+                    repack: option,
+                  }}
+                  onDownload={() => onSelectOption(option)}
+                  onReview={onSelectOption}
                   option={
                     localDownloadSourceNameById.has(option.downloadSourceId)
                       ? {
@@ -1452,7 +1488,6 @@ function DownloadGameSourceList({
                         }
                       : undefined
                   }
-                  onSelect={() => onSelectOption(option)}
                 />
               ))}
           </motion.div>
@@ -1691,6 +1726,12 @@ function DownloadGameOptions({
       automaticallyExtract: automaticExtractionEnabled,
       automaticallyDeleteArchiveFiles: deleteArchiveFilesAfterExtraction,
       fileSize: option.fileSize,
+      repackTitle: option.title,
+      downloadSourceName: option.downloadSourceName,
+      repackFileSize: option.fileSize,
+      uploadDate: option.uploadDate,
+      sourcePageUrl: option.sourcePageUrl,
+      downloadSourceId: option.downloadSourceId,
     } as const;
 
     setIsSubmitting(true);

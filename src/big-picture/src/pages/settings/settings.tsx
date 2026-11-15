@@ -1,3 +1,9 @@
+import {
+  SettingsDraftProvider,
+  useSettingsDraft,
+  type SettingsSaveActionsProps,
+} from "@renderer/context/settings/settings-draft.context";
+import "@renderer/pages/settings/settings.scss";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
@@ -8,6 +14,8 @@ import {
 
 import {
   BumperBadge,
+  Button,
+  HorizontalFocusGroup,
   Tabs,
   type TabsItem,
   VerticalFocusGroup,
@@ -176,10 +184,68 @@ function SettingsTabPanel({
 }
 
 export default function Settings() {
+  return (
+    <SettingsDraftProvider
+      renderActions={(actions) => <SaveActions {...actions} />}
+    >
+      <SettingsContent />
+    </SettingsDraftProvider>
+  );
+}
+
+function SaveActions({
+  dirty,
+  canSave,
+  busy,
+  save,
+  discard,
+}: SettingsSaveActionsProps) {
+  const { onButtonPressed, isActiveGamepadEvent } = useGamepad();
+  const keyboardTarget = useVirtualKeyboardStore((state) => state.target);
+  useEffect(
+    () =>
+      onButtonPressed(GamepadButtonType.START, (event) => {
+        if (isActiveGamepadEvent(event) && !keyboardTarget && canSave && !busy)
+          save();
+      }),
+    [onButtonPressed, isActiveGamepadEvent, keyboardTarget, canSave, busy, save]
+  );
+  return (
+    <HorizontalFocusGroup regionId="settings-save-actions">
+      <Button
+        variant="secondary"
+        disabled={!dirty || busy}
+        focusId="settings-discard"
+        onClick={discard}
+      >
+        Discard edits
+      </Button>
+      <Button
+        disabled={!canSave || busy}
+        focusId="settings-save"
+        onClick={save}
+      >
+        {busy ? "Please wait…" : "Save changes (Start)"}
+      </Button>
+    </HorizontalFocusGroup>
+  );
+}
+
+function SettingsContent() {
+  const draft = useSettingsDraft();
+
   const { userDetails } = useUserDetails();
   const { search } = useLocation();
   const [selectedTab, setSelectedTab] = useState<SettingsTabId>(
     getSettingsTabFromSearch(search) ?? ALL_SETTINGS_TABS[0].id
+  );
+  const guardNavigation = draft?.guardNavigation;
+  const selectTab = useCallback(
+    (tab: SettingsTabId) => {
+      if (tab !== selectedTab)
+        void guardNavigation?.(() => setSelectedTab(tab));
+    },
+    [selectedTab, guardNavigation]
   );
   const { onButtonPressed, isActiveGamepadEvent } = useGamepad();
   const virtualKeyboardTarget = useVirtualKeyboardStore(
@@ -236,10 +302,10 @@ export default function Settings() {
 
       if (!nextTab || nextTab.id === selectedTab) return false;
 
-      setSelectedTab(nextTab.id);
+      selectTab(nextTab.id);
       return true;
     },
-    [selectedTab, visibleTabs]
+    [selectTab, selectedTab, visibleTabs]
   );
 
   useEffect(() => {
@@ -392,7 +458,7 @@ export default function Settings() {
               className="settings-page__tabs"
               items={tabItems}
               value={selectedTab}
-              onValueChange={setSelectedTab}
+              onValueChange={selectTab}
               variant="settings"
               ariaLabel="Settings categories"
               beforeTabs={<BumperBadge label="LB" />}
@@ -406,7 +472,10 @@ export default function Settings() {
                 selectedTab={selectedTab}
                 initialFocusTarget={initialFocusTarget}
               >
-                <SelectedTabContent className="settings-page__copy" />
+                <SelectedTabContent
+                  key={draft?.revision}
+                  className="settings-page__copy"
+                />
               </SettingsTabPanel>
             </AnimatePresence>
           </section>

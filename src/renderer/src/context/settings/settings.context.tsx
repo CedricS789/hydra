@@ -7,6 +7,7 @@ import type { UserBlocks, UserPreferences } from "@types";
 import { useSearchParams } from "react-router-dom";
 
 import { SETTINGS_CATEGORY_STORAGE_KEY } from "@renderer/session-state";
+import { useSettingsDraft } from "./settings-draft.context";
 
 export type SettingsCategoryId =
   | "local_backups"
@@ -100,6 +101,7 @@ export function SettingsContextProvider({
   children,
 }: Readonly<SettingsContextProviderProps>) {
   const dispatch = useAppDispatch();
+  const draft = useSettingsDraft();
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [appearance, setAppearance] = useState<{
     theme: string | null;
@@ -203,6 +205,7 @@ export function SettingsContextProvider({
     values: Partial<UserPreferences>,
     directTorrentConfirmation?: string
   ) => {
+    if (draft) return draft.commit(values, directTorrentConfirmation);
     await window.electron.updateUserPreferences(
       values,
       directTorrentConfirmation
@@ -218,7 +221,14 @@ export function SettingsContextProvider({
     <Provider
       value={{
         updateUserPreferences,
-        setCurrentCategoryId,
+        setCurrentCategoryId: (next) => {
+          const category =
+            typeof next === "function" ? next(currentCategoryId) : next;
+          if (category === currentCategoryId) return;
+          if (draft)
+            void draft.guardNavigation(() => setCurrentCategoryId(category));
+          else setCurrentCategoryId(category);
+        },
         clearSourceUrl,
         fetchBlockedUsers,
         clearTheme,

@@ -1,3 +1,4 @@
+import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import "./screenshots-section.scss";
 
 import {
@@ -409,6 +410,9 @@ interface ScreenshotSettingsSectionProps {
 export function ScreenshotSettingsSection({
   upTarget,
 }: Readonly<ScreenshotSettingsSectionProps>) {
+  const stagePreferences =
+    useSettingsDraft()?.stage ??
+    globalThis.window.electron.updateUserPreferences;
   const { t } = useTranslation("big_picture");
   const userPreferences = useUserPreferences();
   const { showErrorToast } = useBigPictureToast();
@@ -450,7 +454,7 @@ export function ScreenshotSettingsSection({
       setOverrides((current) => ({ ...current, ...values }));
 
       try {
-        await globalThis.window.electron.updateUserPreferences(values);
+        await stagePreferences(values);
       } catch (error) {
         logger.error("Failed to save screenshot preferences", error);
         setOverrides((current) =>
@@ -461,7 +465,7 @@ export function ScreenshotSettingsSection({
         });
       }
     },
-    [showErrorToast, t]
+    [showErrorToast, t, stagePreferences]
   );
 
   const handleRecorded = useCallback(
@@ -503,7 +507,7 @@ export function ScreenshotSettingsSection({
       const selectedPath = result.filePaths[0];
       if (result.canceled || !selectedPath) return;
 
-      await globalThis.window.electron.updateUserPreferences({
+      await stagePreferences({
         screenshotsFolderPath: selectedPath,
       });
     } catch (error) {
@@ -515,7 +519,7 @@ export function ScreenshotSettingsSection({
 
   const resetFolder = async () => {
     try {
-      await globalThis.window.electron.updateUserPreferences({
+      await stagePreferences({
         screenshotsFolderPath: undefined,
       });
     } catch (error) {

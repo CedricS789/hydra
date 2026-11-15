@@ -1,3 +1,4 @@
+import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -23,11 +24,15 @@ const buildForm = (preferences: UserPreferences | null) => ({
 
 export function SettingsContextBigPicture() {
   const { t } = useTranslation("settings");
-  const { updateUserPreferences } = useContext(settingsContext);
+  const draft = useSettingsDraft();
+  const { updateUserPreferences: commitUserPreferences } =
+    useContext(settingsContext);
+  const updateUserPreferences = draft?.stage ?? commitUserPreferences;
 
-  const userPreferences = useAppSelector(
+  const savedPreferences = useAppSelector(
     (state) => state.userPreferences.value
   );
+  const userPreferences = draft?.preferences ?? savedPreferences;
 
   const [form, setForm] = useState(() => buildForm(userPreferences));
 

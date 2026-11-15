@@ -125,6 +125,8 @@ export interface DownloadFile {
 }
 
 export interface Download {
+  downloadSourceId?: string | null;
+  sourcePageUrl?: string | null;
   epic?: EpicDownloadMetadata;
   shop: GameShop;
   objectId: string;
@@ -283,6 +285,8 @@ export interface UserPreferences {
   hideCommunityScreenshots?: boolean;
   enableClassics?: boolean;
   enableTransferGame?: boolean;
+  enableSourceBrowser?: boolean;
+  downloadOptionInteraction?: import("../shared/download-option-interaction").DownloadOptionInteraction;
 }
 
 export interface NetworkInterface {

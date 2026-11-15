@@ -1,3 +1,5 @@
+import { useSettingsOperationGuard } from "@renderer/context/settings/settings-draft.context";
+import { useSettingsFormGuard } from "@renderer/context/settings/settings-draft.context";
 import { useContext, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Button, CheckboxField, Link, TextField } from "@renderer/components";
@@ -18,19 +20,25 @@ export function SettingsAllDebrid() {
   const { t } = useTranslation("settings");
 
   const [isLoading, setIsLoading] = useState(false);
+  useSettingsOperationGuard("settings-all-debrid", isLoading);
   const [form, setForm] = useState(() => ({
     useAllDebrid: Boolean(userPreferences?.allDebridApiToken),
     allDebridApiToken: userPreferences?.allDebridApiToken ?? null,
   }));
 
+  const savedToken = userPreferences?.allDebridApiToken ?? null;
   useEffect(() => {
-    if (userPreferences) {
-      setForm({
-        useAllDebrid: Boolean(userPreferences.allDebridApiToken),
-        allDebridApiToken: userPreferences.allDebridApiToken ?? null,
-      });
-    }
-  }, [userPreferences]);
+    setForm({
+      useAllDebrid: Boolean(savedToken),
+      allDebridApiToken: savedToken,
+    });
+  }, [savedToken]);
+
+  const dirty =
+    form.useAllDebrid !== Boolean(userPreferences?.allDebridApiToken) ||
+    (form.useAllDebrid &&
+      form.allDebridApiToken !== (userPreferences?.allDebridApiToken ?? null));
+  useSettingsFormGuard("provider-all-debrid", dirty, "AllDebrid connection");
 
   const handleFormSubmit: React.FormEventHandler<HTMLFormElement> = async (
     event
@@ -40,23 +48,17 @@ export function SettingsAllDebrid() {
 
     try {
       if (form.useAllDebrid) {
-        const user = await window.electron.authenticateAllDebrid(
-          form.allDebridApiToken!
-        );
-
-        showSuccessToast(
-          t("alldebrid_account_linked"),
-          t("debrid_linked_message", { username: user.username })
-        );
-      } else {
-        showSuccessToast(t("changes_saved"));
+        await window.electron.authenticateAllDebrid(form.allDebridApiToken!);
       }
 
-      updateUserPreferences({
+      await updateUserPreferences({
         allDebridApiToken: form.useAllDebrid ? form.allDebridApiToken : null,
       });
-    } catch {
-      showErrorToast(t("debrid_invalid_token"));
+      showSuccessToast(t("changes_saved"));
+    } catch (err) {
+      showErrorToast(
+        err instanceof Error ? err.message : t("debrid_invalid_token")
+      );
     } finally {
       setIsLoading(false);
     }
@@ -69,12 +71,6 @@ export function SettingsAllDebrid() {
       ...prev,
       useAllDebrid: updatedValue,
     }));
-
-    if (!updatedValue) {
-      updateUserPreferences({
-        allDebridApiToken: null,
-      });
-    }
   };
 
   const isButtonDisabled =
@@ -98,6 +94,7 @@ export function SettingsAllDebrid() {
       <CheckboxField
         label={t("enable_alldebrid")}
         checked={form.useAllDebrid}
+        disabled={isLoading}
         onChange={toggleAllDebrid}
       />
 
@@ -110,7 +107,7 @@ export function SettingsAllDebrid() {
             setForm({ ...form, allDebridApiToken: event.target.value })
           }
           rightContent={
-            <Button type="submit" disabled={isButtonDisabled}>
+            <Button type="submit" disabled={isButtonDisabled || !dirty}>
               {t("save_changes")}
             </Button>
           }
@@ -121,6 +118,11 @@ export function SettingsAllDebrid() {
             </Trans>
           }
         />
+      )}
+      {!form.useAllDebrid && (
+        <Button type="submit" disabled={isLoading || !dirty}>
+          {t("save_changes")}
+        </Button>
       )}
     </form>
   );

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' ws:; img-src 'none'; object-src 'none'; base-uri 'none'"
+    />
+    <title>Source website — Hydra Ludusavi</title>
+  </head>
+  <body>
+    <header>
+      <strong id="heading">Source website</strong>
+      <div class="navigation">
+        <button id="back" aria-label="Back">←</button
+        ><button id="forward" aria-label="Forward">→</button
+        ><button id="reload">Reload</button>
+        <form id="navigate">
+          <input
+            id="address"
+            aria-label="Website address"
+            placeholder="https://…"
+          /><button>Go</button>
+        </form>
+        <button id="external">Open in browser</button
+        ><button id="close">Close</button>
+      </div>
+      <p id="status" role="status"></p>
+    </header>
+    <aside>
+      <p id="error" role="alert"></p>
+      <p id="blocked-destination" role="alert" hidden></p>
+      <h2>Selected links <span id="count">0</span></h2>
+      <p>
+        Select a supported download link on the page, use its context menu, or
+        paste it below. Nothing downloads until reviewed in Hydra.
+      </p>
+      <form id="add">
+        <input
+          id="link"
+          aria-label="Paste download link"
+          placeholder="Paste magnet or supported hoster link"
+        /><button>Add</button>
+      </form>
+      <ol id="links"></ol>
+      <form id="review">
+        <label>Release title<input id="release-title" required /></label>
+        <label
+          >Selection type<select id="mode">
+            <option value="single">Single link</option>
+            <option value="mirrors">
+              Alternative mirrors (select one below)
+            </option>
+            <option value="parts">Ordered parts of one download</option>
+          </select></label
+        >
+        <label id="mirror-label" hidden
+          >Mirror to send to Hydra<select id="mirror"></select
+        ></label>
+        <label class="ack"
+          ><input id="acknowledged" type="checkbox" />I checked the release
+          title, version, and selected links. For parts, I checked that the
+          complete set is in order.</label
+        >
+        <button id="review-button" disabled>Review in Hydra</button>
+      </form>
+      <p>
+        Only hosters and magnet links Hydra already supports can be collected.
+        If a site blocks this window, open it in your browser and paste the link
+        here.
+      </p>
+    </aside>
+    <script type="module" src="/src/source-browser.ts"></script>
+  </body>
+</html>

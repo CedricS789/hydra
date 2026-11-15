@@ -1,3 +1,4 @@
+import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import type { UserPreferences } from "@types";
 import { useSyncExternalStore } from "react";
 
@@ -65,5 +66,6 @@ const subscribe = (listener: () => void) => {
 const getSnapshot = () => lastKnownPreferences;
 
 export function useUserPreferences() {
-  return useSyncExternalStore(subscribe, getSnapshot);
+  const saved = useSyncExternalStore(subscribe, getSnapshot);
+  return useSettingsDraft()?.preferences ?? saved;
 }

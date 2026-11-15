@@ -1,3 +1,4 @@
+import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import "./content.scss";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -89,6 +90,9 @@ const buildForm = (preferences: UserPreferences | null): ContentForm =>
 export function ContentSettingsSection({
   className,
 }: Readonly<SettingsSectionProps>) {
+  const stagePreferences =
+    useSettingsDraft()?.stage ??
+    globalThis.window.electron.updateUserPreferences;
   const { t } = useTranslation("settings");
   const userPreferences = useUserPreferences();
   const { hasActiveSubscription } = useUserDetails();
@@ -117,9 +121,9 @@ export function ContentSettingsSection({
     async (values: Partial<ContentForm>) => {
       setForm((currentForm) => ({ ...currentForm, ...values }));
 
-      await globalThis.window.electron.updateUserPreferences(values);
+      await stagePreferences(values);
     },
-    []
+    [stagePreferences]
   );
 
   const handleAchievementSouvenirsChange = useCallback(
@@ -156,10 +160,10 @@ export function ContentSettingsSection({
     if (result.canceled || !selectedPath) return;
 
     setScreenshotsPath(selectedPath);
-    await globalThis.window.electron.updateUserPreferences({
+    await stagePreferences({
       achievementScreenshotsPath: selectedPath,
     });
-  }, [canManageScreenshots, screenshotsPath]);
+  }, [canManageScreenshots, screenshotsPath, stagePreferences]);
 
   const handleOpenScreenshotsPath = useCallback(async () => {
     if (!canManageScreenshots) return;
@@ -173,11 +177,11 @@ export function ContentSettingsSection({
   const handleResetScreenshotsPath = useCallback(async () => {
     if (!canManageScreenshots) return;
 
-    await globalThis.window.electron.updateUserPreferences({
+    await stagePreferences({
       achievementScreenshotsPath: undefined,
     });
     setScreenshotsPath(await globalThis.window.electron.getScreenshotsPath());
-  }, [canManageScreenshots]);
+  }, [canManageScreenshots, stagePreferences]);
 
   const items = useMemo<ContentItem[]>(() => {
     return [

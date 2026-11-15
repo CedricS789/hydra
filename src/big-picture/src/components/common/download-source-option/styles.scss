@@ -147,3 +147,9 @@ $availability-glow-opacity: 0.5;
     }
   }
 }
+div.download-source-option {
+  cursor: default;
+  &:hover {
+    background-color: var(--surface);
+  }
+}

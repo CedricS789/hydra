@@ -34,6 +34,7 @@ export interface DiskUsage {
 }
 
 export interface GameRepack {
+  sourcePageUrl?: string | null;
   id: string;
   title: string;
   fileSize: string | null;
@@ -182,6 +183,8 @@ export type AppUpdaterEvent =
 
 /* Events */
 export interface StartGameDownloadPayload {
+  downloadSourceId?: string | null;
+  sourcePageUrl?: string | null;
   objectId: string;
   title: string;
   shop: GameShop;
@@ -770,6 +773,7 @@ export interface OpenCheckoutOptions {
 }
 
 export interface DownloadSourceDownload {
+  sourcePageUrl?: string | null;
   title: string;
   uris: string[];
   uriGroups?: string[][];

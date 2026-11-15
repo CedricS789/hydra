@@ -102,8 +102,76 @@
     gap: calc(globals.$spacing-unit * 2.5);
     min-width: 0;
     padding: calc(globals.$spacing-unit * 2.5);
-    overflow: auto;
+    overflow: hidden;
   }
+
+  &__panel-body {
+    min-height: 0;
+    flex: 1;
+    overflow: auto;
+    padding-right: 8px;
+  }
+}
+
+.settings-save-bar {
+  flex-shrink: 0;
+  max-height: 35vh;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid globals.$border-color;
+  border-radius: 8px;
+  background: globals.$dark-background-color;
+  box-shadow: 0 4px 20px #0008;
+  &--floating {
+    position: fixed;
+    z-index: 4;
+    bottom: 24px;
+    right: 40px;
+    left: min(600px, 40vw);
+  }
+  &--big-picture {
+    left: 64px;
+    right: 64px;
+    bottom: 32px;
+  }
+  > div {
+    flex: 1;
+    min-width: 180px;
+  }
+  p {
+    overflow-wrap: anywhere;
+  }
+  p[role="alert"] {
+    color: #ff9999;
+  }
+  small {
+    display: block;
+    margin-top: 8px;
+  }
+  button {
+    color: globals.$muted-color;
+    background: globals.$background-color;
+    padding: 10px 16px;
+    border: 1px solid globals.$border-color;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  button:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+  }
+}
+
+.settings-page__content {
+  padding-bottom: 170px;
 }
 
 .settings-context-panel {

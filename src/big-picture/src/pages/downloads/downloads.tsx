@@ -5,6 +5,9 @@ import {
   monitorForElements,
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import type { LibraryGame } from "@types";
+import { DownloadSourcePageButton } from "@renderer/components/download-source-page-button";
+import { Button as SourcePageButton } from "../../components/common";
+import { useUserPreferences } from "../../hooks";
 import { Downloader, getFinishedDownloadStep } from "@shared";
 import { useInstallerAvailability } from "@renderer/hooks/use-installer-availability";
 import {
@@ -951,6 +954,7 @@ function Section({
 const noop = () => undefined;
 
 export default function Downloads() {
+  const sourceBrowserPreferences = useUserPreferences();
   const navigate = useNavigate();
   const { t } = useTranslation("downloads");
   const { setFocus } = useNavigation();
@@ -2795,6 +2799,15 @@ export default function Downloads() {
             nextListFocusId={firstVisibleListFocusId}
           />
 
+          {heroPauseTargetDownload && (
+            <DownloadSourcePageButton
+              game={heroPauseTargetDownload.game}
+              enabled={sourceBrowserPreferences?.enableSourceBrowser !== false}
+              renderTrigger={(props) => (
+                <SourcePageButton {...props} variant="secondary" size="small" />
+              )}
+            />
+          )}
           <div className="downloads-page__hero-stats-stack">
             <DownloadsProgressStats
               title={heroPanelState?.progressPanel.title ?? "Waiting Download"}

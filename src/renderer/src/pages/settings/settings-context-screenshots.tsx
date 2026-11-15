@@ -1,3 +1,4 @@
+import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileDirectoryIcon, HistoryIcon } from "@primer/octicons-react";
@@ -77,14 +78,18 @@ function ScreenshotInputStatusLine({
 export function SettingsContextScreenshots() {
   const { t } = useTranslation("settings");
   const { t: tCapture } = useTranslation("screenshots_capture");
-  const { updateUserPreferences } = useContext(settingsContext);
+  const draft = useSettingsDraft();
+  const { updateUserPreferences: commitUserPreferences } =
+    useContext(settingsContext);
+  const updateUserPreferences = draft?.stage ?? commitUserPreferences;
   const inputStatus = useScreenshotInputStatus();
   const { hash, search } = useLocation();
   const navigate = useNavigate();
 
-  const userPreferences = useAppSelector(
+  const savedPreferences = useAppSelector(
     (state) => state.userPreferences.value
   );
+  const userPreferences = draft?.preferences ?? savedPreferences;
 
   const [form, setForm] = useState(() =>
     resolveScreenshotPreferences(userPreferences)

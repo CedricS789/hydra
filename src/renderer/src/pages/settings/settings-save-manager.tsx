@@ -1,4 +1,6 @@
+import { useSettingsOperationGuard } from "@renderer/context/settings/settings-draft.context";
 import { useEffect, useRef, useState } from "react";
+import { useSettingsFormGuard } from "@renderer/context/settings/settings-draft.context";
 import { useTranslation } from "react-i18next";
 import { Button, CheckboxField } from "@renderer/components";
 import type { SaveBackupVersion, SaveOperationPreview } from "@types";
@@ -25,6 +27,7 @@ export function SettingsSaveManager({
 }: Props) {
   const { t } = useTranslation("ludusavi");
   const [working, setWorking] = useState(false);
+  useSettingsOperationGuard(`save-manager-${mode}`, working);
   const [error, setError] = useState("");
   const [remoteSetupNeeded, setRemoteSetupNeeded] = useState(false);
   const [message, setMessage] = useState("");
@@ -33,7 +36,30 @@ export function SettingsSaveManager({
   const [preview, setPreview] = useState<SaveOperationPreview>();
   const [understood, setUnderstood] = useState(false);
   const [advanced, setAdvanced] = useState<string>();
+  const [savedAdvanced, setSavedAdvanced] = useState<string>();
+  const yamlDirty = advanced !== undefined && advanced !== savedAdvanced;
+  useSettingsFormGuard(
+    `save-yaml-${mode}`,
+    yamlDirty,
+    "Advanced save configuration (YAML)"
+  );
+  const loadAdvanced = async () => {
+    if (
+      yamlDirty &&
+      !(await window.electron.confirmSettingsChanges("discard", [
+        "Unsaved YAML save rules in this editor.",
+      ]))
+    )
+      return;
+    const value = await window.electron.getSaveAdvancedConfig();
+    setAdvanced(value);
+    setSavedAdvanced(value);
+  };
   const [managerOpen, setManagerOpen] = useState(false);
+  const [pendingManagerOpen, setPendingManagerOpen] = useState<boolean | null>(
+    null
+  );
+  const [managerAcknowledged, setManagerAcknowledged] = useState(false);
   const generation = useRef(0);
   const disabled = working || busy;
 
@@ -77,8 +103,22 @@ export function SettingsSaveManager({
     }
   };
 
-  const openManager = (remote = false) =>
-    action(async () => {
+  const openManager = (remote = false) => {
+    if (yamlDirty) {
+      setError(
+        "Save or discard the YAML edits before opening the full manager."
+      );
+      return;
+    }
+    setManagerAcknowledged(false);
+    setPendingManagerOpen(remote);
+  };
+
+  const confirmOpenManager = () => {
+    if (pendingManagerOpen === null || !managerAcknowledged) return;
+    const remote = pendingManagerOpen;
+    setPendingManagerOpen(null);
+    void action(async () => {
       setManagerOpen(true);
       setPreview(undefined);
       try {
@@ -90,6 +130,7 @@ export function SettingsSaveManager({
         setManagerOpen(false);
       }
     });
+  };
 
   const showPreview = (value: SaveOperationPreview) => {
     setPreview(value);
@@ -241,14 +282,14 @@ export function SettingsSaveManager({
             <div className="local-edition__row">
               <Button
                 theme="outline"
-                disabled={disabled}
+                disabled={disabled || pendingManagerOpen !== null}
                 onClick={() => openManager()}
               >
                 {t("open_manager")}
               </Button>
               <Button
                 theme="outline"
-                disabled={disabled}
+                disabled={disabled || pendingManagerOpen !== null}
                 onClick={() =>
                   action(async () => {
                     await window.electron.updateSaveManifest();
@@ -263,8 +304,14 @@ export function SettingsSaveManager({
                 disabled={disabled}
                 onClick={() =>
                   action(async () => {
+                    if (
+                      !(await window.electron.confirmSettingsChanges("save", [
+                        "Replace advanced save rules with standalone Ludusavi settings. Existing edits in the YAML editor will be replaced. A previous configuration copy is kept.",
+                      ]))
+                    )
+                      return;
                     await window.electron.importStandaloneSaveConfig();
-                    setAdvanced(await window.electron.getSaveAdvancedConfig());
+                    await loadAdvanced();
                     setPreview(undefined);
                     setMessage(t("imported"));
                   })
@@ -277,7 +324,7 @@ export function SettingsSaveManager({
                 disabled={disabled}
                 onClick={() =>
                   action(async () => {
-                    setAdvanced(await window.electron.getSaveAdvancedConfig());
+                    await loadAdvanced();
                   })
                 }
               >
@@ -288,6 +335,35 @@ export function SettingsSaveManager({
               <p role="status" className="local-edition__status-banner">
                 {t("manager_open")}
               </p>
+            )}
+            {pendingManagerOpen !== null && (
+              <div className="local-edition__safety-warning" role="alert">
+                <p>{t("manager_safety_warning")}</p>
+                <CheckboxField
+                  label={t("manager_safety_acknowledgement")}
+                  checked={managerAcknowledged}
+                  onChange={(event) =>
+                    setManagerAcknowledged(event.target.checked)
+                  }
+                />
+                <div className="local-edition__actions">
+                  <Button
+                    disabled={disabled || !managerAcknowledged}
+                    onClick={confirmOpenManager}
+                  >
+                    {pendingManagerOpen
+                      ? t("remote_setup_open")
+                      : t("open_manager")}
+                  </Button>
+                  <Button
+                    theme="outline"
+                    disabled={disabled}
+                    onClick={() => setPendingManagerOpen(null)}
+                  >
+                    {t("cancel_clear")}
+                  </Button>
+                </div>
+              </div>
             )}
             <p className="local-edition__hint">{t("import_notice")}</p>
             {advanced !== undefined && (
@@ -307,13 +383,45 @@ export function SettingsSaveManager({
                     disabled={disabled}
                     onClick={() =>
                       action(async () => {
+                        if (
+                          !(await window.electron.confirmSettingsChanges(
+                            "save",
+                            [
+                              "Apply edited Ludusavi YAML rules. These can change file and registry matching, exclusions, redirects, and recovery behavior. Review every changed rule before proceeding.",
+                            ]
+                          ))
+                        )
+                          return;
+                        if (
+                          (await window.electron.getSaveAdvancedConfig()) !==
+                          savedAdvanced
+                        )
+                          throw new Error(
+                            "Save rules changed elsewhere. Reload the configuration and review the current rules before saving."
+                          );
                         await window.electron.saveSaveAdvancedConfig(advanced);
+                        setSavedAdvanced(advanced);
                         setPreview(undefined);
                         setMessage(t("advanced_saved"));
                       })
                     }
                   >
                     {t("save_advanced")}
+                  </Button>
+                  <Button
+                    theme="outline"
+                    disabled={disabled || !yamlDirty}
+                    onClick={async () => {
+                      if (
+                        await window.electron.confirmSettingsChanges(
+                          "discard",
+                          ["Unsaved YAML save rules in this editor."]
+                        )
+                      )
+                        setAdvanced(savedAdvanced);
+                    }}
+                  >
+                    Discard YAML edits
                   </Button>
                 </div>
               </>

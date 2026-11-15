@@ -1,3 +1,4 @@
+import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import { useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -14,11 +15,7 @@ import { useAppSelector, useFeature, useUserDetails } from "@renderer/hooks";
 import { useSubscription } from "@renderer/hooks/use-subscription";
 import { FileDirectoryIcon, HistoryIcon } from "@primer/octicons-react";
 import { useLocation } from "react-router-dom";
-import {
-  isAchievementSouvenirsEnabled,
-  isClassicsEnabled,
-  isTransferGameEnabled,
-} from "@shared";
+import { isAchievementSouvenirsEnabled, isClassicsEnabled } from "@shared";
 import type { UserPreferences } from "@types";
 
 import "./settings-context-content-gameplay.scss";
@@ -48,21 +45,24 @@ const buildForm = (preferences: UserPreferences | null) => ({
   autoplayAnimatedArtwork: preferences?.autoplayAnimatedArtwork ?? false,
   persistFiltersAndSorting: preferences?.persistFiltersAndSorting ?? false,
   enableClassics: isClassicsEnabled(preferences),
-  enableTransferGame: isTransferGameEnabled(preferences),
 });
 
 export function SettingsContextContentGameplay() {
   const { t } = useTranslation("settings");
-  const { updateUserPreferences } = useContext(settingsContext);
+  const draft = useSettingsDraft();
+  const { updateUserPreferences: commitUserPreferences } =
+    useContext(settingsContext);
+  const updateUserPreferences = draft?.stage ?? commitUserPreferences;
   const { hasActiveSubscription } = useUserDetails();
   const { showHydraCloudModal } = useSubscription();
   const { hash } = useLocation();
   const { isFeatureEnabled, Feature } = useFeature();
   const isScreenshotsEnabled = isFeatureEnabled(Feature.Screenshots);
 
-  const userPreferences = useAppSelector(
+  const savedPreferences = useAppSelector(
     (state) => state.userPreferences.value
   );
+  const userPreferences = draft?.preferences ?? savedPreferences;
 
   const [form, setForm] = useState(() => buildForm(userPreferences));
   const [showWaylandSouvenirsWarning, setShowWaylandSouvenirsWarning] =
@@ -408,29 +408,6 @@ export function SettingsContextContentGameplay() {
         </div>
       )}
 
-      <div className="settings-context-panel__group">
-        <h3>{t("features")}</h3>
-
-        <CheckboxField
-          label={t("enable_classics")}
-          checked={form.enableClassics}
-          onChange={() =>
-            handleChange({
-              enableClassics: !form.enableClassics,
-            })
-          }
-        />
-
-        <CheckboxField
-          label={t("enable_transfer_game")}
-          checked={form.enableTransferGame}
-          onChange={() =>
-            handleChange({
-              enableTransferGame: !form.enableTransferGame,
-            })
-          }
-        />
-      </div>
       <ConfirmationModal
         visible={showWaylandSouvenirsWarning}
         title={t("wayland_souvenirs_warning_title")}

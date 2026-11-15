@@ -1,3 +1,4 @@
+import { useSettingsProfile } from "@renderer/context/settings/settings-draft.context";
 import localEdition from "../../../../shared/local-edition.json";
 import {
   Avatar,
@@ -46,10 +47,9 @@ function ScreenshotPrivacySettings({
   visibilityOptions,
   showCommentsPolicy,
 }: Readonly<ScreenshotPrivacySettingsProps>) {
-  const { t } = useTranslation("settings");
   const { t: tScreenshots } = useTranslation("screenshots");
-  const { userDetails, patchUser } = useUserDetails();
-  const { showSuccessToast, showErrorToast } = useToast();
+  const { userDetails, patchUser } = useSettingsProfile(useUserDetails());
+  const { showErrorToast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const screenshotsVisibility = userDetails?.screenshotsVisibility;
   const screenshotCommentsPolicy = userDetails?.screenshotCommentsPolicy;
@@ -58,7 +58,6 @@ function ScreenshotPrivacySettings({
     setIsSaving(true);
     try {
       await patchUser(update);
-      showSuccessToast(t("changes_saved"));
     } catch (error) {
       logger.error("Failed to update screenshot privacy", error);
       showErrorToast(tScreenshots("update_failed"));
@@ -145,7 +144,7 @@ export function SettingsAccount() {
     fetchUserDetails,
     updateUserDetails,
     unblockUser,
-  } = useUserDetails();
+  } = useSettingsProfile(useUserDetails());
 
   useEffect(() => {
     if (userDetails?.profileVisibility) {
@@ -180,7 +179,6 @@ export function SettingsAccount() {
 
   const onSubmit = async (values: FormValues) => {
     await patchUser(values);
-    showSuccessToast(t("changes_saved"));
   };
 
   const handleUnblockClick = useCallback(

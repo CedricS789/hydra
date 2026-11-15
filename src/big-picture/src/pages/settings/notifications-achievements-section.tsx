@@ -1,10 +1,11 @@
+import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import "./notifications-achievements-section.scss";
 
 import type {
   AchievementCustomNotificationPosition,
   UserPreferences,
 } from "@types";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -81,6 +82,9 @@ export function NotificationsAchievementsSection({
   className,
   firstItemUpTarget,
 }: Readonly<NotificationsAchievementsSectionProps>) {
+  const stagePreferences =
+    useSettingsDraft()?.stage ??
+    globalThis.window.electron.updateUserPreferences;
   const { t } = useTranslation("big_picture");
   const userPreferences = useUserPreferences();
   const { showErrorToast, showSuccessToast } = useBigPictureToast();
@@ -94,14 +98,15 @@ export function NotificationsAchievementsSection({
     setForm(buildForm(userPreferences));
   }, [userPreferences]);
 
-  const updateUserPreferences = async (
-    values: Partial<NotificationsAchievementsForm>
-  ) => {
-    const nextForm = { ...form, ...values };
-    setForm(nextForm);
+  const updateUserPreferences = useCallback(
+    async (values: Partial<NotificationsAchievementsForm>) => {
+      const nextForm = { ...form, ...values };
+      setForm(nextForm);
 
-    await globalThis.window.electron.updateUserPreferences(values);
-  };
+      await stagePreferences(values);
+    },
+    [form, stagePreferences]
+  );
 
   const items = useMemo<NotificationsAchievementsItem[]>(() => {
     return [
@@ -117,7 +122,6 @@ export function NotificationsAchievementsSection({
             await updateUserPreferences({
               achievementNotificationsEnabled: checked,
             });
-            await globalThis.window.electron.updateAchievementCustomNotificationWindow();
           })();
         },
       },
@@ -133,12 +137,15 @@ export function NotificationsAchievementsSection({
             await updateUserPreferences({
               achievementCustomNotificationsEnabled: checked,
             });
-            await globalThis.window.electron.updateAchievementCustomNotificationWindow();
           })();
         },
       },
     ];
-  }, [form]);
+  }, [
+    form.achievementCustomNotificationsEnabled,
+    form.achievementNotificationsEnabled,
+    updateUserPreferences,
+  ]);
 
   const focusableItems = useMemo(
     () => items.filter((item) => !item.disabled),
@@ -279,7 +286,6 @@ export function NotificationsAchievementsSection({
                         await updateUserPreferences({
                           achievementCustomNotificationPosition: value,
                         });
-                        await globalThis.window.electron.updateAchievementCustomNotificationWindow();
                       })();
                     }}
                   />

@@ -1,6 +1,6 @@
+import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import { useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { changeLanguage } from "i18next";
 import { orderBy } from "lodash-es";
 
 import {
@@ -81,11 +81,15 @@ export function SettingsContextGeneral({
   appearance,
 }: Readonly<SettingsContextGeneralProps>) {
   const { t } = useTranslation("settings");
-  const { updateUserPreferences } = useContext(settingsContext);
+  const draft = useSettingsDraft();
+  const { updateUserPreferences: commitUserPreferences } =
+    useContext(settingsContext);
+  const updateUserPreferences = draft?.stage ?? commitUserPreferences;
 
-  const userPreferences = useAppSelector(
+  const savedPreferences = useAppSelector(
     (state) => state.userPreferences.value
   );
+  const userPreferences = draft?.preferences ?? savedPreferences;
 
   const [defaultDownloadsPath, setDefaultDownloadsPath] = useState("");
   const showRunAtStartup = !window.electron.isPortableVersion;
@@ -116,7 +120,6 @@ export function SettingsContextGeneral({
   ) => {
     const value = event.target.value;
     handleChange({ language: value });
-    changeLanguage(value);
   };
 
   const handleChooseDownloadsPath = async () => {
@@ -237,10 +240,6 @@ export function SettingsContextGeneral({
             label={t("launch_with_system")}
             onChange={() => {
               handleChange({ runAtStartup: !form.runAtStartup });
-              window.electron.autoLaunch({
-                enabled: !form.runAtStartup,
-                minimized: form.startMinimized,
-              });
             }}
             checked={form.runAtStartup}
           />
@@ -254,10 +253,6 @@ export function SettingsContextGeneral({
             disabled={!form.runAtStartup}
             onChange={() => {
               handleChange({ startMinimized: !form.startMinimized });
-              window.electron.autoLaunch({
-                minimized: !form.startMinimized,
-                enabled: form.runAtStartup,
-              });
             }}
           />
         )}

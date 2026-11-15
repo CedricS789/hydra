@@ -53,6 +53,9 @@ import {
 } from "@shared";
 
 export function HeroPanelActions() {
+  const sourceBrowsingEnabled = useAppSelector(
+    (state) => state.userPreferences.value?.enableSourceBrowser !== false
+  );
   const [toggleLibraryGameDisabled, setToggleLibraryGameDisabled] =
     useState(false);
 
@@ -707,7 +710,7 @@ export function HeroPanelActions() {
         onClick={() => setShowRepacksModal(true)}
         theme="outline"
         disabled={isGameDownloading}
-        className={`hero-panel-actions__action ${repacks.length === 0 && !canDownloadOnSteam(officialMembers.steam) && !officialMembers.epic ? "hero-panel-actions__action--disabled" : ""}`}
+        className={`hero-panel-actions__action ${!sourceBrowsingEnabled && repacks.length === 0 && !canDownloadOnSteam(officialMembers.steam) && !officialMembers.epic ? "hero-panel-actions__action--disabled" : ""}`}
       >
         <DownloadIcon />
         {t("download")}
@@ -715,7 +718,7 @@ export function HeroPanelActions() {
     );
   };
 
-  if (repacks.length && !game) {
+  if ((repacks.length || sourceBrowsingEnabled) && !game) {
     return (
       <>
         {addGameToLibraryButton}

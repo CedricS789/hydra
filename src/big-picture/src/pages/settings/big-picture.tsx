@@ -1,3 +1,4 @@
+import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import "./big-picture.scss";
 
 import type { BigPictureDiagnosticsPosition, UserPreferences } from "@types";
@@ -77,6 +78,9 @@ function getPositionLabel(
 export function BigPictureSettingsSection({
   className,
 }: Readonly<BigPictureSettingsSectionProps>) {
+  const stagePreferences =
+    useSettingsDraft()?.stage ??
+    globalThis.window.electron.updateUserPreferences;
   const { t } = useTranslation("big_picture");
   const userPreferences = useUserPreferences();
   const [form, setForm] = useState<BigPictureForm>(() =>
@@ -93,9 +97,9 @@ export function BigPictureSettingsSection({
     async (values: Partial<BigPictureForm>) => {
       setForm((current) => ({ ...current, ...values }));
 
-      await globalThis.window.electron.updateUserPreferences(values);
+      await stagePreferences(values);
     },
-    []
+    [stagePreferences]
   );
 
   const handleLaunchInBigPictureChange = useCallback(
@@ -158,6 +162,7 @@ export function BigPictureSettingsSection({
       },
     ];
   }, [
+    t,
     form.launchInBigPicture,
     form.bigPictureLaunchToLibraryPage,
     handleLaunchInBigPictureChange,
@@ -174,7 +179,7 @@ export function BigPictureSettingsSection({
         onChange: handleVirtualKeyboardChange,
       },
     ];
-  }, [form.bigPictureVirtualKeyboardEnabled, handleVirtualKeyboardChange]);
+  }, [form.bigPictureVirtualKeyboardEnabled, handleVirtualKeyboardChange, t]);
 
   const audioItems = useMemo<BigPictureItem[]>(() => {
     return [
@@ -186,7 +191,7 @@ export function BigPictureSettingsSection({
         onChange: handleBigPictureSoundsChange,
       },
     ];
-  }, [form.bigPictureSoundsEnabled, handleBigPictureSoundsChange]);
+  }, [form.bigPictureSoundsEnabled, handleBigPictureSoundsChange, t]);
 
   const diagnosticsItems = useMemo<BigPictureItem[]>(() => {
     return [
@@ -198,7 +203,7 @@ export function BigPictureSettingsSection({
         onChange: handleDiagnosticsEnabledChange,
       },
     ];
-  }, [form.bigPictureDiagnosticsEnabled, handleDiagnosticsEnabledChange]);
+  }, [form.bigPictureDiagnosticsEnabled, handleDiagnosticsEnabledChange, t]);
 
   const diagnosticsPositionOptions = useMemo<
     Array<DropdownSelectOption<BigPictureDiagnosticsPosition>>
@@ -216,7 +221,7 @@ export function BigPictureSettingsSection({
       value: position,
       label: getPositionLabel(position, t),
     }));
-  }, []);
+  }, [t]);
 
   const inputNavigationOverridesByFocusId = useMemo<
     Record<string, FocusOverrides>

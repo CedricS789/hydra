@@ -90,6 +90,7 @@ const modules = {
   "./native-addon":
     'export const NativeAddon={getSystemProcessMap:async()=>({processTree:[{pid:424242,parentPid:1,exe:globalThis.__fullSaveTest.running?globalThis.__fullSaveTest.game.executablePath:"C:/unrelated/system.exe"}]})};',
   "./logger": "export const logger={error(){},warn(){}};",
+  "./window-manager": "export const WindowManager={mainWindow:null};",
   "./game-running-state":
     "export const getTrackedGamesRunning=()=>globalThis.__fullSaveTest.running?[{}]:[];",
   "./game-record-updater":

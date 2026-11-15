@@ -47,6 +47,9 @@ import { useEpicManagedConnection } from "@renderer/hooks/use-epic-managed";
 import { useLibrary } from "@renderer/hooks";
 import type { LibraryGame } from "@types";
 import { epicInstallTiming } from "@renderer/helpers/epic-install-timing";
+import { ReleaseDownloadOption } from "./release-download-option";
+import { SourceWebsiteSearch } from "@renderer/components/source-website-search";
+import { getDownloadOptionInteraction } from "../../../../../shared/download-option-interaction";
 
 export interface RepacksModalProps {
   visible: boolean;
@@ -69,6 +72,12 @@ export function RepacksModal({
   startDownload,
   onClose,
 }: Readonly<RepacksModalProps>) {
+  const sourceBrowsingEnabled = useAppSelector(
+    (state) => state.userPreferences.value?.enableSourceBrowser !== false
+  );
+  const interactionMode = useAppSelector((state) =>
+    getDownloadOptionInteraction(state.userPreferences.value)
+  );
   const [filteredRepacks, setFilteredRepacks] = useState<GameRepack[]>([]);
   const [repack, setRepack] = useState<GameRepack | null>(null);
   const [showSelectFolderModal, setShowSelectFolderModal] = useState(false);
@@ -86,8 +95,16 @@ export function RepacksModal({
     new Set()
   );
 
-  const { game, presentation, repacks, updateGame } =
-    useContext(gameDetailsContext);
+  const {
+    game,
+    downloadGame,
+    shop,
+    objectId,
+    gameTitle,
+    presentation,
+    repacks,
+    updateGame,
+  } = useContext(gameDetailsContext);
   const { steam: steamGame, epic: epicGame } = getOfficialStoreMembers(
     presentation?.members ?? (game ? [game] : [])
   );
@@ -377,6 +394,26 @@ export function RepacksModal({
         </div>
 
         <div className="repacks-modal__repacks">
+          {filteredRepacks.length === 0 && (
+            <SourceWebsiteSearch
+              enabled={sourceBrowsingEnabled}
+              shop={downloadGame?.shop ?? game?.shop ?? shop}
+              objectId={
+                downloadGame?.objectId ?? game?.objectId ?? objectId ?? ""
+              }
+              gameTitle={game?.title ?? gameTitle}
+              onReview={handleRepackClick}
+              onSettings={() => {
+                onClose();
+                navigate("/settings?tab=advanced");
+              }}
+              renderButton={({ id, label, ...props }) => (
+                <Button key={id} type="button" theme="outline" {...props}>
+                  {label}
+                </Button>
+              )}
+            />
+          )}
           {showSteamOption && game && (
             <Button
               theme="dark"
@@ -456,11 +493,25 @@ export function RepacksModal({
                 const tooltipId = `availability-orb-${repack.id}`;
 
                 return (
-                  <Button
+                  <ReleaseDownloadOption
                     key={repack.id}
-                    theme="dark"
-                    onClick={() => handleRepackClick(repack)}
-                    className="repacks-modal__repack-button"
+                    mode={interactionMode}
+                    browsingEnabled={sourceBrowsingEnabled}
+                    request={{
+                      shop: downloadGame?.shop ?? game?.shop ?? shop,
+                      objectId:
+                        downloadGame?.objectId ??
+                        game?.objectId ??
+                        objectId ??
+                        "",
+                      gameTitle: game?.title ?? gameTitle,
+                      repack,
+                    }}
+                    onDownload={() => handleRepackClick(repack)}
+                    onReview={(selection) => {
+                      setRepack(selection);
+                      setShowSelectFolderModal(true);
+                    }}
                   >
                     <span
                       className={`repacks-modal__availability-orb repacks-modal__availability-orb--${availabilityStatus}`}
@@ -488,7 +539,7 @@ export function RepacksModal({
                       {repack.fileSize} - {repack.downloadSourceName} -{" "}
                       {repack.uploadDate ? formatDate(repack.uploadDate) : ""}
                     </p>
-                  </Button>
+                  </ReleaseDownloadOption>
                 );
               })}
         </div>
