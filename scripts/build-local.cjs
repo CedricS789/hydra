@@ -158,16 +158,93 @@ async function prepareWindowsPackagingTools() {
   fs.rmSync(archive);
 }
 
+function enableVisualStudio2026InNodeGyp() {
+  const finderPath = path.join(
+    root,
+    "node_modules",
+    "@electron",
+    "node-gyp",
+    "lib",
+    "find-visualstudio.js"
+  );
+  if (!fs.existsSync(finderPath)) return;
+  let source = fs.readFileSync(finderPath, "utf8");
+  if (!source.includes("ret.versionMajor === 18")) {
+    source = source
+      .replaceAll("[2019, 2022]", "[2019, 2022, 2026]")
+      .replace(
+        /(if \(ret\.versionMajor === 17\) \{\r?\n\s+ret\.versionYear = 2022\r?\n\s+return ret\r?\n\s+\})/,
+        "$1\n    if (ret.versionMajor === 18) {\n      ret.versionYear = 2026\n      return ret\n    }"
+      )
+      .replace(
+        /(\} else if \(versionYear === 2022\) \{\r?\n\s+return 'v143')/,
+        "$1\n    } else if (versionYear === 2026) {\n      return 'v145'"
+      );
+  }
+  if (!source.includes("Win1[01]SDK_10")) {
+    source = source.replace(
+      "if (!pkg.startsWith(win10SDKPrefix) && !pkg.startsWith(win11SDKPrefix)) {",
+      "const sdkMatch = /^Win1[01]SDK_10\\.0\\.(\\d+)$/.exec(pkg); if (sdkMatch) { Win10or11SDKVer = Math.max(Win10or11SDKVer, parseInt(sdkMatch[1], 10)); return; } if (!pkg.startsWith(win10SDKPrefix) && !pkg.startsWith(win11SDKPrefix)) {"
+    );
+  }
+  fs.writeFileSync(finderPath, source);
+}
+
+function prepareClassicLevel() {
+  enableVisualStudio2026InNodeGyp();
+  try {
+    run(process.execPath, [
+      "node_modules/electron-builder/cli.js",
+      "install-app-deps",
+    ]);
+    return;
+  } catch (error) {
+    const prebuild = path.join(
+      root,
+      "node_modules",
+      "classic-level",
+      "prebuilds",
+      `${process.platform}-${process.arch}`,
+      "classic-level.node"
+    );
+    if (!fs.existsSync(prebuild)) throw error;
+    const target = path.join(
+      root,
+      "node_modules",
+      "classic-level",
+      "build",
+      "Release",
+      "classic_level.node"
+    );
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(prebuild, target);
+    const check = cp.spawnSync(
+      require("electron"),
+      [
+        "-e",
+        "const mod = require(process.argv[1]); if (!mod || !mod.db_open) process.exit(1);",
+        target,
+      ],
+      {
+        cwd: root,
+        env: { ...env, ELECTRON_RUN_AS_NODE: "1" },
+        windowsHide: true,
+      }
+    );
+    if (check.error || check.status !== 0) throw error;
+    process.stdout.write(
+      "Using verified prebuilt N-API classic_level.node binary.\n"
+    );
+  }
+}
+
 async function main() {
   await prepareWindowsPackagingTools();
   try {
     if (process.argv.includes("--reuse-installed-native")) reuseInstalled();
     else {
       run(process.execPath, ["scripts/build-native-addon.cjs"]);
-      run(process.execPath, [
-        "node_modules/electron-builder/cli.js",
-        "install-app-deps",
-      ]);
+      prepareClassicLevel();
     }
     run(process.execPath, ["scripts/postinstall.cjs"]);
     run(process.execPath, ["scripts/prepare-legendary.cjs"]);
