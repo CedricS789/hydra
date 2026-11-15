@@ -1,94 +1,89 @@
-# Hydra + Ludusavi Integrated
+# Hydra Ludusavi
 
-A Windows game launcher based on [Hydra Launcher by Los Broxas](https://github.com/hydralauncher/hydra), with automatic [Ludusavi](https://github.com/mtkennerly/ludusavi) save backups to a folder you control.
+**Hydra Ludusavi** is a custom Windows edition of [Hydra Launcher](https://github.com/hydralauncher/hydra) with built-in [Ludusavi](https://github.com/mtkennerly/ludusavi) game save backups.
 
-It keeps Hydra's catalogue, library, launcher, playtime tracking, achievements, and themes, while adding integrated save backups, version previews/restores, game discovery, and automatic updates adapted from official Hydra releases. Inside the app, it displays as **Hydra Ludusavi**.
+It keeps all of Hydra's launcher features—game catalogue, library management, playtime tracking, achievements, and custom themes—while adding automatic local save backups to any folder you choose (such as OneDrive, a second drive, or a NAS) without needing a subscription.
 
-**Current version:** `4.4.1-remix.2` (based on official Hydra `v4.4.1`).
-
-- **Just want to install and use the launcher?** Start at [Quick Start: install from release](#quick-start-install-from-release).
-- **Want to compile the installer yourself or maintain the fork?** Jump to [Build from source](#build-from-source).
+- **Current version:** `4.4.1-remix.2` (based on official Hydra `v4.4.1`)
+- **Want to use the app?** Follow [1. Quick Start (Install from Release)](#1-quick-start-install-from-release)
+- **Want to compile it yourself?** Jump to [2. Build from Source](#2-build-from-source)
 
 ---
 
-## Quick Start: install from release
+## 1. Quick Start (Install from Release)
 
 ### Requirements
 
-- **Windows 10/11 (x64)** — no Git, Node.js, Rust, Visual Studio, or official Hydra installation is needed.
+- **Windows 10 or 11 (x64)** — nothing else to install.
 
-### Install and set up backups
+### Step 1: Install the app
 
-1. **Download and install** `hydra-ludusavi-4.4.1-remix.2-setup.exe` from [Releases](https://github.com/CedricS789/hydra/releases).
-   - Exit any running Hydra instance from the system tray before installing.
-   - This edition uses its own app data folder (`%APPDATA%\hydralauncher-local`) and does not modify your official Hydra installation.
-2. **Add your games** normally or via **Settings → Save backups → Discover saved games**, and set each game's real `.exe` path.
-3. **Choose a backup folder** in **Settings → Save backups** (a local drive, a OneDrive/cloud-synced folder, or a mounted network share).
-4. **Test a backup first:** keep the default retention (10 full versions) and exit delay (10 seconds) or adjust them, click **Preview save detection**, then click **Back up now** while the game is closed. Check the created archive to confirm actual save files were captured (not only registry keys).
-5. **Enable automatic backups** and save. Launch a game, save your progress, quit the game, and verify the new backup appears after the delay. Keep **Hydra Ludusavi** running in the system tray while playing.
+1. Close any running copy of Hydra from the Windows system tray.
+2. Download `hydra-ludusavi-4.4.1-remix.2-setup.exe` from [Releases](https://github.com/CedricS789/hydra/releases) and run the installer.
 
-> Automatic backups start disabled, never overwrite live saves automatically, and do not require a Hydra Cloud subscription. If you use OneDrive or another sync client, check its upload status separately.
+> **Note:** Hydra Ludusavi uses its own data folder (`%APPDATA%\hydralauncher-local`), so it won't overwrite or interfere with an existing official Hydra installation.
 
-### Updating the installed app
+### Step 2: Set up automatic save backups
 
-Open **Settings → Releases and changes** inside the app to check for, download, and install new releases. When official Hydra publishes a new stable version, this repository's GitHub Actions workflow adapts and publishes a ready-to-install update automatically—you never need to compile updates yourself.
+1. **Add your games:** Add games to your library as usual—or open **Settings → Save backups → Discover saved games** to scan your PC for existing game saves—and make sure each game has its `.exe` path set.
+2. **Pick a backup folder:** Go to **Settings → Save backups** and choose where your backups should be stored (for example, a folder inside OneDrive or on another drive).
+3. **Run a quick test:** With your game closed, click **Preview save detection** and then **Back up now** to confirm your save files are detected properly.
+4. **Turn on automatic backups:** Check **Enable automatic backups** and click **Save**.
 
-### Uninstall
+From now on, whenever you close a game, Hydra Ludusavi waits a few seconds for the game process to finish and automatically backs up your saves in the background. Keep the app running in your system tray while playing.
 
-1. Disable automatic backups in **Settings → Save backups** (and **Run at startup** in General settings if enabled).
-2. Uninstall **Hydra Ludusavi** via Windows **Installed apps**. Your save backup folder is never deleted.
+### Updating the app
 
-### What's included
+When a new official version of Hydra comes out, this repository automatically adapts and builds a matching update on GitHub. To update your installed app:
 
-- **Automatic save backups:** Watches the configured game `.exe` (and child processes in the game folder), waits for the exit delay, rechecks that the game is closed, and runs bundled Ludusavi `0.29.0` in a serialized queue.
-- **Flexible formats & retention:** ZIP or plain-file backups, configurable compression, and full + differential version retention.
-- **Save discovery:** **Scan local saves** or **Find backed-up games** to add missing games to **My Games** or link them to existing entries.
-- **Version browser & safe restore:** Inspect backed-up files/registry keys, validate ZIP integrity, and manually restore a version after an explicit overwrite confirmation. Hydra saves a safety snapshot under `.hydra-restore-safety/<operation-id>/` before restoring.
-- **Advanced YAML & full manager:** Edit Ludusavi YAML rules directly or click **Open full manager** to launch Ludusavi's full GUI with shared settings.
-- **Manual remote transfers:** Preview and run manual Rclone uploads/downloads (Rclone must be configured separately).
-- **In-app updates & source diff:** Check, download, and install updates in **Settings → Releases and changes**, or compare source changes against official Hydra releases.
-- **Clean UI:** Keeps Hydra themes and achievement unlock tracking while hiding Hydra Cloud promotions and Hydra Points counters.
+1. Open **Settings → Releases and changes**.
+2. Click **Check for release updates**, then **Download** and **Install update and restart**.
+
+### Features at a glance
+
+- **Automatic backups on game exit:** Tracks the game `.exe` (and child processes in the game folder) and backs up saves automatically once the game closes.
+- **Version history & safe restores:** Browse past save backups, inspect their files, and restore any version with a confirmation preview. Current saves are snapshotted to `.hydra-restore-safety/` before a restore runs.
+- **Save discovery:** Scan your PC or existing backup folder to quickly add or link games to your Hydra library.
+- **ZIP or plain-file backups:** Choose your archive format, compression, and how many full and differential versions to keep per game.
+- **Full Ludusavi GUI access:** Click **Open full manager** anytime to open Ludusavi's complete native interface with your shared settings, or edit custom YAML rules directly.
+- **Optional Rclone transfers:** Preview and run manual uploads/downloads to Rclone remotes if you use Rclone alongside local backups.
+- **Release diff viewer:** Compare any official Hydra release against this edition directly inside **Settings → Releases and changes**.
+- **Distraction-free UI:** Hides Hydra Cloud upsells and Hydra Points badges while keeping achievement unlock tracking and custom themes.
 
 ### Screenshots
 
-These captures show the interface rendered with sample data (see [screenshot details](docs/screenshots/README.md)):
+![Save backup settings](docs/screenshots/save-backups.png)
 
-#### Save backup settings
+![Discover saved games](docs/screenshots/discovered-games.png)
 
-![Save backup settings with sample data](docs/screenshots/save-backups.png)
+![Saved versions and management controls](docs/screenshots/saved-versions.png)
 
-#### Discover saved games
+![Manual restore preview](docs/screenshots/restore-preview.png)
 
-![Discovery results and explicit library add/link controls with sample data](docs/screenshots/discovered-games.png)
+![Release source comparison](docs/screenshots/source-diff-prototype.png)
 
-#### Saved versions and cleanup
+_(Screenshots are rendered from the settings UI using sample data; see [screenshot details](docs/screenshots/README.md).)_
 
-![Saved versions and management controls with sample data](docs/screenshots/saved-versions.png)
+### Uninstalling
 
-#### Manual restore preview
-
-![Manual restore preview with confirmation disabled until acknowledged](docs/screenshots/restore-preview.png)
-
-#### Release source comparison
-
-![Historical prototype source comparison with synthetic example code](docs/screenshots/source-diff-prototype.png)
+Turn off automatic backups in **Settings → Save backups** (and **Run at startup** in **Settings → General**, if enabled), then uninstall **Hydra Ludusavi** from Windows **Installed apps**. Your save backup folder is never deleted when you uninstall.
 
 ---
 
-## Build from source
+## 2. Build from Source
 
-Use this section only if you want to compile the Windows installer yourself or maintain the repository.
+You only need this section if you want to build the Windows `.exe` installer yourself or maintain the fork.
 
-### Build requirements
+### Requirements
 
 - **Windows 10/11 (x64)**
 - **[Git](https://git-scm.com/download/win)**
 - **[Node.js](https://nodejs.org/en/download)** (v22 LTS)
 - **[Rust](https://www.rust-lang.org/tools/install)** and **[Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)**
 
-### Clone and build the installer
+### Step 1: Clone and install dependencies
 
-Run these commands one by one in PowerShell (wait for each to finish before running the next):
+Run these commands one at a time in PowerShell:
 
 ```powershell
 git clone --branch custom/ludusavi-backups https://github.com/CedricS789/hydra.git hydra-ludusavi
@@ -100,19 +95,23 @@ node node_modules/electron/install.js
 node scripts/write-local-build-config.cjs
 ```
 
-Build the installer with the full native toolchain:
+### Step 2: Build the installer
+
+**Option A — Full build (compiles Rust & C++ native code):**
 
 ```powershell
 node scripts/build-local.cjs
 ```
 
-**Faster shortcut (no Rust/C++ required):** if official Hydra `v4.4.1` is already installed in `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra` and you haven't changed native Rust/C++ code, reuse its native files:
+**Option B — Fast build without Rust/C++ (reuses official Hydra's native binaries):**
+
+If you have official Hydra `v4.4.1` installed in `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra` and haven't modified native Rust/C++ files:
 
 ```powershell
 node scripts/build-local.cjs --reuse-installed-native
 ```
 
-When finished, the installer and update metadata are placed in `dist/`:
+Once the build finishes, your installer files will be in `dist/`:
 
 ```text
 dist/
@@ -121,25 +120,25 @@ dist/
   latest.yml
 ```
 
-See the [build & architecture guide](docs/LOCAL-EDITION.md#build-on-windows) for tests, internal identifiers, and troubleshooting.
+For testing commands and internal architecture details, see the [detailed build guide](docs/LOCAL-EDITION.md#build-on-windows).
 
-### Maintainer commands and GitHub automation
+### Maintainer tools (GitHub updates)
 
-- [Automatic updates from official Hydra](https://github.com/CedricS789/hydra/actions/workflows/upstream-release-check.yml) runs every 6 hours on GitHub Actions to detect new stable official Hydra releases, merge changes, run tests, compile on Windows, and publish the updated installer.
-- **Check update status from your checkout (read-only):**
+- **Automatic workflow:** [Automatic updates from official Hydra](https://github.com/CedricS789/hydra/actions/workflows/upstream-release-check.yml) checks for new stable official Hydra releases every 6 hours, merges them, runs the test suite, builds the Windows installer on GitHub, and publishes the new release.
+- **Check for new official releases manually (read-only):**
   ```powershell
   node scripts/update-from-official.mjs --check
   ```
-- **Trigger and wait for an official-release update on GitHub** (requires [GitHub CLI](https://cli.github.com/) signed in with `gh auth login`):
+- **Trigger an update build on GitHub and wait for publication** (requires [GitHub CLI](https://cli.github.com/) signed in with `gh auth login`):
   ```powershell
   node scripts/update-from-official.mjs
   ```
-- **Build a release from the current branch on GitHub Actions:** run [Build Hydra Ludusavi installer](https://github.com/CedricS789/hydra/actions/workflows/local-release.yml).
+- **Build a custom release on GitHub Actions:** run the [Build Hydra Ludusavi installer](https://github.com/CedricS789/hydra/actions/workflows/local-release.yml) workflow.
 
 ---
 
-## Credits and license
+## Credits & License
 
-Hydra Launcher is created by **Los Broxas** and its [contributors](https://github.com/hydralauncher/hydra/graphs/contributors). This unofficial fork is not maintained or endorsed by the upstream developers.
+Hydra Launcher is developed by **Los Broxas** and its [contributors](https://github.com/hydralauncher/hydra/graphs/contributors). This is an unofficial personal fork and is not affiliated with or endorsed by the upstream team.
 
-Hydra retains its [MIT License](LICENSE). Ludusavi and other bundled tools retain their respective licenses.
+Released under the [MIT License](LICENSE). Bundled tools such as [Ludusavi](https://github.com/mtkennerly/ludusavi) retain their own licenses.
