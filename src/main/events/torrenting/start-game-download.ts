@@ -8,7 +8,8 @@ import {
 } from "@main/services";
 import { createGame } from "@main/services/library-sync";
 import { downloadsSublevel, gamesSublevel, levelKeys } from "@main/level";
-import { parseBytes } from "@shared";
+import { parseBytes, Downloader } from "@shared";
+import { assertDirectTorrentAllowed } from "@main/services/torrent-service";
 import {
   getGlobalTrackers,
   getMultipartDownloadParts,
@@ -45,7 +46,9 @@ const startGameDownload = async (
   let didWriteDownload = false;
 
   try {
-    const globalTrackers = await getGlobalTrackers();
+    if (downloader === Downloader.Torrent) assertDirectTorrentAllowed();
+    const globalTrackers =
+      downloader === Downloader.Torrent ? await getGlobalTrackers() : [];
 
     const download: Download = {
       shop,

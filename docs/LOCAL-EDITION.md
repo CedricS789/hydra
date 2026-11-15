@@ -107,6 +107,16 @@ Local backups, manual remote transfers, and an external folder-sync client's upl
 
 Uncheck automatic backups and save. Turn off **Run at startup** in General settings to disable Windows startup. Uninstall through Windows Installed apps. The external backup destination is not deleted by this feature. Application data is stored separately from backup archives.
 
+## Direct torrent protection
+
+**Settings → Downloads → Direct torrent protection** blocks direct peer-to-peer access by default. This also applies when upgrading from a version without the new preference. Torrent links must use a configured debrid provider; if the provider is unavailable, uncached, or rejects a request, the operation stops or waits through that provider. There is no automatic direct-torrent fallback. Ordinary HTTP hosters and official Epic downloads are unaffected.
+
+While blocked, the native torrent engine is not initialized. The main process rejects download, queue, resume, seeding, and peer-based metadata requests, including requests from stale windows and Big Picture. Existing direct-torrent transfers and queued jobs are parked, seeding is stopped, and downloaded files are preserved. They are not converted to debrid jobs automatically; select a debrid provider when starting them again.
+
+To opt in deliberately, expand **Advanced: direct peer-to-peer access**, acknowledge the explanation, and type `ENABLE DIRECT TORRENTS` exactly. The main process also validates that confirmation before saving a new opt-in. This permits peers to see this computer's public IP; direct torrent traffic does not pass through a debrid provider. Network-interface, seeding, and tracker controls are shown only after opt-in. Enabling does not resume parked jobs automatically. Use **Block direct torrents now** to revoke access immediately; there is no confirmation barrier to disabling it. This guards against accidental use, rather than restricting an administrator who edits application files or settings.
+
+Run `node scripts/test-direct-torrent-protection.mjs` for the synthetic policy/client and IPC regression checks. These substitute the native backend, do not contact peers, and verify blocked requests, startup suspension of existing torrent jobs, and preservation of debrid jobs. Both release workflows run this check before packaging.
+
 ## Build on Windows
 
 ### Prerequisites

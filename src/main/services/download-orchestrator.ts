@@ -5,6 +5,7 @@ import { isDebridPendingError } from "./download/debrid-files";
 import { WindowManager } from "./window-manager";
 import { logger } from "./logger";
 import { Downloader } from "@shared";
+import { assertDirectTorrentAllowed } from "./torrent-service";
 import {
   DEFAULT_DOWNLOAD_LAYOUT_STATE,
   getBigPictureDownloadView,
@@ -268,6 +269,8 @@ export class DownloadOrchestrator {
     acceptedTicket?: object,
     detach?: (preparation: Promise<unknown>) => void
   ): Promise<Download | null> {
+    if (download.downloader === Downloader.Torrent)
+      assertDirectTorrentAllowed();
     if (!signal) {
       const preparation = this.beginPreparation(getGameKey(download));
       let detached: Promise<unknown> | undefined;
@@ -499,6 +502,8 @@ export class DownloadOrchestrator {
       targetIndex?: number;
     } = {}
   ) {
+    if (download.downloader === Downloader.Torrent)
+      assertDirectTorrentAllowed();
     const nextDownload = await this.setDownloadPausedState(
       {
         ...download,
@@ -641,6 +646,33 @@ export class DownloadOrchestrator {
     if (this.isTerminalDownload(nextDownload) && nextDownload.queued)
       nextDownload.queued = false;
     return nextDownload;
+  }
+
+  static async suspendDirectTorrentDownloads() {
+    return withDownloadActivation(async () => {
+      const downloads = await this.getAllDownloads();
+      for (const download of downloads) {
+        if (download.downloader !== Downloader.Torrent) continue;
+        const key = getGameKey(download);
+        this.invalidateBackgroundStart(key);
+        if (DownloadManager.getActiveDownloadId() === key)
+          await DownloadManager.pauseDownload();
+        await downloadsSublevel.put(key, {
+          ...download,
+          status:
+            download.status === "seeding"
+              ? "complete"
+              : download.status === "active" || download.queued
+                ? "paused"
+                : download.status,
+          queued: false,
+          shouldSeed: false,
+          pinnedToHero: false,
+        });
+      }
+      await syncDownloadLayoutState(await this.getAllDownloads());
+      WindowManager.sendDownloadsUpdated();
+    });
   }
 
   static async bootstrapDownloadsOnStartup() {
@@ -1209,6 +1241,8 @@ export class DownloadOrchestrator {
     }
 
     if (!isCurrent()) return false;
+    if (download.downloader === Downloader.Torrent)
+      assertDirectTorrentAllowed();
     const resumingDownload: Download = {
       ...download,
       debridAutoResume: true,
@@ -1390,6 +1424,8 @@ export class DownloadOrchestrator {
   ) {
     this.acceptedEpicActivations.delete(levelKeys.game(shop, objectId));
     const download = await this.getDownload(shop, objectId);
+    if (download?.downloader === Downloader.Torrent && targetArea !== "paused")
+      assertDirectTorrentAllowed();
     if (download?.awaitingDebrid && targetArea !== "paused") {
       // Prepare outside the activation lock, just like the normal Resume action.
       return this.resumeDownload(

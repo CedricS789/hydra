@@ -34,10 +34,15 @@ export class TorrentClient {
   private generation = 0;
   private readonly pending = new Set<(error: Error) => void>();
 
-  constructor(private readonly backend: TorrentBackend) {}
+  constructor(
+    private readonly backend: TorrentBackend,
+    private readonly authorize: () => void = () => {}
+  ) {}
 
   public async initialize(): Promise<void> {
+    this.authorize();
     if (this.shutdownPromise !== null) await this.shutdownPromise;
+    this.authorize();
     this.closing = false;
     this.initialization ??= this.backend
       .initialize(DEFAULT_TORRENT_PORT)
@@ -46,6 +51,7 @@ export class TorrentClient {
         throw error;
       });
     await this.initialization;
+    this.authorize();
   }
 
   public async call<T>(
@@ -53,6 +59,7 @@ export class TorrentClient {
     params?: unknown,
     config?: { timeout?: number }
   ): Promise<{ data: T }> {
+    this.authorize();
     if (this.closing) throw new TorrentError("torrent_shutdown");
     const generation = this.generation;
     await this.initialize();
@@ -80,7 +87,12 @@ export class TorrentClient {
       );
       this.pending.add(fail);
       Promise.resolve()
-        .then(() => this.backend.request(method, JSON.stringify(params ?? {})))
+        .then(() => {
+          this.authorize();
+          if (this.closing || generation !== this.generation)
+            throw new TorrentError("torrent_shutdown");
+          return this.backend.request(method, JSON.stringify(params ?? {}));
+        })
         .then((raw) => {
           if (!this.pending.has(fail)) return;
           const payload = JSON.parse(raw) as
@@ -104,8 +116,10 @@ export class TorrentClient {
     this.generation += 1;
     for (const fail of this.pending) fail(new TorrentError("torrent_shutdown"));
     this.shutdownPromise = (async () => {
-      await this.initialization?.catch(() => {});
-      await this.backend.shutdown();
+      if (this.initialization) {
+        await this.initialization.catch(() => {});
+        await this.backend.shutdown();
+      }
     })().finally(() => {
       this.initialization = null;
       this.shutdownPromise = null;

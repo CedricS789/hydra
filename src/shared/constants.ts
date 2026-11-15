@@ -65,6 +65,7 @@ export enum AuthPage {
 }
 
 export enum DownloadError {
+  DirectTorrentDisabled = "download_error_direct_torrent_disabled",
   NotCachedOnRealDebrid = "download_error_not_cached_on_real_debrid",
   RealDebridTorrentNotReady = "download_error_real_debrid_torrent_not_ready",
   RealDebridLinksNotReady = "download_error_real_debrid_links_not_ready",

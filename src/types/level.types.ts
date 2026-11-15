@@ -219,6 +219,7 @@ export interface UserPreferences {
   disableNsfwAlert?: boolean;
   enableAutoInstall?: boolean;
   seedAfterDownloadComplete?: boolean;
+  allowDirectTorrent?: boolean;
   showHiddenAchievementsDescription?: boolean;
   showDownloadSpeedInMegabits?: boolean;
   downloadNotificationsEnabled?: boolean;

@@ -14,6 +14,113 @@ const backend = (overrides: Partial<TorrentBackend> = {}): TorrentBackend => ({
 });
 
 describe("native torrent client", () => {
+  it("never initializes or dispatches any request when direct access is blocked", async () => {
+    let nativeCalls = 0;
+    const client = new TorrentClient(
+      backend({
+        initialize: async () => {
+          nativeCalls++;
+        },
+        request: async () => {
+          nativeCalls++;
+          return '{"result":null}';
+        },
+        shutdown: async () => {
+          nativeCalls++;
+        },
+      }),
+      () => {
+        throw new TorrentError("download_error_direct_torrent_disabled");
+      }
+    );
+    await assert.rejects(client.initialize(), {
+      code: "download_error_direct_torrent_disabled",
+    });
+    for (const method of [
+      "status",
+      "seed_status",
+      "torrent_files",
+      "action",
+    ] as const)
+      await assert.rejects(
+        client.call(method, {
+          action: "start",
+          url: "magnet:?xt=urn:btih:example",
+        }),
+        { code: "download_error_direct_torrent_disabled" }
+      );
+    await client.shutdown();
+    assert.equal(nativeCalls, 0);
+  });
+
+  it("revocation during initialization prevents a pending download from dispatching", async () => {
+    let enabled = true;
+    let finish!: () => void;
+    let requests = 0;
+    let stops = 0;
+    const client = new TorrentClient(
+      backend({
+        initialize: () =>
+          new Promise<void>((resolve) => {
+            finish = resolve;
+          }),
+        request: async () => {
+          requests++;
+          return '{"result":null}';
+        },
+        shutdown: async () => {
+          stops++;
+        },
+      }),
+      () => {
+        if (!enabled)
+          throw new TorrentError("download_error_direct_torrent_disabled");
+      }
+    );
+    const starting = client.call("action", { action: "start" });
+    const rejected = assert.rejects(starting, {
+      code: "download_error_direct_torrent_disabled",
+    });
+    enabled = false;
+    const stopping = client.shutdown();
+    finish();
+    await Promise.all([rejected, stopping]);
+    assert.equal(requests, 0);
+    assert.equal(stops, 1);
+  });
+
+  it("can be explicitly re-enabled after shutdown, and re-blocked without reviving the engine", async () => {
+    let enabled = false;
+    let requests = 0;
+    let starts = 0;
+    const client = new TorrentClient(
+      backend({
+        initialize: async () => {
+          starts++;
+        },
+        request: async () => {
+          requests++;
+          return '{"result":null}';
+        },
+      }),
+      () => {
+        if (!enabled)
+          throw new TorrentError("download_error_direct_torrent_disabled");
+      }
+    );
+    await client.shutdown();
+    enabled = true;
+    await client.initialize();
+    await client.call("torrent_files");
+    enabled = false;
+    await client.shutdown();
+    await assert.rejects(client.call("seed_status"), {
+      code: "download_error_direct_torrent_disabled",
+    });
+    assert.equal(starts, 1);
+    assert.equal(requests, 1);
+  });
+
   it("shares initialization and preserves null results", async () => {
     let starts = 0;
     const client = new TorrentClient(

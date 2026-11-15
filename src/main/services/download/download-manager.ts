@@ -40,7 +40,11 @@ import {
   RootzApi,
   FileKeeperApi,
 } from "../hosters";
-import { TorrentService } from "../torrent-service";
+import {
+  TorrentService,
+  isDirectTorrentAllowed,
+  assertDirectTorrentAllowed,
+} from "../torrent-service";
 import {
   LibtorrentPayload,
   LibtorrentStatus,
@@ -453,6 +457,7 @@ export class DownloadManager {
     this.maxDownloadSpeedBytesPerSecond = normalizedLimit;
     this.jsDownloader?.setMaxDownloadSpeedBytesPerSecond(normalizedLimit);
 
+    if (!isDirectTorrentAllowed()) return;
     await TorrentService.call("action", {
       action: "set_download_limit",
       max_download_speed_bytes_per_second: normalizedLimit,
@@ -494,6 +499,7 @@ export class DownloadManager {
   public static async applyNetworkInterface(
     value?: string | null
   ): Promise<void> {
+    if (!isDirectTorrentAllowed()) return;
     const networkInterface =
       value ?? (await this.getPersistedNetworkInterface());
 
@@ -512,6 +518,10 @@ export class DownloadManager {
     download?: Download,
     downloadsToSeed?: Download[]
   ) {
+    if (!isDirectTorrentAllowed()) {
+      await this.applyDownloadSpeedLimit();
+      return;
+    }
     await TorrentService.initialize();
 
     await this.applyNetworkInterface();
@@ -721,6 +731,7 @@ export class DownloadManager {
   }
 
   private static async getDownloadStatusFromRpc(): Promise<DownloadProgress | null> {
+    if (!isDirectTorrentAllowed()) return null;
     let response: { data: LibtorrentPayload | null };
 
     try {
@@ -1051,7 +1062,7 @@ export class DownloadManager {
     const shouldSeed = await this.updateDownloadStatus(
       download,
       gameId,
-      userPreferences?.seedAfterDownloadComplete
+      isDirectTorrentAllowed() && userPreferences?.seedAfterDownloadComplete
     );
 
     // Calculate installer size in background
@@ -1450,6 +1461,10 @@ export class DownloadManager {
   }
 
   public static async getSeedStatus() {
+    if (!isDirectTorrentAllowed()) {
+      WindowManager.sendToAppWindows("on-seeding-status", []);
+      return;
+    }
     let seedStatus: LibtorrentPayload[] = [];
 
     try {
@@ -1634,7 +1649,7 @@ export class DownloadManager {
         this.jsDownloader = null;
         this.usingJsDownloader = false;
         this.jsBatch = null;
-      } else {
+      } else if (isDirectTorrentAllowed()) {
         await TorrentService.call("action", {
           action: "cancel",
           game_id: downloadKey,
@@ -1655,6 +1670,7 @@ export class DownloadManager {
         await getEpicDownloadService().stop(downloadKey);
         return;
       }
+      if (!isDirectTorrentAllowed()) return;
       await TorrentService.call("action", {
         action: "cancel",
         game_id: downloadKey,
@@ -1663,6 +1679,7 @@ export class DownloadManager {
   }
 
   static async resumeSeeding(download: Download) {
+    assertDirectTorrentAllowed();
     await TorrentService.call("action", {
       action: "resume_seeding",
       game_id: levelKeys.game(download.shop, download.objectId),
@@ -1673,6 +1690,7 @@ export class DownloadManager {
   }
 
   static async pauseSeeding(downloadKey: string) {
+    if (!isDirectTorrentAllowed()) return;
     await TorrentService.call("action", {
       action: "pause_seeding",
       game_id: downloadKey,
@@ -2580,6 +2598,8 @@ export class DownloadManager {
     download: Download,
     signal?: AbortSignal
   ): Promise<void> {
+    if (download.downloader === Downloader.Torrent)
+      assertDirectTorrentAllowed();
     signal?.throwIfAborted();
     if (!this.isHttpDownloader(download.downloader)) return;
 
@@ -3449,6 +3469,7 @@ export class DownloadManager {
   }
 
   private static async cancelStaleTorrent(downloadId: string) {
+    if (!isDirectTorrentAllowed()) return;
     const wasReplacedBySameGame = this.downloadingGameId === downloadId;
 
     if (!wasReplacedBySameGame) {
@@ -3523,6 +3544,8 @@ export class DownloadManager {
   }
 
   static async startDownload(download: Download, externalSignal?: AbortSignal) {
+    if (download.downloader === Downloader.Torrent)
+      assertDirectTorrentAllowed();
     externalSignal?.throwIfAborted();
     const isHttp = this.isHttpDownloader(download.downloader);
     const downloadId = levelKeys.game(download.shop, download.objectId);

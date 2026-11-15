@@ -161,6 +161,7 @@ export const refreshGlobalTrackersUrlCache = async (): Promise<void> => {
   }
 
   const startupUrl = userPreferences.globalTrackersUrl;
+  if (userPreferences.allowDirectTorrent !== true) return;
   if (!isValidTrackerListUrl(startupUrl)) {
     return;
   }

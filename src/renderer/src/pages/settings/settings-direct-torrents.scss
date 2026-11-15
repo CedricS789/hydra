@@ -1,0 +1,36 @@
+@use "../../scss/globals.scss";
+
+.settings-direct-torrents {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 900px;
+  padding: 20px;
+  border: 1px solid globals.$border-color;
+  border-radius: 8px;
+  line-height: 1.5;
+
+  p {
+    margin: 0;
+  }
+  h3 {
+    margin: 0;
+  }
+  > .button,
+  &__advanced > .button {
+    align-self: flex-start;
+  }
+  summary {
+    cursor: pointer;
+  }
+  &__advanced {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    margin-top: 20px;
+  }
+  &__error {
+    color: #ff8d8d;
+    overflow-wrap: anywhere;
+  }
+}

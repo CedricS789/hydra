@@ -40,6 +40,7 @@ When a new official version of Hydra comes out, this repository automatically ad
 
 ### Features at a glance
 
+- **Direct torrents blocked by default:** Torrent links require a configured debrid provider. Downloads, seeding, peer-based metadata lookup, and torrent auto-resume are blocked in the main process; debrid failure never enables a direct torrent fallback. See **Settings → Downloads → Direct torrent protection**. Re-enabling requires an acknowledgement and typed confirmation. Ordinary HTTP and Epic downloads remain available.
 - **Automatic backups on game exit:** Tracks the game `.exe` (and child processes in the game folder) and backs up saves automatically once the game closes.
 - **Version history & safe restores:** Browse past save backups, inspect their files, and restore any version with a confirmation preview. Current saves are snapshotted to `.hydra-restore-safety/` before a restore runs.
 - **Save discovery:** Scan your PC or existing backup folder, match Steam/Hydra catalogue/Epic metadata and artwork, and add one or all discovered games to My Games, including uninstalled games. Metadata lookup is optional; unavailable services fall back to a custom entry.
@@ -60,6 +61,8 @@ When a new official version of Hydra comes out, this repository automatically ad
 ![Save discovery progress with sample data](docs/screenshots/discovery-progress.png)
 
 ![Advanced backup settings with an independent game selector](docs/screenshots/advanced-backups.png)
+
+![Direct torrent protection enabled by default](docs/screenshots/direct-torrent-protection.png)
 
 ![Saved versions and management controls](docs/screenshots/saved-versions.png)
 

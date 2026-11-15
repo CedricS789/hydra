@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { GameRepack, UserPreferences } from "@types";
-import { Downloader, getDownloadersForUri } from "@shared";
+import { Downloader, getDownloadersForUri, allowsDirectTorrent } from "@shared";
 
 import { useAppSelector, useFeature, useUserDetails } from "@renderer/hooks";
 import { Feature } from "@renderer/hooks/use-feature";
@@ -13,6 +13,7 @@ interface DownloadOptionsContext {
         | "premiumizeApiToken"
         | "allDebridApiToken"
         | "torBoxApiToken"
+        | "allowDirectTorrent"
       >
     | null
     | undefined;
@@ -70,6 +71,11 @@ export const getDownloadOptions = (
 
   return allDownloaders
     .filter((downloader) => {
+      if (
+        downloader === Downloader.Torrent &&
+        !allowsDirectTorrent(userPreferences)
+      )
+        return false;
       if (downloader === Downloader.Hydra) return false; // Temporarily comment out Nimbus
       if (!downloaderMap.has(downloader)) return false;
       if (
@@ -132,6 +138,7 @@ export function useDownloadOptions(repack: GameRepack | null) {
   const premiumizeApiToken = userPreferences?.premiumizeApiToken;
   const allDebridApiToken = userPreferences?.allDebridApiToken;
   const torBoxApiToken = userPreferences?.torBoxApiToken;
+  const allowDirectTorrent = allowsDirectTorrent(userPreferences);
 
   return useMemo(
     () =>
@@ -141,6 +148,7 @@ export function useDownloadOptions(repack: GameRepack | null) {
           premiumizeApiToken,
           allDebridApiToken,
           torBoxApiToken,
+          allowDirectTorrent,
         },
         hasActiveSubscription,
         isFeatureEnabled,
@@ -151,6 +159,7 @@ export function useDownloadOptions(repack: GameRepack | null) {
       premiumizeApiToken,
       allDebridApiToken,
       torBoxApiToken,
+      allowDirectTorrent,
       hasActiveSubscription,
       isFeatureEnabled,
     ]

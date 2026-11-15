@@ -1,4 +1,4 @@
-import { Downloader, getDownloadersForUri } from "@shared";
+import { Downloader, getDownloadersForUri, allowsDirectTorrent } from "@shared";
 import type { GameRepack, UserPreferences } from "@types";
 
 const DOWNLOADER_PREFERENCE_KEYS: Partial<
@@ -148,6 +148,11 @@ export function getDownloaderAvailabilityOptions(
 
   return allDownloaders
     .filter((downloader) => {
+      if (
+        downloader === Downloader.Torrent &&
+        !allowsDirectTorrent(preferences)
+      )
+        return false;
       if (downloader === Downloader.Hydra) return false;
 
       return isFeatureEnabledForDownloader(downloader, enabledFeatures);

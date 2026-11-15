@@ -1025,8 +1025,15 @@ contextBridge.exposeInMainWorld("electron", {
 
   /* User preferences */
   getUserPreferences: () => ipcRenderer.invoke("getUserPreferences"),
-  updateUserPreferences: (preferences: Partial<UserPreferences>) =>
-    ipcRenderer.invoke("updateUserPreferences", preferences),
+  updateUserPreferences: (
+    preferences: Partial<UserPreferences>,
+    directTorrentConfirmation?: string
+  ) =>
+    ipcRenderer.invoke(
+      "updateUserPreferences",
+      preferences,
+      directTorrentConfirmation
+    ),
   onUserPreferencesUpdated: (
     cb: (preferences: UserPreferences | null) => void
   ) => {

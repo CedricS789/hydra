@@ -12,6 +12,7 @@ import {
 } from "./settings-navigation";
 import { SettingsSection } from "./settings-section";
 import type { UserPreferences } from "@types";
+import { allowsDirectTorrent } from "@shared";
 
 interface DownloadsBehaviorSectionProps {
   className?: string;
@@ -75,6 +76,7 @@ export function DownloadsBehaviorSection({
 
   const isWindows = globalThis.window.electron.platform === "win32";
   const isLinux = globalThis.window.electron.platform === "linux";
+  const directTorrentAllowed = allowsDirectTorrent(userPreferences);
 
   const updateUserPreferences = async (
     values: Partial<DownloadsBehaviorForm>
@@ -135,8 +137,11 @@ export function DownloadsBehaviorSection({
       });
     }
 
-    return baseItems;
-  }, [form, isWindows, isLinux]);
+    return baseItems.filter(
+      (item) =>
+        directTorrentAllowed || item.id !== "seed-after-download-complete"
+    );
+  }, [form, isWindows, isLinux, directTorrentAllowed]);
 
   const navigationOverridesByFocusId = useMemo<
     Record<string, FocusOverrides>
@@ -172,7 +177,11 @@ export function DownloadsBehaviorSection({
   return (
     <SettingsSection
       title="Behavior"
-      description="Control how downloads behave by default."
+      description={
+        directTorrentAllowed
+          ? "Control how downloads behave by default."
+          : "Direct peer-to-peer torrents are blocked. Torrent links require a debrid provider. Manage this protection in desktop Settings → Downloads."
+      }
       className={className}
     >
       <VerticalFocusGroup

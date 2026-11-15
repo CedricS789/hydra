@@ -7,7 +7,17 @@ import i18next from "i18next";
 import { defaultDownloadsPath } from "@main/constants";
 import { db, gamesSublevel, levelKeys } from "@main/level";
 import { patchUserProfile } from "../profile/update-profile";
-import { DownloadManager, ScreenshotInputService, Wine } from "@main/services";
+import {
+  DownloadManager,
+  DownloadOrchestrator,
+  ScreenshotInputService,
+  Wine,
+} from "@main/services";
+import {
+  allowsDirectTorrent,
+  validateDirectTorrentChange,
+} from "../../../shared/direct-torrent-policy";
+import { setDirectTorrentAccess } from "@main/services/torrent-service";
 import { WindowManager } from "@main/services/window-manager";
 import { getDownloadDirectoryPreferences } from "@shared";
 import {
@@ -183,14 +193,25 @@ const applyDownloadManagerPreferences = async (
   }
 };
 
-const updateUserPreferences = async (
+const applyUserPreferences = async (
   _event: Electron.IpcMainInvokeEvent,
-  preferences: Partial<UserPreferences>
+  preferences: Partial<UserPreferences>,
+  directTorrentConfirmation?: string
 ) => {
   const userPreferences = await db.get<string, UserPreferences | null>(
     levelKeys.userPreferences,
     { valueEncoding: "json" }
   );
+
+  validateDirectTorrentChange(
+    userPreferences,
+    preferences,
+    directTorrentConfirmation
+  );
+  if (preferences.allowDirectTorrent === false) {
+    await setDirectTorrentAccess(false);
+    await DownloadOrchestrator.suspendDirectTorrentDownloads();
+  }
 
   await updateLanguagePreference(preferences.language);
   await pinExistingWinePrefixes(preferences, userPreferences);
@@ -204,6 +225,10 @@ const updateUserPreferences = async (
   const updatedPreferences = {
     ...mergedPreferences,
     ...normalizedDownloadDirectoryPreferences,
+    allowDirectTorrent: allowsDirectTorrent(mergedPreferences),
+    seedAfterDownloadComplete:
+      allowsDirectTorrent(mergedPreferences) &&
+      mergedPreferences.seedAfterDownloadComplete === true,
   };
 
   await db.put<string, UserPreferences>(
@@ -213,6 +238,9 @@ const updateUserPreferences = async (
       valueEncoding: "json",
     }
   );
+
+  if (Object.hasOwn(preferences, "allowDirectTorrent"))
+    await setDirectTorrentAccess(updatedPreferences.allowDirectTorrent);
 
   if (
     ACHIEVEMENT_VIEW_PREFERENCE_KEYS.some(
@@ -239,4 +267,14 @@ const updateUserPreferences = async (
   await applyDownloadManagerPreferences(preferences);
 };
 
+// Serialize read/merge/write so a simultaneous ordinary settings save cannot
+// restore a stale torrent permission after it has been revoked.
+let preferenceUpdates: Promise<unknown> = Promise.resolve();
+const updateUserPreferences = (
+  ...args: Parameters<typeof applyUserPreferences>
+) => {
+  const next = preferenceUpdates.then(() => applyUserPreferences(...args));
+  preferenceUpdates = next.catch(() => {});
+  return next;
+};
 registerEvent("updateUserPreferences", updateUserPreferences);

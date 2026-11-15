@@ -6,6 +6,7 @@ import { settingsContext } from "@renderer/context";
 import { useAppSelector } from "@renderer/hooks";
 import type { NetworkInterface, UserPreferences } from "@types";
 import { SettingsGlobalTrackers } from "./settings-global-trackers";
+import { SettingsDirectTorrents } from "./settings-direct-torrents";
 
 import "./settings-general.scss";
 
@@ -196,30 +197,6 @@ export function SettingsContextDownloads() {
           placeholder={t("max_download_speed_unlimited")}
         />
 
-        <div className="settings-general__network-interface">
-          <SelectField
-            label={t("network_interface")}
-            value={form.torrentNetworkInterface}
-            onChange={(event) =>
-              handleChange({ torrentNetworkInterface: event.target.value })
-            }
-            options={networkInterfaceOptions}
-          />
-          <small className="settings-general__network-interface-hint">
-            {t("network_interface_hint")}
-          </small>
-        </div>
-
-        <CheckboxField
-          label={t("seed_after_download_complete")}
-          checked={form.seedAfterDownloadComplete}
-          onChange={() =>
-            handleChange({
-              seedAfterDownloadComplete: !form.seedAfterDownloadComplete,
-            })
-          }
-        />
-
         <CheckboxField
           label={t("extract_files_by_default")}
           checked={form.extractFilesByDefault}
@@ -261,10 +238,32 @@ export function SettingsContextDownloads() {
         )}
       </div>
 
-      <div className="settings-context-panel__group">
-        <h3>{t("global_trackers")}</h3>
+      <SettingsDirectTorrents>
+        <div className="settings-general__network-interface">
+          <SelectField
+            label={t("network_interface")}
+            value={form.torrentNetworkInterface}
+            onChange={(event) =>
+              handleChange({ torrentNetworkInterface: event.target.value })
+            }
+            options={networkInterfaceOptions}
+          />
+          <small className="settings-general__network-interface-hint">
+            {t("network_interface_hint")}
+          </small>
+        </div>
+        <CheckboxField
+          label={t("seed_after_download_complete")}
+          checked={form.seedAfterDownloadComplete}
+          onChange={() =>
+            handleChange({
+              seedAfterDownloadComplete: !form.seedAfterDownloadComplete,
+            })
+          }
+        />
+        <h4>{t("global_trackers")}</h4>
         <SettingsGlobalTrackers />
-      </div>
+      </SettingsDirectTorrents>
     </div>
   );
 }

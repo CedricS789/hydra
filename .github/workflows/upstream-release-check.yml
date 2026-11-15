@@ -95,6 +95,8 @@ jobs:
         run: node --import ./scripts/register-ts-node.mjs --test scripts/ludusavi-metadata-enrichment.test.mjs src/main/services/ludusavi-scan-progress.test.ts src/shared/save-manager-errors.test.ts
       - name: Exercise real backup and recovery operations
         run: node scripts/test-save-manager-integration.mjs
+      - name: Check direct torrent protection without peer connections
+        run: node scripts/test-direct-torrent-protection.mjs
       - name: Compile and verify the adapted application
         run: node scripts/build-local.cjs
       - name: Check native modules in the matching Electron runtime

@@ -2,16 +2,17 @@
 
 The PNGs are unaltered captures of actual React settings components rendered in an isolated Electron interface test with sample backend responses. They are panel captures, not screenshots of an installed current release.
 
-| Image                       | Scope                                                                                                                    |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `save-backups.png`          | Current main cards for automatic backups, discovery, and game management; advanced controls require separate navigation. |
-| `discovered-games.png`      | Current one-click and bulk library imports with synthetic Steam/Epic/custom entries and placeholder artwork.             |
-| `discovery-progress.png`    | Current native scan progress display using sample titles and completed-step counts.                                      |
-| `advanced-backups.png`      | Separate advanced view with its own game selector, a Back button, and one settings-save toolbar.                         |
-| `remote-storage-setup.png`  | Missing-remote guidance and enabled setup controls after a simulated preview failure.                                    |
-| `saved-versions.png`        | Earlier layout showing version selection, validation/recovery, remote controls, and log cleanup.                         |
-| `restore-preview.png`       | Earlier layout showing affected files and disabled restore confirmation before acknowledgement.                          |
-| `source-diff-prototype.png` | Historical source-comparison display test with synthetic example code and earlier branding.                              |
+| Image                           | Scope                                                                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `save-backups.png`              | Current main cards for automatic backups, discovery, and game management; advanced controls require separate navigation. |
+| `discovered-games.png`          | Current one-click and bulk library imports with synthetic Steam/Epic/custom entries and placeholder artwork.             |
+| `discovery-progress.png`        | Current native scan progress display using sample titles and completed-step counts.                                      |
+| `advanced-backups.png`          | Separate advanced view with its own game selector, a Back button, and one settings-save toolbar.                         |
+| `direct-torrent-protection.png` | Default blocked state with advanced peer-to-peer controls closed; synthetic preferences, no real download.               |
+| `remote-storage-setup.png`      | Missing-remote guidance and enabled setup controls after a simulated preview failure.                                    |
+| `saved-versions.png`            | Earlier layout showing version selection, validation/recovery, remote controls, and log cleanup.                         |
+| `restore-preview.png`           | Earlier layout showing affected files and disabled restore confirmation before acknowledgement.                          |
+| `source-diff-prototype.png`     | Historical source-comparison display test with synthetic example code and earlier branding.                              |
 
 Example Game, paths, versions, statuses, and code comparisons are synthetic. They do not establish account access, published release availability, actual game backup success, or completed cloud synchronization. The current settings captures use Hydra Ludusavi source version `4.4.1-remix.2`. The historical source-diff capture retains Hydra Local prototype wording; normal comparison retrieves real source snapshots.
 

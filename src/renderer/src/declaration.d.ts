@@ -790,7 +790,8 @@ declare global {
     authenticateTorBox: (apiToken: string) => Promise<TorBoxUser>;
     getUserPreferences: () => Promise<UserPreferences | null>;
     updateUserPreferences: (
-      preferences: Partial<UserPreferences>
+      preferences: Partial<UserPreferences>,
+      directTorrentConfirmation?: string
     ) => Promise<void>;
     /* Emulators */
     getEmulatorConfigs: () => Promise<EmulatorConfigMap>;

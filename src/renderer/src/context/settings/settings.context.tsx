@@ -51,7 +51,10 @@ const isSettingsCategoryId = (value: string): value is SettingsCategoryId => {
 };
 
 export interface SettingsContext {
-  updateUserPreferences: (values: Partial<UserPreferences>) => Promise<void>;
+  updateUserPreferences: (
+    values: Partial<UserPreferences>,
+    directTorrentConfirmation?: string
+  ) => Promise<void>;
   setCurrentCategoryId: React.Dispatch<
     React.SetStateAction<SettingsCategoryId>
   >;
@@ -194,9 +197,15 @@ export function SettingsContextProvider({
 
   const clearSourceUrl = () => setSourceUrl(null);
 
-  const updateUserPreferences = async (values: Partial<UserPreferences>) => {
-    await window.electron.updateUserPreferences(values);
-    levelDBService
+  const updateUserPreferences = async (
+    values: Partial<UserPreferences>,
+    directTorrentConfirmation?: string
+  ) => {
+    await window.electron.updateUserPreferences(
+      values,
+      directTorrentConfirmation
+    );
+    await levelDBService
       .get("userPreferences", null, "json")
       .then((userPreferences) => {
         dispatch(setUserPreferences(userPreferences as UserPreferences | null));

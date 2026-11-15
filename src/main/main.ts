@@ -49,6 +49,11 @@ import { migrateGameVisibilityFields } from "./services/library-sync/game-visibi
 import { UmuUpdater } from "./services/umu-updater";
 import { initializeScreenshots } from "./services/screenshots";
 import { setTrackedGamesRunningListenerErrorReporter } from "./services/game-running-state";
+import { allowsDirectTorrent } from "../shared/direct-torrent-policy";
+import {
+  setDirectTorrentAccess,
+  isDirectTorrentAllowed,
+} from "./services/torrent-service";
 
 const hasMissingSeedFiles = async (download: Download): Promise<boolean> => {
   if (!download.folderName) return false;
@@ -85,6 +90,10 @@ export const loadState = async () => {
       valueEncoding: "json",
     }
   );
+
+  await setDirectTorrentAccess(allowsDirectTorrent(userPreferences));
+  if (!isDirectTorrentAllowed())
+    await DownloadOrchestrator.suspendDirectTorrentDownloads();
 
   Wine.syncUserPreferences(userPreferences);
   setTrackedGamesRunningListenerErrorReporter((error) =>

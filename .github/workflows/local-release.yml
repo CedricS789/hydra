@@ -46,6 +46,8 @@ jobs:
         run: node --import ./scripts/register-ts-node.mjs --test scripts/ludusavi-metadata-enrichment.test.mjs src/main/services/ludusavi-scan-progress.test.ts src/shared/save-manager-errors.test.ts
       - name: Exercise isolated backup and manual restore operations
         run: node scripts/test-save-manager-integration.mjs
+      - name: Check direct torrent protection without peer connections
+        run: node scripts/test-direct-torrent-protection.mjs
       - name: Compile native code, application, and Windows installer
         run: node scripts/build-local.cjs
       - uses: actions/upload-artifact@v4

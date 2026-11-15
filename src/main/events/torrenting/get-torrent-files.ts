@@ -1,5 +1,8 @@
 import { registerEvent } from "../register-event";
-import { TorrentService } from "@main/services/torrent-service";
+import {
+  TorrentService,
+  isDirectTorrentAllowed,
+} from "@main/services/torrent-service";
 import { logger } from "@main/services";
 import type { TorrentFilesResponse } from "@types";
 import { DownloadError } from "@shared";
@@ -42,6 +45,8 @@ const getTorrentFiles = async (
   _event: Electron.IpcMainInvokeEvent,
   magnet: string
 ) => {
+  if (!isDirectTorrentAllowed())
+    return { ok: false, error: DownloadError.DirectTorrentDisabled };
   if (!magnet || typeof magnet !== "string" || !magnet.startsWith("magnet:")) {
     return { ok: false, error: DownloadError.InvalidMagnet };
   }
