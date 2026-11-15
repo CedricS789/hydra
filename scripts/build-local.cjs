@@ -202,10 +202,6 @@ async function main() {
     const pkg = require("../package.json");
     const installer = `hydra-ludusavi-${pkg.version}-setup.exe`;
     fs.mkdirSync(path.join(root, "dist"), { recursive: true });
-    fs.copyFileSync(
-      path.join(root, "docs", "START-HERE.txt"),
-      path.join(root, "dist", "START-HERE.txt")
-    );
     for (const file of [installer, `${installer}.blockmap`, "latest.yml"]) {
       fs.copyFileSync(
         path.join(root, ".tmp", "package", file),

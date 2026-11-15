@@ -182,7 +182,6 @@ After successful verification, the helper copies these files into `dist/`:
 ```text
 hydra-ludusavi-<version>-setup.exe
 hydra-ludusavi-<version>-setup.exe.blockmap
-START-HERE.txt
 latest.yml
 ```
 

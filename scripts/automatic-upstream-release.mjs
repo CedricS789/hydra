@@ -226,7 +226,6 @@ export function prepare(root, tag, upstreamSha) {
     "README.md",
     "docs/LOCAL-EDITION.md",
     "docs/LOCAL-RELEASE-NOTES.md",
-    "docs/START-HERE.txt",
   ]) {
     const filename = path.join(root, file);
     if (fs.existsSync(filename))
@@ -313,7 +312,6 @@ export function stage(root) {
     installer,
     `${installer}.blockmap`,
     "latest.yml",
-    "START-HERE.txt",
   ];
   for (const file of files)
     fs.copyFileSync(
@@ -348,7 +346,6 @@ export function verifyAssets(folder, manifest) {
     `hydra-ludusavi-${manifest.version}-setup.exe`,
     `hydra-ludusavi-${manifest.version}-setup.exe.blockmap`,
     "latest.yml",
-    "START-HERE.txt",
     "source.bundle",
   ];
   if (

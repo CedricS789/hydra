@@ -106,7 +106,6 @@ function fixture(conflict = false) {
     "src/renderer/src/pages/settings/settings.tsx",
     "SettingsLudusavi\n"
   );
-  put(root, "docs/START-HERE.txt", "Fixture quick start\n");
   if (conflict) put(root, "code.ts", "custom change\n");
   git(root, "add", ".");
   git(root, "commit", "-m", "custom application");
@@ -198,7 +197,6 @@ function stagedFixture() {
       "dist/latest.yml",
       `version: ${manifest.version}\npath: ${exe}\nsha512: ${createHash("sha512").update(bytes).digest("base64")}\n`
     );
-    put(item.root, "dist/START-HERE.txt", "Fixture guide");
     // Real repositories ignore dist; the tiny fixture must do so as well.
     fs.appendFileSync(path.join(item.root, ".git/info/exclude"), "\ndist/\n");
     stage(item.root);

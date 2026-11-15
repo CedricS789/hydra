@@ -6,17 +6,35 @@ Hydra with Ludusavi Integrated keeps Hydra's catalogue, library, launch controls
 
 **Current source:** `4.4.1-rev.2`, based on official Hydra `v4.4.1`. This README describes the source in this repository. Check [Releases](https://github.com/CedricS789/hydra/releases) for available installers; a source update does not automatically create a downloadable release.
 
-## Get started
+## Quick Start: build the setup
 
-- [Quick start for installer recipients](docs/START-HERE.txt)
-- [Install and configure backups](#install-and-configure-backups)
-- [How automatic backups work](#how-automatic-backups-work)
-- [Features and limitations](#features-and-limitations)
-- [Screenshots](#screenshots)
-- [Build from source](#build-from-source)
-- [Maintenance and updates](#maintenance-and-updates)
-- [Detailed setup, build, and maintenance guide](docs/LOCAL-EDITION.md)
-- [Release notes](docs/LOCAL-RELEASE-NOTES.md)
+Build the Windows installer from this source checkout. You need Windows x64, Git, Node.js, and Yarn Classic 1.22.22. The full native build also needs stable Rust, Visual Studio C++ Build Tools, and a Windows SDK. See the [build guide](docs/LOCAL-EDITION.md#build-on-windows) for the complete prerequisites.
+
+Clone the project and prepare its dependencies in PowerShell:
+
+```powershell
+git clone --branch custom/ludusavi-backups https://github.com/CedricS789/hydra.git hydra-ludusavi
+Set-Location -LiteralPath .\hydra-ludusavi
+npm install --prefix .tmp/tooling --cache .tmp/npm-cache --no-audit --no-fund yarn@1.22.22
+node .tmp/tooling/node_modules/yarn/bin/yarn.js install --frozen-lockfile --ignore-scripts --non-interactive --cache-folder .tmp/yarn-cache
+$env:ELECTRON_CACHE = Join-Path (Get-Location).Path '.tmp/electron-cache'
+node node_modules/electron/install.js
+node scripts/write-local-build-config.cjs
+```
+
+Run the shortcut build only when official Hydra is installed at `%LOCALAPPDATA%\Programs\Hydra`, matches the exact `upstreamTag` in `src/shared/local-edition.json`, and native code is unchanged:
+
+```powershell
+node scripts/build-local.cjs --reuse-installed-native
+```
+
+Otherwise, with the full native toolchain installed, run:
+
+```powershell
+node scripts/build-local.cjs
+```
+
+The completed installer and update files are copied to `dist/`. The build does not install or publish them. For installer use and backup setup, see [Install and configure backups](#install-and-configure-backups); for other project topics, see [Features and limitations](#features-and-limitations), [Screenshots](#screenshots), and [Maintenance and updates](#maintenance-and-updates).
 
 ## Important commands
 
@@ -186,7 +204,6 @@ dist/
   hydra-ludusavi-4.4.1-rev.2-setup.exe
   hydra-ludusavi-4.4.1-rev.2-setup.exe.blockmap
   latest.yml
-  START-HERE.txt
 ```
 
 Keep the EXE, blockmap, and update metadata from the same successful build together. Older files can remain after a failed build, so their presence alone does not prove success. Installers are unsigned unless signing is configured.
