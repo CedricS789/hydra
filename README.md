@@ -75,10 +75,14 @@ You only need this section if you want to build the Windows `.exe` installer you
 
 ### Requirements
 
+**Required for all builds:**
 - **Windows 10/11 (x64)**
 - **[Git](https://git-scm.com/download/win)**
 - **[Node.js](https://nodejs.org/en/download)** (v22 LTS)
-- **[Rust](https://www.rust-lang.org/tools/install)** and **[Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)**
+
+**Plus one of the following for the native module (`hydra-native`):**
+- **For Option A (Full build):** **[Rust](https://www.rust-lang.org/tools/install)** (`cargo`) and **[Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)** (with the *Desktop development with C++* workload).
+- **For Option B (Fast build without Rust/C++):** The matching **[official Hydra Launcher](https://github.com/hydralauncher/hydra/releases)** version (`upstreamTag` in `src/shared/local-edition.json`) installed on your PC in `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra`.
 
 ### Step 1: Clone and install dependencies
 
@@ -96,19 +100,27 @@ node scripts/write-local-build-config.cjs
 
 ### Step 2: Build the installer
 
-**Option A — Full build (compiles Rust & C++ native code):**
+#### Option A — Full build (requires Rust & Visual Studio C++ Build Tools)
+
+Compiles the native Rust addon (`hydra-native`) and C++ dependencies from source:
 
 ```powershell
 node scripts/build-local.cjs
 ```
 
-**Option B — Fast build without Rust/C++ (reuses official Hydra's native binaries):**
+- **If Rust is not installed:** fails with `Error: spawn cargo ENOENT`.
+- **If Visual Studio C++ Build Tools are not installed:** fails with `linker 'link.exe' not found` or `Visual C++ redistributable DLLs were not found in Build Tools`.
 
-If you have the matching official Hydra version (`upstreamTag` in `src/shared/local-edition.json`) installed in `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra` and haven't modified native Rust/C++ files:
+#### Option B — Fast build without Rust/C++ (requires matching official Hydra installed)
+
+Since this fork only modifies TypeScript/React code and leaves official Hydra's native Rust/C++ module untouched, you can reuse the prebuilt native binaries from your installed official Hydra instead of compiling them:
 
 ```powershell
 node scripts/build-local.cjs --reuse-installed-native
 ```
+
+- **If official Hydra is not installed:** fails with `Official Hydra was not found in %LOCALAPPDATA%\Programs\Hydra or %ProgramFiles%\Hydra. Use the full source build otherwise.`
+- **If the installed official Hydra version does not match `upstreamTag` in `src/shared/local-edition.json`:** fails with `Installed Hydra must match the exact upstream base. Use the full source build otherwise.`
 
 Once the build finishes, your installer files will be in `dist/`:
 

@@ -163,6 +163,10 @@ node scripts/build-local.cjs
 
 The helper prepares native dependencies, Ludusavi, and the Epic runtime, checks TypeScript, compiles the application, builds a Windows x64 NSIS installer, and verifies the packaged result. It does not install or publish it. Prefer the helper over directly running `yarn build:local`, which skips some preparation and verification.
 
+If the native toolchain is missing:
+- Without Rust (`cargo`), the build fails with `Error: spawn cargo ENOENT`.
+- Without Visual Studio C++ Build Tools, the build fails with `linker 'link.exe' not found` or `Visual C++ redistributable DLLs were not found in Build Tools`.
+
 ### Reuse matching installed native components
 
 For application-layer or packaging changes that leave native code unchanged:
@@ -172,6 +176,10 @@ node scripts/build-local.cjs --reuse-installed-native
 ```
 
 This route requires official Hydra installed at `%LOCALAPPDATA%\Programs\Hydra` or `%ProgramFiles%\Hydra` with the exact version specified by `upstreamTag` in `src/shared/local-edition.json`, currently v4.4.1. The helper checks that version and reuses its native addon, LevelDB binding, Ludusavi, and Epic runtime while compiling this fork's TypeScript and renderer.
+
+If the installed official Hydra requirement is not met:
+- If official Hydra is not installed in either path, the build fails with `Official Hydra was not found in %LOCALAPPDATA%\Programs\Hydra or %ProgramFiles%\Hydra. Use the full source build otherwise.`
+- If the installed version does not match `upstreamTag`, the build fails with `Installed Hydra must match the exact upstream base. Use the full source build otherwise.`
 
 The version check cannot establish that native source was left unchanged. Do not use this shortcut after native changes or an upstream-base update without separately verifying compatibility.
 
