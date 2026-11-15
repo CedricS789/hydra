@@ -29,13 +29,40 @@ const sourceLibraryNameByPlatform = {
   win32: "hydra_native.dll",
 };
 
-const run = async (command, args, options = {}) => {
-  await execFile(command, args, {
-    cwd: projectRoot,
-    maxBuffer: MAX_COMMAND_OUTPUT_BYTES,
-    ...options,
+const run = (command, args, options = {}) =>
+  new Promise((resolve, reject) => {
+    const { timeout, ...spawnOptions } = options;
+    const child = childProcess.spawn(command, args, {
+      cwd: projectRoot,
+      stdio: "inherit",
+      ...spawnOptions,
+    });
+    let timer;
+    if (timeout) {
+      timer = setTimeout(() => {
+        child.kill();
+        reject(new Error(`${command} timed out after ${timeout}ms`));
+      }, timeout);
+    }
+    child.on("error", (error) => {
+      if (timer) clearTimeout(timer);
+      reject(error);
+    });
+    child.on("close", (code, signal) => {
+      if (timer) clearTimeout(timer);
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(
+          new Error(
+            `${command} exited with ${
+              code !== null ? `code ${code}` : `signal ${signal}`
+            }`
+          )
+        );
+      }
+    });
   });
-};
 
 const ensureDepsResolvableOnLinux = async () => {
   if (process.platform !== "linux") return;
@@ -155,7 +182,18 @@ const build = async () => {
   ];
 
   await run("cargo", cargoArgs, {
-    env: { ...process.env, HYDRA_TORRENT_LIB_DIR: torrentLibraryDir },
+    env: {
+      ...process.env,
+      HYDRA_TORRENT_LIB_DIR: torrentLibraryDir,
+      ...(process.stderr.isTTY
+        ? {
+            CARGO_TERM_PROGRESS_WHEN: "always",
+            CARGO_TERM_PROGRESS_WIDTH: String(
+              Math.min(process.stderr.columns || 80, 100)
+            ),
+          }
+        : {}),
+    },
   });
 
   const sourceLibraryPath = path.join(
