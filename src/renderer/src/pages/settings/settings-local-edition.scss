@@ -68,6 +68,15 @@
     line-height: 1.45;
   }
 
+  &__setup-steps {
+    margin: 0;
+    padding-left: 22px;
+    line-height: 1.6;
+    li + li {
+      margin-top: 8px;
+    }
+  }
+
   &__actions {
     display: flex;
     flex-wrap: wrap;

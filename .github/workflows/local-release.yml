@@ -43,7 +43,7 @@ jobs:
       - name: Test the backup and release comparison logic
         run: node --import ./scripts/register-ts-node.mjs --test scripts/update-from-official.test.mjs src/main/services/ludusavi-local-tracker.test.ts src/main/services/ludusavi-local-queue.test.ts src/main/services/ludusavi-local-log.test.ts src/main/services/ludusavi-local-api.test.ts src/main/services/ludusavi-local-config.test.ts src/main/services/ludusavi-local-validation.test.ts src/main/services/ludusavi-local-discovery-core.test.ts src/main/services/local-release-source.test.ts
       - name: Check save discovery metadata enrichment
-        run: node --import ./scripts/register-ts-node.mjs --test scripts/ludusavi-metadata-enrichment.test.mjs src/main/services/ludusavi-scan-progress.test.ts
+        run: node --import ./scripts/register-ts-node.mjs --test scripts/ludusavi-metadata-enrichment.test.mjs src/main/services/ludusavi-scan-progress.test.ts src/shared/save-manager-errors.test.ts
       - name: Exercise isolated backup and manual restore operations
         run: node scripts/test-save-manager-integration.mjs
       - name: Compile native code, application, and Windows installer

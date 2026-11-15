@@ -359,6 +359,10 @@ console.log(
 );
 
 const rcloneIndex = process.argv.indexOf("--rclone");
+await assert.rejects(
+  service.previewSaveCloudTransfer(key, "upload"),
+  /SAVE_REMOTE_NOT_CONFIGURED:/
+);
 // New one-click path: synthetic store/custom identities, no executables.
 const previousLibrary = new Map(libraryGames);
 libraryGames.clear();

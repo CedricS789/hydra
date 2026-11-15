@@ -7,6 +7,7 @@ The PNGs are unaltered captures of actual React settings components rendered in 
 | `save-backups.png`          | Current cards for automatic backups, discovery, and game management, with the advanced drawer collapsed. |
 | `discovered-games.png`      | Current one-click and bulk library imports with synthetic Steam/Epic/custom entries and placeholder artwork. |
 | `discovery-progress.png`    | Current native scan progress display using sample titles and completed-step counts. |
+| `remote-storage-setup.png`  | Missing-remote guidance and enabled setup controls after a simulated preview failure. |
 | `saved-versions.png`        | Earlier layout showing version selection, validation/recovery, remote controls, and log cleanup. |
 | `restore-preview.png`       | Earlier layout showing affected files and disabled restore confirmation before acknowledgement. |
 | `source-diff-prototype.png` | Historical source-comparison display test with synthetic example code and earlier branding.        |

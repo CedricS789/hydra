@@ -4,6 +4,7 @@ import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
+import { REMOTE_SETUP_REQUIRED } from "../../shared/save-manager-errors";
 import YAML from "yaml";
 import type {
   Game,
@@ -513,7 +514,7 @@ async function cloudData(
   );
   if (!config.cloud?.remote)
     throw new Error(
-      "Configure an Rclone remote in advanced settings or the full manager first."
+      `${REMOTE_SETUP_REQUIRED} Open Set up remote storage, select Other in the manager, and configure Rclone and cloud storage before previewing a transfer.`
     );
   return json(ctx, [
     "cloud",

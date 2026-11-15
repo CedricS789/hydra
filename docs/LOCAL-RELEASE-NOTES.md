@@ -15,6 +15,7 @@ Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright a
 - Discovery reports native scan progress and active titles, followed by metadata-matching progress. Native scan logs created for progress reporting are removed afterward.
 - Expanded sections have more space below their headings. New configurations enable automatic backups by default while preserving existing preferences.
 - The bundled engine version is checked during build preparation. Native update prompts are disabled; engine binaries are updated through Hydra Ludusavi releases, separately from save manifests.
+- Missing remote configuration now shows an actionable setup guide and direct manager button beside the error. Failed operations refresh busy state, and IPC wrapper text is removed from displayed errors.
 - Configurable destination, full/differential retention, ZIP/plain-file formats, compression, exit delay, additional save folders, and tracking executables.
 - Automatic backup-only operation, a serialized queue, destination lock, results, logs, and failure notifications.
 - **Clear results and logs** removes saved history and both backup logs after confirmation, preserving saves, archives, and configuration. Clearing is blocked during queued/running operations. History is limited to 50 results and each of the two log files to 2 MiB.

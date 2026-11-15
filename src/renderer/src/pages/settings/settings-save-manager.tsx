@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, CheckboxField } from "@renderer/components";
 import type { SaveBackupVersion, SaveOperationPreview } from "@types";
+import { saveManagerError } from "../../../../shared/save-manager-errors";
 
 interface Props {
   gameKey: string;
@@ -25,6 +26,7 @@ export function SettingsSaveManager({
   const { t } = useTranslation("ludusavi");
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
+  const [remoteSetupNeeded, setRemoteSetupNeeded] = useState(false);
   const [message, setMessage] = useState("");
   const [versions, setVersions] = useState<SaveBackupVersion[]>([]);
   const [version, setVersion] = useState("");
@@ -48,17 +50,46 @@ export function SettingsSaveManager({
     const id = generation.current;
     setWorking(true);
     setError("");
+    setRemoteSetupNeeded(false);
     setMessage("");
+    let failed = false;
+    const showError = (error: unknown) => {
+      const result = saveManagerError(error);
+      setRemoteSetupNeeded(result.remoteSetupRequired);
+      setError(
+        result.remoteSetupRequired ? t("remote_setup_required") : result.message
+      );
+    };
     try {
       await beforeAction();
       await task(() => id === generation.current);
-      await refresh();
     } catch (e) {
-      setError(String(e));
+      failed = true;
+      showError(e);
     } finally {
-      setWorking(false);
+      try {
+        await refresh();
+      } catch (e) {
+        if (!failed) showError(e);
+      } finally {
+        setWorking(false);
+      }
     }
   };
+
+  const openManager = (remote = false) =>
+    action(async () => {
+      setManagerOpen(true);
+      setPreview(undefined);
+      try {
+        await window.electron.openFullSaveManager(gameKey || undefined);
+        await reloadSettings();
+        setAdvanced(undefined);
+        if (remote) setMessage(t("remote_setup_return"));
+      } finally {
+        setManagerOpen(false);
+      }
+    });
 
   const showPreview = (value: SaveOperationPreview) => {
     setPreview(value);
@@ -70,7 +101,7 @@ export function SettingsSaveManager({
 
   return (
     <>
-      {error && (
+      {error && !remoteSetupNeeded && (
         <p role="alert" className="local-edition__error">
           {error}
         </p>
@@ -186,21 +217,7 @@ export function SettingsSaveManager({
               <Button
                 theme="outline"
                 disabled={disabled}
-                onClick={() =>
-                  action(async () => {
-                    setManagerOpen(true);
-                    try {
-                      await window.electron.openFullSaveManager(
-                        gameKey || undefined
-                      );
-                      await reloadSettings();
-                      setAdvanced(undefined);
-                      setPreview(undefined);
-                    } finally {
-                      setManagerOpen(false);
-                    }
-                  })
-                }
+                onClick={() => openManager()}
               >
                 {t("open_manager")}
               </Button>
@@ -283,6 +300,34 @@ export function SettingsSaveManager({
               {t("remote_title")}
             </h4>
             <p className="local-edition__hint">{t("remote_description")}</p>
+            <p className="local-edition__hint">
+              {t("remote_folder_sync_hint")}
+            </p>
+            {remoteSetupNeeded && (
+              <p role="alert" className="local-edition__error">
+                {error}
+              </p>
+            )}
+            <ol className="local-edition__setup-steps">
+              <li>{t("remote_setup_step_open")}</li>
+              <li>{t("remote_setup_step_configure")}</li>
+              <li>{t("remote_setup_step_return")}</li>
+            </ol>
+            <div className="local-edition__row">
+              <Button disabled={disabled} onClick={() => openManager(true)}>
+                {t("remote_setup_open")}
+              </Button>
+              <Button
+                theme="outline"
+                onClick={() =>
+                  window.electron.openExternal(
+                    "https://github.com/mtkennerly/ludusavi/blob/v0.31.0/docs/help/cloud-backup.md"
+                  )
+                }
+              >
+                {t("remote_setup_help")}
+              </Button>
+            </div>
             <div className="local-edition__row">
               {(["upload", "download"] as const).map((direction) => (
                 <Button
@@ -291,6 +336,7 @@ export function SettingsSaveManager({
                   disabled={disabled || !gameKey}
                   onClick={() =>
                     action(async (current) => {
+                      setPreview(undefined);
                       const value =
                         await window.electron.previewSaveCloudTransfer(
                           gameKey,
