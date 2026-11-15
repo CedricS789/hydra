@@ -191,10 +191,18 @@ declare global {
     saveLudusaviLocalSettings: (
       settings: import("@types").LudusaviLocalSettings
     ) => Promise<import("@types").LudusaviLocalState>;
+    saveLudusaviGameSettings: (
+      key: string,
+      patch: Partial<import("@types").LudusaviGameSettings>
+    ) => Promise<import("@types").LudusaviLocalState>;
     runLudusaviLocalBackup: (
       key: string,
       preview: boolean
     ) => Promise<import("@types").LudusaviLocalResult | undefined>;
+    runLudusaviLocalBulkBackup: (
+      includeDisabled?: boolean
+    ) => Promise<import("@types").LudusaviBulkBackupProgress>;
+    onLudusaviStateChanged: (cb: () => void) => () => void;
     openLudusaviLocalFolder: (logs?: boolean) => Promise<string>;
     clearLudusaviLocalLogs: () => Promise<void>;
     scanDetectedSaveGames: (
@@ -680,6 +688,10 @@ declare global {
     getEmulatorRomExtensions: (system: EmulatorSystem) => Promise<string[]>;
     closeGame: (shop: GameShop, objectId: string) => Promise<boolean>;
     removeGameFromLibrary: (shop: GameShop, objectId: string) => Promise<void>;
+    bulkRemoveGamesFromLibrary: (
+      targets: import("@shared").BulkLibraryRemovalTarget[],
+      confirmation?: string
+    ) => Promise<import("@shared").BulkLibraryRemovalResult>;
     removeGame: (shop: GameShop, objectId: string) => Promise<void>;
     deleteGameFolder: (
       shop: GameShop,

@@ -32,6 +32,7 @@ export * from "./archive-org";
 export * from "./official-chat";
 export * from "./constants";
 export * from "./direct-torrent-policy";
+export * from "./download-source-info";
 export {
   shouldAutoStartSteamSync,
   type SteamAutoStartRunStatus,
@@ -92,6 +93,9 @@ export * from "./use-screenshot-image-fallback";
 export * from "./rich-text";
 export * from "./local-screenshots";
 export * from "./achievement-list";
+export * from "./feature-preferences";
+export * from "./bulk-library-removal";
+export * from "./download-source-info";
 
 export class UserNotLoggedInError extends Error {
   constructor() {

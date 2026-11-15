@@ -1360,6 +1360,10 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("closeGame", shop, objectId),
   removeGameFromLibrary: (shop: GameShop, objectId: string) =>
     ipcRenderer.invoke("removeGameFromLibrary", shop, objectId),
+  bulkRemoveGamesFromLibrary: (
+    targets: { shop: GameShop; objectId: string }[],
+    confirmation?: string
+  ) => ipcRenderer.invoke("bulkRemoveGamesFromLibrary", targets, confirmation),
   removeGame: (shop: GameShop, objectId: string) =>
     ipcRenderer.invoke("removeGame", shop, objectId),
   deleteGameFolder: (
@@ -1941,8 +1945,20 @@ contextBridge.exposeInMainWorld("electron", {
   saveLudusaviLocalSettings: (
     settings: import("@types").LudusaviLocalSettings
   ) => ipcRenderer.invoke("saveLudusaviLocalSettings", settings),
+  saveLudusaviGameSettings: (
+    key: string,
+    patch: Partial<import("@types").LudusaviGameSettings>
+  ) => ipcRenderer.invoke("saveLudusaviGameSettings", key, patch),
   runLudusaviLocalBackup: (key: string, preview: boolean) =>
     ipcRenderer.invoke("runLudusaviLocalBackup", key, preview),
+  runLudusaviLocalBulkBackup: (includeDisabled = false) =>
+    ipcRenderer.invoke("runLudusaviLocalBulkBackup", includeDisabled),
+  onLudusaviStateChanged: (cb: () => void) => {
+    const listener = () => cb();
+    ipcRenderer.on("on-ludusavi-state-changed", listener);
+    return () =>
+      ipcRenderer.removeListener("on-ludusavi-state-changed", listener);
+  },
   openLudusaviLocalFolder: (logs = false) =>
     ipcRenderer.invoke("openLudusaviLocalFolder", logs),
   clearLudusaviLocalLogs: () => ipcRenderer.invoke("clearLudusaviLocalLogs"),

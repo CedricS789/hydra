@@ -187,6 +187,15 @@
     }
   }
 
+  &__hero-source {
+    display: flex;
+    flex-direction: column;
+    gap: calc(globals.$spacing-unit / 2);
+    color: rgba(255, 255, 255, 0.78);
+    font-size: globals.$hint-font-size;
+    overflow-wrap: anywhere;
+  }
+
   &__hero-action-row {
     display: flex;
     justify-content: space-between;
@@ -446,6 +455,19 @@
     gap: calc(globals.$spacing-unit * 2);
     font-size: globals.$hint-font-size;
     color: globals.$muted-color;
+  }
+
+  &__simple-source {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__simple-repack-title {
+    overflow: hidden;
+    color: globals.$muted-color;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &__simple-size {

@@ -194,6 +194,10 @@ export interface StartGameDownloadPayload {
   fileSize?: string | null;
   fileIndices?: number[];
   selectedFilesSize?: number | null;
+  repackTitle?: string | null;
+  downloadSourceName?: string | null;
+  repackFileSize?: string | null;
+  uploadDate?: string | null;
 }
 
 export interface UserFriend {

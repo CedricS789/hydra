@@ -1,21 +1,39 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { Button, CheckboxField, TextField } from "@renderer/components";
-import type { LudusaviLocalSettings, LudusaviLocalState } from "@types";
+import type { GameShop, LudusaviLocalSettings } from "@types";
 import "./settings-local-edition.scss";
 import { SettingsSaveManager } from "./settings-save-manager";
 import { SettingsSaveDiscovery } from "./settings-save-discovery";
-import { useLibrary } from "@renderer/hooks/use-library";
+import { useDate, useLibrary, useLudusaviLocalState } from "@renderer/hooks";
+import { useGameOptionsModal } from "@renderer/context/game-options-modal/game-options-modal.context";
+import { buildGameDetailsPath } from "@renderer/helpers";
 import saveEngine from "../../../../shared/save-engine.json";
+
+const parseGameKey = (
+  key: string
+): { shop: GameShop; objectId: string } | null => {
+  const idx = key.indexOf(":");
+  if (idx <= 0) return null;
+  return {
+    shop: key.slice(0, idx) as GameShop,
+    objectId: key.slice(idx + 1),
+  };
+};
 
 export function SettingsLudusavi() {
   const { t } = useTranslation("ludusavi");
-  const { updateLibrary } = useLibrary();
-  const [state, setState] = useState<LudusaviLocalState>();
+  const { formatDateTime, formatDistance } = useDate();
+  const navigate = useNavigate();
+  const { library, updateLibrary } = useLibrary();
+  const { openGameOptionsModal } = useGameOptionsModal();
+  const { state, error: stateError, refresh } = useLudusaviLocalState();
+
   const [settings, setSettings] = useState<LudusaviLocalSettings>();
-  const [selected, setSelected] = useState("");
-  const [advancedSelected, setAdvancedSelected] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [includeDisabledBulk, setIncludeDisabledBulk] = useState(false);
+  const [overviewFilter, setOverviewFilter] = useState("");
   const mainHeading = useRef<HTMLHeadingElement>(null);
   const advancedHeading = useRef<HTMLHeadingElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -32,56 +50,32 @@ export function SettingsLudusavi() {
   }, [advancedOpen]);
 
   useEffect(() => {
-    if (!state) return;
-    setSelected((key) =>
-      state.games.some((game) => game.key === key)
-        ? key
-        : (state.games[0]?.key ?? "")
-    );
-    if (advancedOpen)
-      setAdvancedSelected((key) =>
-        state.games.some((game) => game.key === key)
-          ? key
-          : (state.games[0]?.key ?? "")
-      );
-  }, [state, advancedOpen]);
-
-  const refresh = async () => {
-    const value = await window.electron.getLudusaviLocalState();
-    setState(value);
-    return value;
-  };
+    if (state && !settings) {
+      setSettings(state.settings);
+    }
+  }, [state, settings]);
 
   useEffect(() => {
-    let mounted = true;
-    window.electron
-      .getLudusaviLocalState()
-      .then((value) => {
-        if (!mounted) return;
-        setState(value);
-        setSettings(value.settings);
-        const query = new URLSearchParams(
-          globalThis.location.hash.split("?")[1] ?? globalThis.location.search
-        );
-        const requested = query.get("game");
-        setSelected(
-          value.games.find((game) => game.key === requested)?.key ??
-            value.games[0]?.key ??
-            ""
-        );
-      })
-      .catch((e) => mounted && setError(String(e)));
-    const timer = setInterval(() => {
-      window.electron
-        .getLudusaviLocalState()
-        .then((value) => mounted && setState(value))
-        .catch((e) => mounted && setError(String(e)));
-    }, 3000);
-    return () => {
-      mounted = false;
-      clearInterval(timer);
-    };
-  }, []);
+    if (stateError) setError(stateError);
+  }, [stateError]);
+
+  const libraryByKey = useMemo(() => {
+    const map = new Map<string, (typeof library)[number]>();
+    for (const item of library) {
+      map.set(`${item.shop}:${item.objectId}`, item);
+    }
+    return map;
+  }, [library]);
+
+  const filteredGames = useMemo(() => {
+    if (!state) return [];
+    const term = overviewFilter.trim().toLowerCase();
+    const sorted = [...state.games].sort((a, b) =>
+      a.title.localeCompare(b.title)
+    );
+    if (!term) return sorted;
+    return sorted.filter((game) => game.title.toLowerCase().includes(term));
+  }, [state, overviewFilter]);
 
   const action = async (task: () => Promise<unknown>) => {
     setWorking(true);
@@ -100,33 +94,36 @@ export function SettingsLudusavi() {
 
   const update = (value: Partial<LudusaviLocalSettings>) =>
     setSettings({ ...settings, ...value });
-  const game = settings.games[selected] ?? {
-    enabled: true,
-    savePaths: [],
-    trackingPaths: [],
+  const save = async () => {
+    const latest = await window.electron.saveLudusaviLocalSettings(settings);
+    setSettings(latest.settings);
+    return latest;
   };
-  const selectedGameInfo = state.games.find((g) => g.key === selected);
-  const updateGame = (value: Partial<typeof game>) =>
-    update({ games: { ...settings.games, [selected]: { ...game, ...value } } });
-  const advancedGame = settings.games[advancedSelected] ?? {
-    enabled: true,
-    savePaths: [],
-    trackingPaths: [],
+
+  const openGameBackups = (game: { key: string; title: string }) => {
+    const libraryGame = libraryByKey.get(game.key);
+    if (libraryGame) {
+      openGameOptionsModal(libraryGame, "local_backups");
+      return;
+    }
+    const parsed = parseGameKey(game.key);
+    if (parsed) {
+      navigate(
+        buildGameDetailsPath({
+          shop: parsed.shop,
+          objectId: parsed.objectId,
+          title: game.title,
+        })
+      );
+    }
   };
-  const advancedGameInfo = state.games.find((g) => g.key === advancedSelected);
-  const updateAdvancedGame = (value: Partial<typeof advancedGame>) =>
-    update({
-      games: {
-        ...settings.games,
-        [advancedSelected]: { ...advancedGame, ...value },
-      },
-    });
-  const save = () => window.electron.saveLudusaviLocalSettings(settings);
-  const preview = (isPreview: boolean) =>
-    action(async () => {
-      await save();
-      await window.electron.runLudusaviLocalBackup(selected, isPreview);
-    });
+
+  const busy = working || state.busy || state.bulkProgress.running;
+  const bulk = state.bulkProgress;
+  const lastBulkSummary = bulk.lastSummary;
+  const bulkIssueCount = lastBulkSummary
+    ? lastBulkSummary.skippedGames.length + lastBulkSummary.failures.length
+    : 0;
 
   return (
     <div
@@ -194,7 +191,7 @@ export function SettingsLudusavi() {
               >
                 {t("open_destination")}
               </Button>
-              <Button disabled={working} onClick={() => action(save)}>
+              <Button disabled={busy} onClick={() => action(save)}>
                 {t("save")}
               </Button>
             </div>
@@ -231,109 +228,231 @@ export function SettingsLudusavi() {
           />
         </section>
 
-        <SettingsSaveDiscovery
-          games={state.games}
-          busy={working || state.busy}
-          destination={settings.destination}
-          beforeAction={save}
-          refresh={refresh}
-          onAdded={async (key) => {
-            const latest = await refresh();
-            setSettings(latest.settings);
-            setSelected(key);
-            await updateLibrary();
-          }}
-        />
-
         <section className="local-edition__card">
           <div className="local-edition__card-header">
             <div>
-              <h3 className="local-edition__card-title">{t("games")}</h3>
+              <h3 className="local-edition__card-title">{t("bulk_title")}</h3>
               <p className="local-edition__card-subtitle">
-                {t("games_description")}
+                {t("bulk_description")}
               </p>
             </div>
+            <div className="local-edition__actions">
+              <Button
+                disabled={busy || !state.games.length}
+                onClick={() =>
+                  action(async () => {
+                    await save();
+                    await window.electron.runLudusaviLocalBulkBackup(
+                      includeDisabledBulk
+                    );
+                  })
+                }
+              >
+                {t("backup_all")}
+              </Button>
+            </div>
           </div>
+
+          <CheckboxField
+            label={t("include_disabled_games")}
+            checked={includeDisabledBulk}
+            disabled={busy}
+            onChange={(e) => setIncludeDisabledBulk(e.target.checked)}
+          />
+
+          {bulk.running && (
+            <div className="local-edition__scan-progress" role="status">
+              <span>
+                {t("backup_all_running", {
+                  completed: bulk.completed,
+                  total: bulk.total,
+                  title: bulk.currentGameTitle ?? "",
+                })}
+              </span>
+              <progress value={bulk.completed} max={Math.max(bulk.total, 1)} />
+            </div>
+          )}
+
+          {lastBulkSummary && !bulk.running && (
+            <div className="local-edition__subcard">
+              <p className="local-edition__status-banner" role="status">
+                {t("bulk_summary", {
+                  succeeded: lastBulkSummary.succeeded,
+                  skipped: lastBulkSummary.skipped,
+                  failed: lastBulkSummary.failed,
+                })}
+              </p>
+              {bulkIssueCount > 0 && (
+                <details>
+                  <summary>
+                    {t("bulk_skipped_details", { count: bulkIssueCount })}
+                  </summary>
+                  <ul className="local-edition__bulk-issues">
+                    {lastBulkSummary.failures.map((item) => (
+                      <li key={`fail-${item.gameKey}`}>
+                        <strong className="local-edition__error">
+                          {t("bulk_failed_label")}
+                        </strong>{" "}
+                        · {item.title}: {item.reason}
+                      </li>
+                    ))}
+                    {lastBulkSummary.skippedGames.map((item) => (
+                      <li key={`skip-${item.gameKey}`}>
+                        <strong>{t("bulk_skipped_label")}</strong> ·{" "}
+                        {item.title}: {item.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
 
           {!state.games.length ? (
             <p className="local-edition__hint">{t("no_games")}</p>
           ) : (
             <>
-              <div className="local-edition__game-bar">
-                <label className="local-edition__label local-edition__game-select">
-                  {t("backup_game_selection")}
-                  <select
-                    value={selected}
-                    onChange={(e) => setSelected(e.target.value)}
-                  >
-                    {state.games.map((g) => (
-                      <option key={g.key} value={g.key}>
-                        {g.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div className="local-edition__game-status">
-                  <span className="local-edition__label">
-                    {t("automatic_game_label")}
-                  </span>
-                  <div className="local-edition__game-auto-control">
-                    <CheckboxField
-                      label={t("enable_game")}
-                      checked={game.enabled}
-                      onChange={(e) =>
-                        updateGame({ enabled: e.target.checked })
-                      }
-                    />
-                  </div>
-                  {selectedGameInfo?.executablePath ? (
-                    <code className="local-edition__exe-pill">
-                      {selectedGameInfo.executablePath}
-                    </code>
-                  ) : (
-                    <span className="local-edition__badge local-edition__badge--unmatched">
-                      {t("not_installed_badge")}
-                    </span>
-                  )}
-                </div>
+              <div className="local-edition__search-box">
+                <TextField
+                  placeholder={t("overview_filter_placeholder")}
+                  value={overviewFilter}
+                  onChange={(e) => setOverviewFilter(e.target.value)}
+                />
               </div>
+              <div className="local-edition__table-scroll">
+                <table className="local-edition__overview-table">
+                  <thead>
+                    <tr>
+                      <th>{t("overview_col_game")}</th>
+                      <th>{t("overview_col_status")}</th>
+                      <th>{t("overview_col_auto")}</th>
+                      <th>{t("overview_col_actions")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredGames.map((game) => {
+                      const summary = state.gameSummaries?.[game.key];
+                      const gameEnabled =
+                        settings.games[game.key]?.enabled !== false;
+                      const isActive = state.activeGameKey === game.key;
 
-              {!selectedGameInfo?.executablePath && (
-                <p className="local-edition__hint">
-                  {t("executable_for_automation")}
-                </p>
-              )}
-              <div className="local-edition__row">
-                <Button
-                  theme="outline"
-                  disabled={working || state.busy || !selected}
-                  onClick={() => preview(true)}
-                >
-                  {t("preview")}
-                </Button>
-                <Button
-                  disabled={working || state.busy || !selected}
-                  onClick={() => preview(false)}
-                >
-                  {t("backup_now")}
-                </Button>
+                      const statusNode = (() => {
+                        if (isActive) {
+                          return <span>{t("pill_backing_up")}</span>;
+                        }
+                        if (summary?.lastAttemptStatus === "failed") {
+                          return (
+                            <span
+                              className="local-edition__error"
+                              title={summary.lastError ?? t("status_failed")}
+                            >
+                              {t("pill_backup_failed")}
+                              {summary.lastBackupAt
+                                ? ` · ${formatDistance(
+                                    new Date(summary.lastBackupAt),
+                                    new Date(),
+                                    { addSuffix: true }
+                                  )}`
+                                : ""}
+                            </span>
+                          );
+                        }
+                        if (summary?.lastBackupAt) {
+                          return (
+                            <span title={formatDateTime(summary.lastBackupAt)}>
+                              {formatDistance(
+                                new Date(summary.lastBackupAt),
+                                new Date(),
+                                { addSuffix: true }
+                              )}
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="local-edition__hint">
+                            {t("never_backed_up")}
+                          </span>
+                        );
+                      })();
+
+                      return (
+                        <tr key={game.key}>
+                          <td>
+                            <div className="local-edition__overview-game-cell">
+                              <span>{game.title}</span>
+                              {!game.executablePath && (
+                                <span className="local-edition__badge local-edition__badge--unmatched">
+                                  {t("not_installed_badge")}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td>{statusNode}</td>
+                          <td>
+                            <input
+                              type="checkbox"
+                              aria-label={`${t("enable_game")} (${game.title})`}
+                              checked={gameEnabled}
+                              disabled={busy}
+                              onChange={(e) => {
+                                const enabled = e.target.checked;
+                                void action(async () => {
+                                  const latest =
+                                    await window.electron.saveLudusaviGameSettings(
+                                      game.key,
+                                      { enabled }
+                                    );
+                                  setSettings(latest.settings);
+                                });
+                              }}
+                            />
+                          </td>
+                          <td>
+                            <div className="local-edition__actions">
+                              <Button
+                                theme="outline"
+                                disabled={busy}
+                                onClick={() =>
+                                  action(() =>
+                                    window.electron.runLudusaviLocalBackup(
+                                      game.key,
+                                      false
+                                    )
+                                  )
+                                }
+                              >
+                                {t("overview_backup_short")}
+                              </Button>
+                              <Button
+                                theme="outline"
+                                onClick={() => openGameBackups(game)}
+                              >
+                                {t("overview_manage")}
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-
-              <SettingsSaveManager
-                mode="versions"
-                gameKey={selected}
-                destination={settings.destination}
-                busy={working || state.busy}
-                beforeAction={save}
-                refresh={refresh}
-                reloadSettings={async () => {
-                  const latest = await refresh();
-                  setSettings(latest.settings);
-                }}
-              />
             </>
           )}
         </section>
+
+        <SettingsSaveDiscovery
+          games={state.games}
+          busy={busy}
+          destination={settings.destination}
+          beforeAction={save}
+          refresh={refresh}
+          onAdded={async () => {
+            const latest = await refresh();
+            setSettings(latest.settings);
+            await updateLibrary();
+          }}
+        />
 
         <div className="local-edition__advanced-entry">
           <p className="local-edition__hint">
@@ -341,15 +460,8 @@ export function SettingsLudusavi() {
           </p>
           <Button
             theme="outline"
-            disabled={working || state.busy}
-            onClick={() => {
-              setAdvancedSelected((current) =>
-                state.games.some((g) => g.key === current)
-                  ? current
-                  : selected || state.games[0]?.key || ""
-              );
-              setAdvancedOpen(true);
-            }}
+            disabled={busy}
+            onClick={() => setAdvancedOpen(true)}
           >
             {t("open_advanced_settings")}
           </Button>
@@ -369,7 +481,7 @@ export function SettingsLudusavi() {
           >
             {t("back_to_backups")}
           </Button>
-          <Button disabled={working || state.busy} onClick={() => action(save)}>
+          <Button disabled={busy} onClick={() => action(save)}>
             {t("save")}
           </Button>
         </div>
@@ -382,7 +494,7 @@ export function SettingsLudusavi() {
             {t("advanced_view_title")}
           </h3>
           <p className="local-edition__card-subtitle">
-            {t("advanced_entry_description")}
+            {t("advanced_view_description")}
           </p>
         </div>
 
@@ -464,87 +576,12 @@ export function SettingsLudusavi() {
             </div>
           </div>
 
-          {/* Per-game Custom Save Paths & Process Tracking */}
-          {!!state.games.length && advancedGameInfo && (
-            <div className="local-edition__subcard">
-              <div className="local-edition__card-header">
-                <h4 className="local-edition__section-heading">
-                  {t("custom_paths_section_title", {
-                    game: advancedGameInfo.title,
-                  })}
-                </h4>
-              </div>
-              <label className="local-edition__label local-edition__game-select">
-                {t("advanced_game_selection")}
-                <select
-                  value={advancedSelected}
-                  disabled={working || state.busy}
-                  onChange={(event) => setAdvancedSelected(event.target.value)}
-                >
-                  {state.games.map((game) => (
-                    <option key={game.key} value={game.key}>
-                      {game.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <p className="local-edition__hint">
-                {t("independent_game_selection")}
-              </p>
-              {advancedGame.manifestTitle && (
-                <div className="local-edition__row">
-                  <span className="local-edition__hint">
-                    {t("linked_save_title", {
-                      title: advancedGame.manifestTitle,
-                    })}
-                  </span>
-                  <Button
-                    theme="outline"
-                    disabled={working || state.busy}
-                    onClick={() =>
-                      updateAdvancedGame({
-                        manifestTitle: undefined,
-                        steamId: undefined,
-                      })
-                    }
-                  >
-                    {t("unlink_save_title")}
-                  </Button>
-                </div>
-              )}
-              <label className="local-edition__label">
-                {t("save_paths")}
-                <textarea
-                  rows={3}
-                  value={advancedGame.savePaths.join("\n")}
-                  onChange={(e) =>
-                    updateAdvancedGame({
-                      savePaths: e.target.value.split("\n").filter(Boolean),
-                    })
-                  }
-                />
-              </label>
-              <label className="local-edition__label">
-                {t("tracking_paths")}
-                <textarea
-                  rows={2}
-                  value={advancedGame.trackingPaths.join("\n")}
-                  onChange={(e) =>
-                    updateAdvancedGame({
-                      trackingPaths: e.target.value.split("\n").filter(Boolean),
-                    })
-                  }
-                />
-              </label>
-            </div>
-          )}
-
           {/* Advanced Rules, Full Ludusavi Manager & Rclone Remote Storage */}
           <SettingsSaveManager
             mode="advanced"
-            gameKey={advancedSelected}
+            gameKey=""
             destination={settings.destination}
-            busy={working || state.busy}
+            busy={busy}
             beforeAction={save}
             refresh={refresh}
             reloadSettings={async () => {
@@ -573,7 +610,7 @@ export function SettingsLudusavi() {
                 </Button>
                 <Button
                   theme="outline"
-                  disabled={working || state.busy || confirmClear}
+                  disabled={busy || confirmClear}
                   onClick={() => {
                     setClearNotice("");
                     setConfirmClear(true);
@@ -589,7 +626,7 @@ export function SettingsLudusavi() {
                 <p>{t("clear_logs_confirmation")}</p>
                 <div className="local-edition__row">
                   <Button
-                    disabled={working || state.busy}
+                    disabled={busy}
                     onClick={() =>
                       action(async () => {
                         await window.electron.clearLudusaviLocalLogs();

@@ -4,7 +4,8 @@ import {
   SettingsContextProvider,
 } from "@renderer/context";
 import { SettingsAccount } from "./settings-account";
-import { useFeature, useUserDetails } from "@renderer/hooks";
+import { useFeature, useAppSelector, useUserDetails } from "@renderer/hooks";
+import { isClassicsEnabled } from "@shared";
 import { Fragment, useMemo } from "react";
 import "./settings.scss";
 import {
@@ -17,7 +18,7 @@ import {
   VideoIcon,
   ShieldCheckIcon,
 } from "@primer/octicons-react";
-import { Camera, Gamepad2, Wrench } from "lucide-react";
+import { Camera, Gamepad2, ShieldAlert, Wrench } from "lucide-react";
 import { SettingsContextGeneral } from "./settings-context-general";
 import { SettingsContextDownloads } from "./settings-context-downloads";
 import { SettingsContextDownloadSources } from "./settings-context-download-sources";
@@ -28,6 +29,7 @@ import { SettingsContextIntegrations } from "./settings-context-integrations";
 import { SettingsContextCompatibility } from "./settings-context-compatibility";
 import { SettingsContextBigPicture } from "./settings-context-big-picture";
 import { SettingsContextEmulation } from "./emulation/settings-context-emulation";
+import { SettingsContextAdvanced } from "./settings-context-advanced";
 
 import { SettingsLudusavi } from "./settings-ludusavi";
 import { SettingsLocalReleases } from "./settings-local-releases";
@@ -36,8 +38,12 @@ export default function Settings() {
   const { t } = useTranslation("settings");
 
   const { userDetails } = useUserDetails();
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
   const { isFeatureEnabled, Feature } = useFeature();
   const isScreenshotsEnabled = isFeatureEnabled(Feature.Screenshots);
+  const classicsEnabled = isClassicsEnabled(userPreferences);
 
   const categories = useMemo(
     () => [
@@ -109,14 +115,24 @@ export default function Settings() {
         label: t("big_picture"),
         icon: <VideoIcon size={16} />,
       },
+      ...(classicsEnabled
+        ? [
+            {
+              id: "emulation" as const,
+              label: t("emulation"),
+              icon: <Gamepad2 size={16} />,
+              group: "classics" as const,
+            },
+          ]
+        : []),
       {
-        id: "emulation" as const,
-        label: t("emulation"),
-        icon: <Gamepad2 size={16} />,
-        group: "classics" as const,
+        id: "advanced" as const,
+        label: t("advanced"),
+        icon: <ShieldAlert size={16} />,
+        dividerBefore: true,
       },
     ],
-    [t, userDetails, isScreenshotsEnabled]
+    [t, userDetails, isScreenshotsEnabled, classicsEnabled]
   );
 
   return (
@@ -173,6 +189,10 @@ export default function Settings() {
               return <SettingsContextEmulation />;
             }
 
+            if (selectedCategoryId === "advanced") {
+              return <SettingsContextAdvanced />;
+            }
+
             return <SettingsAccount />;
           };
 
@@ -188,6 +208,11 @@ export default function Settings() {
                     const currentGroup = (category as { group?: string }).group;
                     const showGroupHeader =
                       currentGroup && currentGroup !== prevGroup;
+                    const showDividerBefore =
+                      !showGroupHeader &&
+                      Boolean(
+                        (category as { dividerBefore?: boolean }).dividerBefore
+                      );
 
                     return (
                       <Fragment key={category.id}>
@@ -200,6 +225,9 @@ export default function Settings() {
                                 : currentGroup}
                             </span>
                           </div>
+                        )}
+                        {showDividerBefore && (
+                          <div className="settings__sidebar-divider" />
                         )}
                         <button
                           type="button"

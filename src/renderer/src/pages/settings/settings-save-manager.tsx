@@ -11,7 +11,7 @@ interface Props {
   beforeAction: () => Promise<unknown>;
   refresh: () => Promise<unknown>;
   reloadSettings: () => Promise<void>;
-  mode?: "versions" | "advanced" | "all";
+  mode?: "versions" | "advanced" | "remote" | "all";
 }
 
 export function SettingsSaveManager({
@@ -98,6 +98,31 @@ export function SettingsSaveManager({
 
   const showVersions = mode === "all" || mode === "versions";
   const showAdvanced = mode === "all" || mode === "advanced";
+  const showRemoteTransfers = mode === "remote";
+
+  const renderTransferButtons = () => (
+    <div className="local-edition__row">
+      {(["upload", "download"] as const).map((direction) => (
+        <Button
+          theme="outline"
+          key={direction}
+          disabled={disabled || !gameKey}
+          onClick={() =>
+            action(async (current) => {
+              setPreview(undefined);
+              const value = await window.electron.previewSaveCloudTransfer(
+                gameKey,
+                direction
+              );
+              if (current()) showPreview(value);
+            })
+          }
+        >
+          {t(`preview_${direction}`)}
+        </Button>
+      ))}
+    </div>
+  );
 
   return (
     <>
@@ -328,31 +353,16 @@ export function SettingsSaveManager({
                 {t("remote_setup_help")}
               </Button>
             </div>
-            <div className="local-edition__row">
-              {(["upload", "download"] as const).map((direction) => (
-                <Button
-                  theme="outline"
-                  key={direction}
-                  disabled={disabled || !gameKey}
-                  onClick={() =>
-                    action(async (current) => {
-                      setPreview(undefined);
-                      const value =
-                        await window.electron.previewSaveCloudTransfer(
-                          gameKey,
-                          direction
-                        );
-                      if (current()) showPreview(value);
-                    })
-                  }
-                >
-                  {t(`preview_${direction}`)}
-                </Button>
-              ))}
-            </div>
+            {gameKey ? (
+              renderTransferButtons()
+            ) : (
+              <p className="local-edition__hint">{t("remote_card_hint")}</p>
+            )}
           </div>
         </div>
       )}
+
+      {showRemoteTransfers && renderTransferButtons()}
 
       {preview && (
         <section

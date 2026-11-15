@@ -3,6 +3,8 @@ import "./filters.scss";
 import type { GameCollection, LibraryGame } from "@types";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { isClassicsEnabled } from "@shared";
+import { useUserPreferences } from "../../../../hooks";
 
 import {
   BumperBadge,
@@ -106,6 +108,8 @@ export function LibraryFilters({
   firstContentItemId = null,
 }: Readonly<LibraryFiltersProps>) {
   const { t } = useTranslation("big_picture");
+  const userPreferences = useUserPreferences();
+  const classicsEnabled = isClassicsEnabled(userPreferences);
   const tabDownOverride = useMemo(
     () =>
       firstContentItemId
@@ -134,16 +138,20 @@ export function LibraryFilters({
         value: "all",
         label: t("library_tab_all", { count: counts.all }),
       },
-      {
-        id: getLibraryFiltersTabFocusId("moderns"),
-        value: "moderns",
-        label: t("library_tab_moderns", { count: counts.moderns }),
-      },
-      {
-        id: getLibraryFiltersTabFocusId("classics"),
-        value: "classics",
-        label: t("library_tab_classics", { count: counts.classics }),
-      },
+      ...(classicsEnabled
+        ? [
+            {
+              id: getLibraryFiltersTabFocusId("moderns"),
+              value: "moderns" as const,
+              label: t("library_tab_moderns", { count: counts.moderns }),
+            },
+            {
+              id: getLibraryFiltersTabFocusId("classics"),
+              value: "classics" as const,
+              label: t("library_tab_classics", { count: counts.classics }),
+            },
+          ]
+        : []),
       {
         id: getLibraryFiltersTabFocusId("favorites"),
         value: "favorites",
@@ -189,7 +197,7 @@ export function LibraryFilters({
     })) satisfies Array<TabsItem<LibraryFilterTab>>;
 
     return tabItemsLocal;
-  }, [collections, counts, library, t, tabDownOverride]);
+  }, [classicsEnabled, collections, counts, library, t, tabDownOverride]);
 
   const toolbarNavigationOverrides: FocusOverrides = useMemo(() => {
     return {

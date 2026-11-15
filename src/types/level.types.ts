@@ -166,6 +166,10 @@ export interface Download {
   debridQueuePosition?: number;
   debridPreparationDeadline?: number;
   customTrackers?: string[];
+  repackTitle?: string | null;
+  downloadSourceName?: string | null;
+  repackFileSize?: string | null;
+  uploadDate?: string | null;
 }
 
 export interface DownloadLayoutState {
@@ -277,6 +281,8 @@ export interface UserPreferences {
   screenshotDefaultVisibility?: ProfileVisibility;
   showSensitiveScreenshots?: boolean;
   hideCommunityScreenshots?: boolean;
+  enableClassics?: boolean;
+  enableTransferGame?: boolean;
 }
 
 export interface NetworkInterface {

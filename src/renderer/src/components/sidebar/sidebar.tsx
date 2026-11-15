@@ -3,7 +3,11 @@ import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import type { LibraryGame } from "@types";
-import { getGameCatalogueIdentity, removeDiacritics } from "@shared";
+import {
+  getGameCatalogueIdentity,
+  isClassicsEnabled,
+  removeDiacritics,
+} from "@shared";
 
 import { ConfirmationModal, TextField } from "@renderer/components";
 import {
@@ -28,6 +32,7 @@ import {
   filterLibraryGames,
   getAvailableLibrarySources,
   hasImportedLibraryGames,
+  isClassicsGame,
   readStoredLibraryFilters,
   type LibraryCategory,
   type LibrarySource,
@@ -82,6 +87,10 @@ export function Sidebar() {
   const { t } = useTranslation(["sidebar", "library"]);
   const { isEnabled: isGlobalLeaderboardsEnabled } =
     useGlobalLeaderboardsFeature();
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const classicsEnabled = isClassicsEnabled(userPreferences);
   const { library, updateLibrary } = useLibrary();
   const isLibraryLoading = useAppSelector(selectIsLibraryLoading);
   const groupedLibrary = useAppSelector(selectGroupedLibrary);
@@ -188,23 +197,34 @@ export function Sidebar() {
     [groupedLibrary, orderSidebarGames]
   );
 
+  const effectiveSidebarCategory: LibraryCategory = classicsEnabled
+    ? sidebarCategory
+    : "pc";
+
   const sortedLibrary = useMemo(
     () =>
       filterLibraryGames(orderedLibrary, {
-        category: sidebarCategory,
+        category: effectiveSidebarCategory,
         sources: effectiveSources,
         platforms: effectivePlatforms,
       }),
-    [orderedLibrary, sidebarCategory, effectiveSources, effectivePlatforms]
+    [
+      orderedLibrary,
+      effectiveSidebarCategory,
+      effectiveSources,
+      effectivePlatforms,
+    ]
   );
 
   const searchIndex = useMemo(
     () =>
-      orderedLibrary.map((game) => ({
-        game,
-        title: removeDiacritics(game.title ?? "").toLowerCase(),
-      })),
-    [orderedLibrary]
+      orderedLibrary
+        .filter((game) => classicsEnabled || !isClassicsGame(game))
+        .map((game) => ({
+          game,
+          title: removeDiacritics(game.title ?? "").toLowerCase(),
+        })),
+    [orderedLibrary, classicsEnabled]
   );
 
   const { lastPacket, progress } = useDownload();
@@ -248,9 +268,11 @@ export function Sidebar() {
 
   const hasActiveFilter =
     library.length > 0 &&
-    (sidebarCategory !== "all" ||
-      (categoryShowsSources(sidebarCategory) && effectiveSources.length > 0) ||
-      (categoryShowsPlatforms(sidebarCategory) &&
+    ((classicsEnabled && effectiveSidebarCategory !== "all") ||
+      (categoryShowsSources(effectiveSidebarCategory) &&
+        effectiveSources.length > 0) ||
+      (classicsEnabled &&
+        categoryShowsPlatforms(effectiveSidebarCategory) &&
         effectivePlatforms.length > 0) ||
       showPlayableOnly ||
       isSearching);
@@ -583,20 +605,24 @@ export function Sidebar() {
               <Tooltip id="sidebar-show-playable-only-tooltip" place="top" />
 
               <SidebarFilterMenu
-                category={sidebarCategory}
+                showCategories={classicsEnabled}
+                category={effectiveSidebarCategory}
                 onCategoryChange={handleSidebarCategoryChange}
                 sortBy={sidebarSortBy}
                 onSortChange={handleSidebarSortChange}
                 showFavoritesFirst={showFavoritesFirst}
                 onToggleFavoritesFirst={handleToggleFavoritesFirst}
                 showSources={
-                  categoryShowsSources(sidebarCategory) && hasImportedGames
+                  categoryShowsSources(effectiveSidebarCategory) &&
+                  hasImportedGames
                 }
                 sources={availableSources}
                 selectedSources={effectiveSources}
                 onSourcesChange={handleSelectedSourcesChange}
                 showPlatforms={
-                  categoryShowsPlatforms(sidebarCategory) && hasPlatforms
+                  classicsEnabled &&
+                  categoryShowsPlatforms(effectiveSidebarCategory) &&
+                  hasPlatforms
                 }
                 platforms={uniquePlatforms}
                 selectedPlatforms={selectedPlatforms}

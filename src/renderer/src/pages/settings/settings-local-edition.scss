@@ -464,15 +464,11 @@
     }
   }
   &__view-toolbar {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    background: globals.$background-color;
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
     gap: 12px;
-    padding-block: 12px;
+    padding-bottom: 12px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
@@ -557,7 +553,36 @@
 
   &__table-scroll {
     overflow: auto;
-    max-height: 320px;
+    max-height: 360px;
+  }
+
+  &__overview-table {
+    td,
+    th {
+      vertical-align: middle;
+    }
+
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+  }
+
+  &__overview-game-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  &__bulk-issues {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12.5px;
   }
 
   table {

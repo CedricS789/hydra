@@ -1,4 +1,4 @@
-import { DeviceDesktopIcon } from "@primer/octicons-react";
+import { DeviceDesktopIcon, DownloadIcon } from "@primer/octicons-react";
 import { FunnelIcon, SortAscendingIcon } from "@phosphor-icons/react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ClassicsIcon } from "@renderer/pages/library/category-filter";
@@ -12,11 +12,13 @@ import {
   type TabsItem,
   Typography,
 } from "../../components";
-import { useNavigationActions } from "../../hooks";
+import { isClassicsEnabled } from "@shared";
+import { useNavigationActions, useUserPreferences } from "../../hooks";
 import { useNavigationStore } from "../../stores";
 import {
   CATALOGUE_CLEAR_FILTERS_ID,
   CATALOGUE_FILTERS_BUTTON_ID,
+  CATALOGUE_MANUAL_DOWNLOAD_BUTTON_ID,
   CATALOGUE_HEADER_CONTROLS_REGION_ID,
   CATALOGUE_HIDDEN_FILTERS_BUTTON_ID,
   CATALOGUE_MODE_CLASSICS_ID,
@@ -39,6 +41,7 @@ interface HeaderProps {
   updateSearchParams: (newValues: Partial<SearchGamesFormValues>) => void;
   catalogueData: CatalogueData;
   onOpenFilters: () => void;
+  onOpenManualDownload: () => void;
 }
 
 interface FilterItem {
@@ -189,6 +192,7 @@ export function CatalogueHeader({
   updateSearchParams,
   catalogueData,
   onOpenFilters,
+  onOpenManualDownload,
 }: Readonly<HeaderProps>) {
   const {
     mode = "modern",
@@ -392,13 +396,17 @@ export function CatalogueHeader({
   const chipFocusIds = visibleFilters.map((filter) =>
     getCatalogueActiveFilterChipFocusId(filter.type, filter.value)
   );
+  const userPreferences = useUserPreferences();
+  const classicsEnabled = isClassicsEnabled(userPreferences);
   const headerFocusIds = [
-    CATALOGUE_MODE_MODERN_ID,
-    CATALOGUE_MODE_CLASSICS_ID,
+    ...(classicsEnabled
+      ? [CATALOGUE_MODE_MODERN_ID, CATALOGUE_MODE_CLASSICS_ID]
+      : []),
     ...chipFocusIds,
     ...(hiddenFiltersCount > 0 ? [CATALOGUE_HIDDEN_FILTERS_BUTTON_ID] : []),
     ...(activeFilters.length > 0 ? [CATALOGUE_CLEAR_FILTERS_ID] : []),
     CATALOGUE_FILTERS_BUTTON_ID,
+    CATALOGUE_MANUAL_DOWNLOAD_BUTTON_ID,
     CATALOGUE_SORT_SELECT_ID,
   ];
   const navigationOverridesById = useCatalogueHeaderNavigation(headerFocusIds);
@@ -652,17 +660,19 @@ export function CatalogueHeader({
       </div>
 
       <div className="catalogue-header__actions">
-        <Tabs
-          className="catalogue-header__mode-tabs"
-          items={modeTabItems}
-          value={mode}
-          onValueChange={handleModeChange}
-          manageFocusRegion={false}
-          selectOnFocus={false}
-          ignoreInitialFocusSelection
-          variant="segmented"
-          ariaLabel="Catalogue mode"
-        />
+        {classicsEnabled && (
+          <Tabs
+            className="catalogue-header__mode-tabs"
+            items={modeTabItems}
+            value={mode}
+            onValueChange={handleModeChange}
+            manageFocusRegion={false}
+            selectOnFocus={false}
+            ignoreInitialFocusSelection
+            variant="segmented"
+            ariaLabel="Catalogue mode"
+          />
+        )}
 
         <Button
           className="catalogue-header__filters-button"
@@ -675,6 +685,19 @@ export function CatalogueHeader({
           onClick={onOpenFilters}
         >
           Filters
+        </Button>
+
+        <Button
+          className="catalogue-header__filters-button catalogue-header__manual-download-button"
+          variant="rounded"
+          icon={<DownloadIcon size={20} />}
+          focusId={CATALOGUE_MANUAL_DOWNLOAD_BUTTON_ID}
+          focusNavigationOverrides={
+            navigationOverridesById[CATALOGUE_MANUAL_DOWNLOAD_BUTTON_ID]
+          }
+          onClick={onOpenManualDownload}
+        >
+          Download from link
         </Button>
 
         <div className="catalogue-header__sort">

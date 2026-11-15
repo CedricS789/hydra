@@ -5,6 +5,7 @@ import type { GameSettingsCategoryId } from "./types";
 
 export interface GameSettingsCategoryAvailability {
   cloudSaveAccessAction: CloudSaveAccessAction;
+  showLocalBackupsSettings?: boolean;
   showCloudSaveV2Settings: boolean;
   showLegacyCloudSaveSettings: boolean;
   showEpicCloudSettings: boolean;
@@ -71,6 +72,10 @@ export const getAvailableGameSettingsCategory = (
   category: GameSettingsCategoryId,
   availability: GameSettingsCategoryAvailability
 ): GameSettingsCategoryId => {
+  if (category === "local_backups" && !availability.showLocalBackupsSettings) {
+    return "general";
+  }
+
   if (
     category === "hydra_cloud" &&
     (!availability.showCloudSaveV2Settings ||

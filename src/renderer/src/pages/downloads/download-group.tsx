@@ -69,6 +69,7 @@ import {
 import { MoreVertical, FileArchive, FolderOpen } from "lucide-react";
 import { average } from "color.js";
 import { getEpicManagedError } from "@renderer/helpers/epic-managed-error";
+import { formatDownloadSourceSummary } from "@shared";
 
 function hexToRgb(hex: string): [number, number, number] {
   let h = hex.replace("#", "");
@@ -377,6 +378,8 @@ export function HeroDownloadView({
   t,
 }: Readonly<HeroDownloadViewProps>) {
   const navigate = useNavigate();
+  const { formatDate } = useDate();
+  const sourceSummary = formatDownloadSourceSummary(game.download, formatDate);
 
   const handleLogoClick = useCallback(() => {
     navigate(buildGameDetailsPath(game));
@@ -427,6 +430,14 @@ export function HeroDownloadView({
             )}
           </div>
         </div>
+          {(game.download?.repackTitle || sourceSummary) && (
+            <div className="download-group__hero-source">
+              {game.download?.repackTitle && (
+                <strong>{game.download.repackTitle}</strong>
+              )}
+              {sourceSummary && <span>{sourceSummary}</span>}
+            </div>
+          )}
 
         <div className="download-group__hero-progress">
           <div className="download-group__progress-row download-group__progress-row--bar">
@@ -714,7 +725,7 @@ export function DownloadGroup({
     [performPauseDownload]
   );
 
-  const { formatDistance } = useDate();
+  const { formatDistance, formatDate } = useDate();
 
   // Get speed history and peak speeds from Redux (centralized state)
   const speedHistory = useAppSelector((state) => state.download.speedHistory);
@@ -1455,10 +1466,20 @@ export function DownloadGroup({
                           )}
                         </p>
                       )}
+                    {game.download?.repackTitle && (
+                      <div className="download-group__simple-repack-title">
+                        {game.download.repackTitle}
+                      </div>
+                    )}
                     <div className="download-group__simple-meta-row">
                       <Badge>
                         {DOWNLOADER_NAME[Number(game.download!.downloader)]}
                       </Badge>
+                      {formatDownloadSourceSummary(game.download, formatDate) && (
+                        <span className="download-group__simple-source">
+                          {formatDownloadSourceSummary(game.download, formatDate)}
+                        </span>
+                      )}
                     </div>
                     <div className="download-group__simple-meta-row">
                       {extraction?.visibleId === game.id ? (

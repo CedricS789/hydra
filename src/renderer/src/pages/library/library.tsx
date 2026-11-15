@@ -36,7 +36,12 @@ import {
   SyncIcon,
 } from "@primer/octicons-react";
 import { useTranslation } from "react-i18next";
-import { AuthPage, groupLibraryGames, removeDiacritics } from "@shared";
+import {
+  AuthPage,
+  groupLibraryGames,
+  isClassicsEnabled,
+  removeDiacritics,
+} from "@shared";
 import { GameCollection, LibraryGame } from "@types";
 import {
   Button,
@@ -299,7 +304,11 @@ export default function Library() {
   );
   const [isImportingClassics, setIsImportingClassics] = useState(false);
 
-  const effectiveCategory: LibraryCategory = category;
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const classicsEnabled = isClassicsEnabled(userPreferences);
+  const effectiveCategory: LibraryCategory = classicsEnabled ? category : "pc";
 
   const [showClassicsOnboarding, setShowClassicsOnboarding] = useState(false);
   const classicsOnboardingTriggeredRef = useRef(false);
@@ -790,7 +799,9 @@ export default function Library() {
   const showSourceFilter =
     categoryShowsSources(effectiveCategory) && hasImportedGames;
   const showPlatformFilter =
-    categoryShowsPlatforms(effectiveCategory) && hasPlatforms;
+    classicsEnabled &&
+    categoryShowsPlatforms(effectiveCategory) &&
+    hasPlatforms;
 
   const filteredLibrary = useMemo(() => {
     let filtered =
@@ -1244,10 +1255,12 @@ export default function Library() {
         <div className="library__toolbar">
           {showControls && (
             <>
-              <CategoryFilter
-                category={effectiveCategory}
-                onCategoryChange={handleCategoryChange}
-              />
+              {classicsEnabled && (
+                <CategoryFilter
+                  category={effectiveCategory}
+                  onCategoryChange={handleCategoryChange}
+                />
+              )}
 
               <LibraryFiltersMenu
                 collections={libraryCollections}
@@ -1507,7 +1520,7 @@ export default function Library() {
       />
 
       <ClassicsOnboardingModal
-        visible={showClassicsOnboarding}
+        visible={classicsEnabled && showClassicsOnboarding}
         onClose={() => setShowClassicsOnboarding(false)}
       />
     </section>

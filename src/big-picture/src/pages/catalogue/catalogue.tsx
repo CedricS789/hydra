@@ -6,6 +6,7 @@ import { CATALOGUE_PAGE_REGION_ID } from "./navigation";
 import { CatalogueGrid } from "./grid";
 import { CatalogueHeader } from "./header";
 import { CatalogueFiltersModal } from "./filters-modal";
+import { ManualDownloadModal } from "@renderer/pages/catalogue/manual-download-modal";
 import { useCatalogueData } from "./use-catalogue-data";
 import { NavigationAudioService } from "../../services";
 import "./page.scss";
@@ -23,6 +24,7 @@ export default function Catalogue() {
   const restorePointerScrollTopRef = useRef<number | null>(null);
   const wasLoadingMoreRef = useRef(false);
   const [isFiltersModalOpen, setIsFiltersModalOpen] = useState(false);
+  const [isManualDownloadOpen, setIsManualDownloadOpen] = useState(false);
 
   const {
     mode,
@@ -190,6 +192,7 @@ export default function Catalogue() {
             updateSearchParams={updateSearchParams}
             catalogueData={catalogueData}
             onOpenFilters={openFiltersModal}
+            onOpenManualDownload={() => setIsManualDownloadOpen(true)}
           />
 
           <div className="catalogue-content">
@@ -210,6 +213,11 @@ export default function Catalogue() {
           values={values}
           updateSearchParams={updateSearchParams}
           onClose={() => setIsFiltersModalOpen(false)}
+        />
+        <ManualDownloadModal
+          visible={isManualDownloadOpen}
+          initialTitle={values.title}
+          onClose={() => setIsManualDownloadOpen(false)}
         />
       </section>
     </HorizontalFocusGroup>

@@ -25,7 +25,9 @@ import {
 import {
   getLudusaviLocalState,
   saveLudusaviLocalSettings,
+  saveLudusaviGameSettings,
   enqueueLudusaviLocalBackup,
+  runLudusaviLocalBulkBackup,
   openLudusaviLocalFolder,
   clearLudusaviLocalLogs,
 } from "../services/ludusavi-local";
@@ -43,8 +45,14 @@ registerEvent("getLudusaviLocalState", () => getLudusaviLocalState());
 registerEvent("saveLudusaviLocalSettings", (_event, settings) =>
   saveLudusaviLocalSettings(settings)
 );
+registerEvent("saveLudusaviGameSettings", (_event, key, patch) =>
+  saveLudusaviGameSettings(key, patch)
+);
 registerEvent("runLudusaviLocalBackup", (_event, key, preview) =>
   enqueueLudusaviLocalBackup(key, preview)
+);
+registerEvent("runLudusaviLocalBulkBackup", (_event, includeDisabled) =>
+  runLudusaviLocalBulkBackup(includeDisabled)
 );
 registerEvent("openLudusaviLocalFolder", (_event, logs) =>
   openLudusaviLocalFolder(logs)

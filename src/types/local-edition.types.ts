@@ -106,9 +106,50 @@ export interface LudusaviLocalResult {
   cloudSync: "not-verified" | "complete";
 }
 
+export interface LudusaviGameBackupSummary {
+  lastBackupAt: string | null;
+  lastAttemptAt: string | null;
+  lastAttemptStatus: "success" | "failed" | null;
+  lastError: string | null;
+  files: number;
+  bytes: number;
+  registryKeys: number;
+}
+
+export interface LudusaviBulkBackupOutcomeItem {
+  gameKey: string;
+  title: string;
+  reason: string;
+}
+
+export interface LudusaviBulkBackupSummary {
+  finishedAt: string;
+  total: number;
+  succeeded: number;
+  skipped: number;
+  failed: number;
+  skippedGames: LudusaviBulkBackupOutcomeItem[];
+  failures: LudusaviBulkBackupOutcomeItem[];
+}
+
+export interface LudusaviBulkBackupProgress {
+  running: boolean;
+  total: number;
+  completed: number;
+  succeeded: number;
+  skipped: number;
+  failed: number;
+  currentGameKey: string | null;
+  currentGameTitle: string | null;
+  lastSummary: LudusaviBulkBackupSummary | null;
+}
+
 export interface LudusaviLocalState {
   settings: LudusaviLocalSettings;
   history: LudusaviLocalResult[];
+  gameSummaries: Record<string, LudusaviGameBackupSummary>;
+  activeGameKey: string | null;
+  bulkProgress: LudusaviBulkBackupProgress;
   busy: boolean;
   logPath: string;
   games: {

@@ -21,8 +21,6 @@ export function validateDirectTorrentChange(
     !allowsDirectTorrent(current) &&
     confirmation !== DIRECT_TORRENT_CONFIRMATION
   ) {
-    throw new Error(
-      "Confirm direct peer-to-peer access in Downloads settings."
-    );
+    throw new Error("Confirm direct peer-to-peer access in Advanced settings.");
   }
 }

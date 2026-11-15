@@ -24,8 +24,10 @@ import {
 import "./catalogue.scss";
 
 import { Button } from "@renderer/components/button/button";
+import { DownloadIcon } from "@primer/octicons-react";
 import { SelectField } from "@renderer/components/select-field/select-field";
 import { setFilters, setMode, setPage } from "@renderer/features";
+import { isClassicsEnabled } from "@shared";
 import { useCatalogue } from "@renderer/hooks/use-catalogue";
 import { useLaunchboxFilters } from "@renderer/hooks/use-launchbox-filters";
 import { debounce } from "lodash-es";
@@ -44,6 +46,7 @@ import { FilterItem } from "./filter-item";
 import { FilterSection } from "./filter-section";
 import { GameItem } from "./game-item";
 import { GameItemClassics } from "./game-item-classics";
+import { ManualDownloadModal } from "./manual-download-modal";
 import { Pagination } from "./pagination";
 import {
   ClassicsOnboardingModal,
@@ -148,10 +151,16 @@ export default function Catalogue() {
   const { steamDevelopers, steamPublishers, downloadSources, loadingLists } =
     useCatalogue();
 
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const classicsEnabled = isClassicsEnabled(userPreferences);
+
   const { steamGenres, steamUserTags, filters, page, mode } = useAppSelector(
     (state) => state.catalogueSearch
   );
-  const launchboxFilters = useLaunchboxFilters(mode === "classics");
+  const effectiveMode = classicsEnabled ? mode : "modern";
+  const launchboxFilters = useLaunchboxFilters(effectiveMode === "classics");
   const deferredTitleFilter = useDeferredValue(filters.title);
 
   const effectiveFilters = useMemo(() => {
@@ -164,7 +173,8 @@ export default function Catalogue() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [results, setResults] = useState<CatalogueSearchResult[]>([]);
-  const [resultsMode, setResultsMode] = useState(mode);
+  const [isManualDownloadOpen, setIsManualDownloadOpen] = useState(false);
+  const [resultsMode, setResultsMode] = useState(effectiveMode);
 
   const [itemsCount, setItemsCount] = useState(0);
 
@@ -179,6 +189,8 @@ export default function Catalogue() {
 
   const getDueOnboarding = useCallback(
     (catalogueMode: typeof mode) => {
+      if (!classicsEnabled) return null;
+
       if (
         catalogueMode === "classics" &&
         !classicsOnboardingClosedRef.current &&
@@ -196,18 +208,24 @@ export default function Catalogue() {
       }
       return null;
     },
-    [isFeaturesLoaded, isRecompilationsEnabled]
+    [classicsEnabled, isFeaturesLoaded, isRecompilationsEnabled]
   );
 
   useEffect(() => {
     if (onboarding) return;
-    const due = getDueOnboarding(mode);
+    const due = getDueOnboarding(effectiveMode);
     if (due) setOnboarding(due);
-  }, [mode, onboarding, getDueOnboarding]);
+  }, [effectiveMode, onboarding, getDueOnboarding]);
 
   const { formatNumber } = useFormat();
 
   const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    if (!classicsEnabled && mode === "classics") {
+      dispatch(setMode("modern"));
+    }
+  }, [classicsEnabled, mode, dispatch]);
 
   const showRecompilationsSkippingClassicsOnboarding = () => {
     classicsOnboardingClosedRef.current = true;
@@ -273,7 +291,7 @@ export default function Catalogue() {
     hasResultsRef.current = results.length > 0;
   }, [results.length]);
 
-  const isModeTransitioning = resultsMode !== mode;
+  const isModeTransitioning = resultsMode !== effectiveMode;
   const showSkeleton = isLoading || isModeTransitioning;
 
   useEffect(() => {
@@ -289,13 +307,13 @@ export default function Catalogue() {
       PAGE_SIZE,
       (page - 1) * PAGE_SIZE,
       requestId,
-      mode
+      effectiveMode
     );
 
     return () => {
       debouncedSearch.cancel();
     };
-  }, [effectiveFilters, downloadSources, page, debouncedSearch, mode]);
+  }, [effectiveFilters, downloadSources, page, debouncedSearch, effectiveMode]);
 
   const language = i18n.language.split("-")[0];
 
@@ -639,7 +657,7 @@ export default function Catalogue() {
   ]);
 
   const activeGroupedFilters =
-    mode === "classics" ? classicsGroupedFilters : groupedFilters;
+    effectiveMode === "classics" ? classicsGroupedFilters : groupedFilters;
   const selectedFiltersCount = activeGroupedFilters.length;
 
   const sortOptions = useMemo(
@@ -697,14 +715,14 @@ export default function Catalogue() {
   return (
     <div className="catalogue" ref={cataloguePageRef}>
       <ClassicsOnboardingModal
-        visible={onboarding === "classics"}
+        visible={classicsEnabled && onboarding === "classics"}
         onClose={() => {
           classicsOnboardingClosedRef.current = true;
           setOnboarding(null);
         }}
       />
       <RecompilationOnboardingModal
-        visible={onboarding === "recompilations"}
+        visible={classicsEnabled && onboarding === "recompilations"}
         onClose={() => {
           recompilationOnboardingClosedRef.current = true;
           setOnboarding(null);
@@ -727,6 +745,14 @@ export default function Catalogue() {
           </div>
 
           <div className="catalogue__sort-inline">
+            <Button
+              type="button"
+              theme="outline"
+              onClick={() => setIsManualDownloadOpen(true)}
+            >
+              <DownloadIcon />
+              {t("manual_download_button")}
+            </Button>
             <span className="catalogue__sort-label">{t("sort_by")}</span>
             <SelectField
               theme="dark"
@@ -815,7 +841,8 @@ export default function Catalogue() {
       <div className="catalogue__content">
         <div
           className={cn("catalogue__games-container", {
-            "catalogue__games-container--classics": mode === "classics",
+            "catalogue__games-container--classics":
+              effectiveMode === "classics",
           })}
         >
           {showSkeleton ? (
@@ -824,12 +851,13 @@ export default function Catalogue() {
                 <Skeleton
                   key={i}
                   className={cn("catalogue__skeleton", {
-                    "catalogue__skeleton--classics": mode === "classics",
+                    "catalogue__skeleton--classics":
+                      effectiveMode === "classics",
                   })}
                 />
               ))}
             </SkeletonTheme>
-          ) : mode === "classics" ? (
+          ) : effectiveMode === "classics" ? (
             results.map((game) => (
               <GameItemClassics
                 key={game.id}
@@ -857,9 +885,9 @@ export default function Catalogue() {
 
         <div className="catalogue__filters-container">
           <div className="catalogue__filters-sections">
-            <CatalogueModeToggle />
+            {classicsEnabled && <CatalogueModeToggle />}
 
-            {mode === "classics" && isRecompilationsEnabled && (
+            {effectiveMode === "classics" && isRecompilationsEnabled && (
               <RecompilationFilterToggle
                 checked={filters.recompilation === "has"}
                 onChange={(checked) =>
@@ -870,7 +898,7 @@ export default function Catalogue() {
               />
             )}
 
-            {mode === "modern" && shouldShowProtonFeatures && (
+            {effectiveMode === "modern" && shouldShowProtonFeatures && (
               <Suspense fallback={null}>
                 <ProtonCompatibilitySection
                   title={t("protondb")}
@@ -913,7 +941,7 @@ export default function Catalogue() {
               </Suspense>
             )}
 
-            {mode === "modern" && (
+            {effectiveMode === "modern" && (
               <ReleaseYearSection
                 title={t("release_year")}
                 color={filterCategoryColors.releaseYear}
@@ -924,7 +952,7 @@ export default function Catalogue() {
               />
             )}
 
-            {mode === "modern" &&
+            {effectiveMode === "modern" &&
               filterSections.map((section) => (
                 <FilterSection
                   key={section.key}
@@ -960,7 +988,7 @@ export default function Catalogue() {
                 />
               ))}
 
-            {mode === "classics" &&
+            {effectiveMode === "classics" &&
               classicsFilterSections.map((section) => {
                 const currentValues =
                   section.key === "platforms"
@@ -993,6 +1021,11 @@ export default function Catalogue() {
           </div>
         </div>
       </div>
+      <ManualDownloadModal
+        visible={isManualDownloadOpen}
+        initialTitle={filters.title}
+        onClose={() => setIsManualDownloadOpen(false)}
+      />
     </div>
   );
 }

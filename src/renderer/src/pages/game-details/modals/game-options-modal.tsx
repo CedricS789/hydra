@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { Modal, SteamUninstallModal } from "@renderer/components";
 import {
   formatBytes,
@@ -19,6 +20,7 @@ import {
   isSameRemoveFilesTarget,
   applyLibraryGroupAction,
   isLibraryGameDownloading,
+  isTransferGameEnabled,
   getOfficialStoreMembers,
   MANGOHUD_SITE_URL,
   type RemoveFilesTarget,
@@ -75,6 +77,7 @@ import { DownloadsSettingsSection } from "./game-options-modal/downloads-section
 import { DangerZoneSection } from "./game-options-modal/danger-zone-section";
 import { HydraCloudLegacySettingsSection } from "./game-options-modal/hydra-cloud-section";
 import { HydraCloudV2SettingsSection } from "./game-options-modal/hydra-cloud-v2-section";
+import { LocalBackupsSection } from "./game-options-modal/local-backups-section";
 import { EpicCloudSettingsSection } from "./game-options-modal/epic-cloud-section";
 import type { GameSettingsCategoryId } from "./game-options-modal/types";
 import { CreateSteamShortcutModal } from "./create-steam-shortcut-modal";
@@ -107,6 +110,8 @@ export function GameOptionsModal({
   initialCategory,
 }: Readonly<GameOptionsModalProps>) {
   const { t } = useTranslation("game_details");
+  const { t: tLudusavi } = useTranslation("ludusavi");
+  const navigate = useNavigate();
 
   const { showSuccessToast, showErrorToast } = useToast();
   const { updateLibrary } = useLibrary();
@@ -975,6 +980,9 @@ export function GameOptionsModal({
     game.discs?.some((disc) => disc.isExecutable)
   );
   const showDownloadSettings = game.shop !== "custom";
+  const showLocalBackupsSettings =
+    localEdition.hideCloudPromotions && !game.isDeleted;
+  const transferGameEnabled = isTransferGameEnabled(userPreferences);
   const shouldShowWinePrefixConfiguration =
     globalThis.window.electron.platform === "linux";
   const defaultHydraWinePrefixPath =
@@ -1007,6 +1015,15 @@ export function GameOptionsModal({
         label: t("settings_category_customization"),
         icon: <ImageIcon size={16} />,
       },
+      ...(showLocalBackupsSettings
+        ? [
+            {
+              id: "local_backups" as const,
+              label: tLudusavi("title"),
+              icon: <HistoryIcon size={16} />,
+            },
+          ]
+        : []),
       ...getCloudGameSettingsCategories(
         {
           cloudSaveAccessAction,
@@ -1069,12 +1086,14 @@ export function GameOptionsModal({
       cloudSaveAccessAction,
       isLaunchbox,
       legacyPurpose,
+      showLocalBackupsSettings,
       showCloudSaveV2Settings,
       showLegacyCloudSaveSettings,
       showEpicCloudSettings,
       showDownloadSettings,
       shouldShowWinePrefixConfiguration,
       t,
+      tLudusavi,
     ]
   );
 
@@ -1091,6 +1110,7 @@ export function GameOptionsModal({
     const category = initialCategory ?? "general";
     const availableCategory = getAvailableGameSettingsCategory(category, {
       cloudSaveAccessAction,
+      showLocalBackupsSettings,
       showCloudSaveV2Settings,
       showLegacyCloudSaveSettings,
       showEpicCloudSettings,
@@ -1113,6 +1133,7 @@ export function GameOptionsModal({
     cloudSaveAccessAction,
     initialCategory,
     showDownloadSettings,
+    showLocalBackupsSettings,
     showCloudSaveV2Settings,
     showLegacyCloudSaveSettings,
     showEpicCloudSettings,
@@ -1126,6 +1147,7 @@ export function GameOptionsModal({
     setSelectedCategory((currentCategory) =>
       getAvailableGameSettingsCategory(currentCategory, {
         cloudSaveAccessAction,
+        showLocalBackupsSettings,
         showCloudSaveV2Settings,
         showLegacyCloudSaveSettings,
         showEpicCloudSettings,
@@ -1134,6 +1156,7 @@ export function GameOptionsModal({
     );
   }, [
     cloudSaveAccessAction,
+    showLocalBackupsSettings,
     showCloudSaveV2Settings,
     showLegacyCloudSaveSettings,
     showEpicCloudSettings,
@@ -1415,6 +1438,7 @@ export function GameOptionsModal({
                 onRemoveTrackingExecutable={handleRemoveTrackingExecutable}
                 showTitleSection={false}
                 showShortcutsSection={false}
+                showTransferSection={transferGameEnabled}
                 showLaunchOptionsSection={false}
                 showSteamPlaytimeSection={false}
               />
@@ -1427,6 +1451,19 @@ export function GameOptionsModal({
                 onGameUpdated={updateGame}
               />
             )}
+            {selectedCategory === "local_backups" &&
+              showLocalBackupsSettings && (
+                <LocalBackupsSection
+                  game={game}
+                  onSelectExecutable={() =>
+                    setSelectedCategory(isLaunchbox ? "general" : "locations")
+                  }
+                  onOpenGlobalSettings={() => {
+                    onClose();
+                    navigate("/settings?tab=local_backups");
+                  }}
+                />
+              )}
             {selectedCategory === "hydra_cloud" && showCloudSaveV2Settings && (
               <HydraCloudV2SettingsSection
                 onSelectExecutable={() =>

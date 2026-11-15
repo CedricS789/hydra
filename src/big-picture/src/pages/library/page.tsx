@@ -1,10 +1,15 @@
 import type { LibraryGame } from "@types";
-import { getGameCatalogueIdentity, getLibraryOperationalGame } from "@shared";
+import {
+  getGameCatalogueIdentity,
+  getLibraryOperationalGame,
+  isClassicsEnabled,
+} from "@shared";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   useCallback,
   useDeferredValue,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -20,6 +25,7 @@ import {
   useGameCollections,
   useLibrary,
   useNavigation,
+  useUserPreferences,
 } from "../../hooks";
 import {
   isBuiltinLibraryTab,
@@ -124,7 +130,16 @@ export default function LibraryPage() {
   const navigate = useNavigate();
   const { setFocus } = useNavigation();
   const { showSuccessToast } = useBigPictureToast();
-  const { library, updateLibrary } = useLibrary();
+  const userPreferences = useUserPreferences();
+  const classicsEnabled = isClassicsEnabled(userPreferences);
+  const { library: rawLibrary, updateLibrary } = useLibrary();
+  const library = useMemo(
+    () =>
+      classicsEnabled
+        ? rawLibrary
+        : rawLibrary.filter((game) => game.shop !== "launchbox"),
+    [classicsEnabled, rawLibrary]
+  );
   const {
     collections,
     hasLoadedCollections,
@@ -154,12 +169,18 @@ export default function LibraryPage() {
   const { favoriteLoadingGameId, toggleFavorite } =
     useLibraryFavorite(updateLibrary);
   const isSelectedFilterTabAvailable =
-    isBuiltinLibraryTab(selectedFilterTab) ||
+    (isBuiltinLibraryTab(selectedFilterTab) &&
+      (classicsEnabled ||
+        (selectedFilterTab !== "classics" &&
+          selectedFilterTab !== "moderns"))) ||
     collections.some((collection) => collection.id === selectedFilterTab);
   const activeFilterTab =
-    isSelectedFilterTabAvailable || !hasFailedToLoadCollections
-      ? selectedFilterTab
-      : "all";
+    !classicsEnabled &&
+    (selectedFilterTab === "classics" || selectedFilterTab === "moderns")
+      ? "all"
+      : isSelectedFilterTabAvailable || !hasFailedToLoadCollections
+        ? selectedFilterTab
+        : "all";
   const {
     groupedLibrary,
     filteredLibrary,

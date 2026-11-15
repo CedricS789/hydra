@@ -1,3 +1,4 @@
+import localEdition from "../../../../shared/local-edition.json";
 import {
   useContext,
   useEffect,
@@ -468,26 +469,30 @@ export function GameDetailsContent() {
                   </button>
                 )}
 
-                {game && cloudSaveVisibility?.hero === "legacy" && (
-                  <button
-                    type="button"
-                    className="game-details__cloud-sync-button"
-                    onClick={handleLegacyCloudSaveButtonClick}
-                  >
-                    <div className="game-details__cloud-icon-container">
-                      <img
-                        src={cloudIconAnimated}
-                        alt=""
-                        className="game-details__cloud-icon"
-                      />
-                    </div>
-                    {t("cloud_save")}
-                  </button>
-                )}
+                {!localEdition.hideCloudPromotions &&
+                  game &&
+                  cloudSaveVisibility?.hero === "legacy" && (
+                    <button
+                      type="button"
+                      className="game-details__cloud-sync-button"
+                      onClick={handleLegacyCloudSaveButtonClick}
+                    >
+                      <div className="game-details__cloud-icon-container">
+                        <img
+                          src={cloudIconAnimated}
+                          alt=""
+                          className="game-details__cloud-icon"
+                        />
+                      </div>
+                      {t("cloud_save")}
+                    </button>
+                  )}
 
-                {game && objectId && cloudSaveVisibility?.hero === "v2" && (
-                  <CloudSaveWidget />
-                )}
+                {game &&
+                  objectId &&
+                  !game.isDeleted &&
+                  (localEdition.hideCloudPromotions ||
+                    cloudSaveVisibility?.hero === "v2") && <CloudSaveWidget />}
               </div>
             </div>
 

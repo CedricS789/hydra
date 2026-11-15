@@ -11,14 +11,25 @@ import { gamesSublevel } from "../level/sublevels/games";
 import { levelKeys } from "../level/sublevels/keys";
 import type {
   Game,
+  LudusaviBulkBackupProgress,
+  LudusaviBulkBackupOutcomeItem,
+  LudusaviGameBackupSummary,
+  LudusaviGameSettings,
   LudusaviLocalSettings,
   LudusaviLocalResult,
   LudusaviLocalState,
+  SaveBackupVersion,
 } from "@types";
 import { SystemPath } from "./system-path";
 import { NativeAddon, type SystemProcessMap } from "./native-addon";
 import { logger } from "./logger";
+import { WindowManager } from "./window-manager";
 import { acquireSaveBackupLock } from "./ludusavi-local-lock";
+import {
+  applyLudusaviResultToSummary,
+  backfillBackupSummaryFromVersions,
+  classifyBulkBackupOutcome,
+} from "./ludusavi-local-summary";
 import {
   assertSaveApiSuccess,
   type SaveApiResponse,
@@ -42,13 +53,34 @@ import {
 const exec = promisify(execFile);
 const settingsKey = "ludusaviLocalSettings";
 const historyKey = "ludusaviLocalHistory";
+const summariesKey = "ludusaviLocalGameSummaries";
 const tracker = new LudusaviExitTracker();
 const queue = new LudusaviBackupQueue();
 let busy = false;
+let activeGameKey: string | null = null;
+let bulkProgress: LudusaviBulkBackupProgress = {
+  running: false,
+  total: 0,
+  completed: 0,
+  succeeded: 0,
+  skipped: 0,
+  failed: 0,
+  currentGameKey: null,
+  currentGameTitle: null,
+  lastSummary: null,
+};
+let activeBulkRun: Promise<LudusaviBulkBackupProgress> | null = null;
 const folder = () =>
   path.join(SystemPath.getPath("userData"), "ludusavi-local");
 const logPath = () => path.join(folder(), "backup.log");
 const keyOf = (game: Game) => levelKeys.game(game.shop, game.objectId);
+
+const notifyStateChanged = () => {
+  const mainWindow = WindowManager.mainWindow;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("on-ludusavi-state-changed");
+  }
+};
 
 const defaults = (): LudusaviLocalSettings => ({
   enabled: true,
@@ -73,9 +105,30 @@ export const getLudusaviLocalSettings =
     })),
   });
 
-export const saveLudusaviLocalSettings = async (
-  value: LudusaviLocalSettings
-) => {
+const validateLudusaviGameSettings = (game: LudusaviGameSettings) => {
+  if (
+    !game ||
+    typeof game.enabled !== "boolean" ||
+    !Array.isArray(game.savePaths) ||
+    !Array.isArray(game.trackingPaths) ||
+    (game.manifestTitle !== undefined &&
+      (typeof game.manifestTitle !== "string" ||
+        !game.manifestTitle.trim() ||
+        game.manifestTitle.length > 1000)) ||
+    (game.steamId !== undefined &&
+      (typeof game.steamId !== "string" ||
+        !/^\d+$/.test(game.steamId) ||
+        Number(game.steamId) < 1 ||
+        Number(game.steamId) > 4294967295)) ||
+    [...game.savePaths, ...game.trackingPaths].some(
+      (p) => typeof p !== "string" || !path.isAbsolute(p) || /[?*]/.test(p)
+    )
+  ) {
+    throw new Error(t("ludusavi:invalid_settings"));
+  }
+};
+
+const validateLudusaviSettings = (value: LudusaviLocalSettings) => {
   if (
     !value ||
     typeof value.enabled !== "boolean" ||
@@ -99,44 +152,100 @@ export const saveLudusaviLocalSettings = async (
     throw new Error(t("ludusavi:invalid_settings"));
   }
   for (const game of Object.values(value.games)) {
-    if (
-      typeof game.enabled !== "boolean" ||
-      !Array.isArray(game.savePaths) ||
-      !Array.isArray(game.trackingPaths) ||
-      (game.manifestTitle !== undefined &&
-        (typeof game.manifestTitle !== "string" ||
-          !game.manifestTitle.trim() ||
-          game.manifestTitle.length > 1000)) ||
-      (game.steamId !== undefined &&
-        (typeof game.steamId !== "string" ||
-          !/^\d+$/.test(game.steamId) ||
-          Number(game.steamId) < 1 ||
-          Number(game.steamId) > 4294967295)) ||
-      [...game.savePaths, ...game.trackingPaths].some(
-        (p) => typeof p !== "string" || !path.isAbsolute(p) || /[?*]/.test(p)
-      )
-    )
-      throw new Error(t("ludusavi:invalid_settings"));
+    validateLudusaviGameSettings(game);
   }
+};
+
+export const saveLudusaviLocalSettings = async (
+  value: LudusaviLocalSettings
+) => {
+  validateLudusaviSettings(value);
   if (queue.busy) throw new Error(t("ludusavi:clear_busy"));
   return queue.enqueue("settings:save", async () => {
     await db.put(settingsKey, value, { valueEncoding: "json" });
     if (!value.enabled) tracker.reset();
+    notifyStateChanged();
     return getLudusaviLocalState();
   });
 };
 
+export const saveLudusaviGameSettings = async (
+  gameKey: string,
+  patch: Partial<LudusaviGameSettings>
+) => {
+  if (!gameKey || typeof gameKey !== "string") {
+    throw new Error(t("ludusavi:invalid_settings"));
+  }
+  if (queue.busy) throw new Error(t("ludusavi:clear_busy"));
+  return queue.enqueue(`settings:save-game:${gameKey}`, async () => {
+    const current = await getLudusaviLocalSettings();
+    const existingGame: LudusaviGameSettings = current.games[gameKey] ?? {
+      enabled: true,
+      savePaths: [],
+      trackingPaths: [],
+    };
+    const mergedGame: LudusaviGameSettings = {
+      ...existingGame,
+      ...patch,
+    };
+    if (patch.manifestTitle === undefined && "manifestTitle" in patch) {
+      delete mergedGame.manifestTitle;
+    }
+    if (patch.steamId === undefined && "steamId" in patch) {
+      delete mergedGame.steamId;
+    }
+    validateLudusaviGameSettings(mergedGame);
+    const next: LudusaviLocalSettings = {
+      ...current,
+      games: {
+        ...current.games,
+        [gameKey]: mergedGame,
+      },
+    };
+    await db.put(settingsKey, next, { valueEncoding: "json" });
+    notifyStateChanged();
+    return getLudusaviLocalState();
+  });
+};
+
+const deriveSummariesFromHistory = (
+  history: LudusaviLocalResult[],
+  stored: Record<string, LudusaviGameBackupSummary>
+) => {
+  const merged: Record<string, LudusaviGameBackupSummary> = { ...stored };
+  for (let index = history.length - 1; index >= 0; index--) {
+    const entry = history[index];
+    if (!entry?.gameKey || stored[entry.gameKey]) continue;
+    const updated = applyLudusaviResultToSummary(merged[entry.gameKey], entry);
+    if (updated) {
+      merged[entry.gameKey] = updated;
+    }
+  }
+  return merged;
+};
+
 export const getLudusaviLocalState = async (): Promise<LudusaviLocalState> => {
-  const [settings, history, games] = await Promise.all([
+  const [settings, history, rawSummaries, games] = await Promise.all([
     getLudusaviLocalSettings(),
     db.get<string, LudusaviLocalResult[]>(historyKey, {
       valueEncoding: "json",
     }),
+    db.get<string, Record<string, LudusaviGameBackupSummary>>(summariesKey, {
+      valueEncoding: "json",
+    }),
     gamesSublevel.values().all(),
   ]);
+  const resolvedHistory = history ?? [];
+  const gameSummaries = deriveSummariesFromHistory(
+    resolvedHistory,
+    rawSummaries ?? {}
+  );
   return {
     settings,
-    history: history ?? [],
+    history: resolvedHistory,
+    gameSummaries,
+    activeGameKey,
+    bulkProgress,
     busy: busy || queue.busy,
     logPath: logPath(),
     games: games
@@ -154,6 +263,7 @@ export const clearLudusaviLocalLogs = () => {
   return queue.enqueue("maintenance:clear-logs", async () => {
     await clearLudusaviBackupLogs(folder());
     await db.put(historyKey, [], { valueEncoding: "json" });
+    notifyStateChanged();
   });
 };
 
@@ -368,31 +478,89 @@ const prepareConfig = async (
   return { binary, configDir, canonical };
 };
 
-const record = async (result: LudusaviLocalResult) => {
+const record = async (
+  result: LudusaviLocalResult,
+  options?: {
+    suppressFailureNotification?: boolean;
+    skipSummaryMessages?: string[];
+  }
+) => {
   if (result.status === "failed") {
     logger.error("[Ludusavi Local] Backup failed", {
       title: result.title,
       message: result.message,
     });
-    if (Notification.isSupported())
+    if (!options?.suppressFailureNotification && Notification.isSupported())
       new Notification({
         title: t("ludusavi:failure_title"),
         body: `${result.title}: ${result.message}`,
       }).show();
   }
-  const history =
-    (await db.get<string, LudusaviLocalResult[]>(historyKey, {
+  const [history, storedSummaries] = await Promise.all([
+    db.get<string, LudusaviLocalResult[]>(historyKey, {
       valueEncoding: "json",
-    })) ?? [];
-  await db.put(historyKey, [result, ...history].slice(0, 50), {
+    }),
+    db.get<string, Record<string, LudusaviGameBackupSummary>>(summariesKey, {
+      valueEncoding: "json",
+    }),
+  ]);
+  await db.put(historyKey, [result, ...(history ?? [])].slice(0, 50), {
     valueEncoding: "json",
   });
+  const isBulkSkip =
+    result.status === "failed" &&
+    !!options?.skipSummaryMessages?.some(
+      (msg) => msg && result.message.toLowerCase().includes(msg.toLowerCase())
+    );
+  const nextSummary = isBulkSkip
+    ? null
+    : applyLudusaviResultToSummary(storedSummaries?.[result.gameKey], result);
+  if (nextSummary) {
+    await db.put(
+      summariesKey,
+      { ...(storedSummaries ?? {}), [result.gameKey]: nextSummary },
+      { valueEncoding: "json" }
+    );
+  }
   await appendLudusaviBackupLog(folder(), result);
+  notifyStateChanged();
   return result;
 };
 
-const run = async (game: Game, preview: boolean, automatic: boolean) => {
+export const backfillGameBackupVersionSummary = async (
+  gameKey: string,
+  versions: Pick<SaveBackupVersion, "when">[]
+) => {
+  const storedSummaries =
+    (await db.get<string, Record<string, LudusaviGameBackupSummary>>(
+      summariesKey,
+      { valueEncoding: "json" }
+    )) ?? {};
+  const nextSummary = backfillBackupSummaryFromVersions(
+    storedSummaries[gameKey],
+    versions
+  );
+  if (!nextSummary) return;
+  await db.put(
+    summariesKey,
+    { ...storedSummaries, [gameKey]: nextSummary },
+    { valueEncoding: "json" }
+  );
+  notifyStateChanged();
+};
+
+const run = async (
+  game: Game,
+  preview: boolean,
+  automatic: boolean,
+  options?: {
+    suppressFailureNotification?: boolean;
+    skipSummaryMessages?: string[];
+  }
+) => {
   busy = true;
+  activeGameKey = keyOf(game);
+  notifyStateChanged();
   const result: LudusaviLocalResult = {
     gameKey: keyOf(game),
     title: game.title,
@@ -413,13 +581,19 @@ const run = async (game: Game, preview: boolean, automatic: boolean) => {
       (!settings.enabled || settings.games[keyOf(game)]?.enabled === false)
     )
       return;
-    await assertStopped(game, settings);
+    const shouldCheckStopped =
+      automatic || trackingGame(game, settings).paths.length > 0;
+    if (shouldCheckStopped) {
+      await assertStopped(game, settings);
+    }
     lock = await acquireSaveBackupLock(settings.destination);
     const { binary, configDir, canonical } = await prepareConfig(
       game,
       settings
     );
-    await assertStopped(game, settings);
+    if (shouldCheckStopped) {
+      await assertStopped(game, settings);
+    }
     const args = [
       "--config",
       configDir,
@@ -486,8 +660,9 @@ const run = async (game: Game, preview: boolean, automatic: boolean) => {
   } finally {
     if (lock) await lock.release();
     busy = false;
+    activeGameKey = null;
   }
-  return record(result);
+  return record(result, options);
 };
 
 export const enqueueLudusaviLocalBackup = async (
@@ -501,6 +676,134 @@ export const enqueueLudusaviLocalBackup = async (
       throw new Error(t("ludusavi:unrecognized_game"));
     return run(game, preview, automatic);
   });
+};
+
+export const runLudusaviLocalBulkBackup = async (
+  includeDisabled = false
+): Promise<LudusaviBulkBackupProgress> => {
+  if (activeBulkRun) return activeBulkRun;
+  if (queue.busy) throw new Error(t("ludusavi:clear_busy"));
+
+  const task = (async () => {
+    const [settings, allGames] = await Promise.all([
+      getLudusaviLocalSettings(),
+      gamesSublevel.values().all(),
+    ]);
+    const targets = allGames.filter(
+      (g) =>
+        !g.isDeleted &&
+        (includeDisabled || settings.games[keyOf(g)]?.enabled !== false)
+    );
+
+    const skippedGames: LudusaviBulkBackupOutcomeItem[] = [];
+    const failures: LudusaviBulkBackupOutcomeItem[] = [];
+    const skipMessages = [t("ludusavi:game_running"), t("ludusavi:no_saves")];
+
+    bulkProgress = {
+      running: true,
+      total: targets.length,
+      completed: 0,
+      succeeded: 0,
+      skipped: 0,
+      failed: 0,
+      currentGameKey: null,
+      currentGameTitle: null,
+      lastSummary: bulkProgress.lastSummary,
+    };
+    notifyStateChanged();
+
+    for (const game of targets) {
+      const gameKey = keyOf(game);
+      bulkProgress = {
+        ...bulkProgress,
+        currentGameKey: gameKey,
+        currentGameTitle: game.title,
+      };
+      notifyStateChanged();
+
+      try {
+        const result = await queue.enqueue(
+          JSON.stringify([gameKey, false]),
+          async () => {
+            const latestGame = await gamesSublevel.get(gameKey);
+            if (!latestGame || latestGame.isDeleted) return undefined;
+            return run(latestGame, false, false, {
+              suppressFailureNotification: true,
+              skipSummaryMessages: skipMessages,
+            });
+          }
+        );
+
+        const kind = classifyBulkBackupOutcome(result, skipMessages);
+        if (kind === "succeeded") {
+          bulkProgress = {
+            ...bulkProgress,
+            completed: bulkProgress.completed + 1,
+            succeeded: bulkProgress.succeeded + 1,
+          };
+        } else if (kind === "skipped") {
+          skippedGames.push({
+            gameKey,
+            title: game.title,
+            reason: result?.message || t("ludusavi:no_saves"),
+          });
+          bulkProgress = {
+            ...bulkProgress,
+            completed: bulkProgress.completed + 1,
+            skipped: bulkProgress.skipped + 1,
+          };
+        } else {
+          failures.push({
+            gameKey,
+            title: game.title,
+            reason: result?.message || t("ludusavi:failure_title"),
+          });
+          bulkProgress = {
+            ...bulkProgress,
+            completed: bulkProgress.completed + 1,
+            failed: bulkProgress.failed + 1,
+          };
+        }
+      } catch (error) {
+        failures.push({
+          gameKey,
+          title: game.title,
+          reason: error instanceof Error ? error.message : String(error),
+        });
+        bulkProgress = {
+          ...bulkProgress,
+          completed: bulkProgress.completed + 1,
+          failed: bulkProgress.failed + 1,
+        };
+      }
+      notifyStateChanged();
+    }
+
+    bulkProgress = {
+      ...bulkProgress,
+      running: false,
+      currentGameKey: null,
+      currentGameTitle: null,
+      lastSummary: {
+        finishedAt: new Date().toISOString(),
+        total: targets.length,
+        succeeded: bulkProgress.succeeded,
+        skipped: bulkProgress.skipped,
+        failed: bulkProgress.failed,
+        skippedGames,
+        failures,
+      },
+    };
+    notifyStateChanged();
+    return bulkProgress;
+  })();
+
+  activeBulkRun = task;
+  try {
+    return await task;
+  } finally {
+    if (activeBulkRun === task) activeBulkRun = null;
+  }
 };
 
 export const observeLudusaviLocalGames = async (
@@ -551,4 +854,5 @@ export const localSaveTools = {
   prepareConfig,
   assertStopped,
   record,
+  backfillGameBackupVersionSummary,
 };

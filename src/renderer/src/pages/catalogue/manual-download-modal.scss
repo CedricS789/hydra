@@ -1,0 +1,52 @@
+@use "../../scss/globals.scss" as globals;
+
+.manual-download-modal {
+  display: flex;
+  flex-direction: column;
+  gap: calc(globals.$spacing-unit * 2);
+
+  &__search {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(globals.$spacing-unit * 2);
+
+    p {
+      margin: 0;
+      color: globals.$muted-color;
+      font-size: globals.$hint-font-size;
+    }
+  }
+
+  &__folder {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(globals.$spacing-unit * 2);
+
+    > div {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: calc(globals.$spacing-unit / 2);
+    }
+
+    span {
+      overflow: hidden;
+      color: globals.$muted-color;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  &__error {
+    margin: 0;
+    color: globals.$error-color;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: calc(globals.$spacing-unit * 2);
+  }
+}

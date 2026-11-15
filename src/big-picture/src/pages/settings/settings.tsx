@@ -1,7 +1,10 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { HIDE_COMMUNITY_SCREENSHOTS_SETTING_ID } from "@shared";
+import {
+  HIDE_COMMUNITY_SCREENSHOTS_SETTING_ID,
+  isClassicsEnabled,
+} from "@shared";
 
 import {
   BumperBadge,
@@ -9,7 +12,13 @@ import {
   type TabsItem,
   VerticalFocusGroup,
 } from "../../components";
-import { Feature, useFeature, useGamepad, useNavigation } from "../../hooks";
+import {
+  Feature,
+  useFeature,
+  useGamepad,
+  useNavigation,
+  useUserPreferences,
+} from "../../hooks";
 import { IS_DESKTOP } from "../../constants";
 import {
   NavigationAudioService,
@@ -182,17 +191,20 @@ export default function Settings() {
   );
 
   const { isFeatureEnabled } = useFeature();
+  const userPreferences = useUserPreferences();
+  const classicsEnabled = isClassicsEnabled(userPreferences);
   const showScreenshotsTab =
     IS_DESKTOP && isFeatureEnabled(Feature.Screenshots);
 
   const visibleTabs = useMemo(() => {
     return ALL_SETTINGS_TABS.filter((tab) => {
       if (tab.id === "screenshots") return showScreenshotsTab;
+      if (tab.id === "emulation") return classicsEnabled;
       if (tab.id !== "account-privacy") return true;
 
       return Boolean(userDetails);
     });
-  }, [showScreenshotsTab, userDetails]);
+  }, [showScreenshotsTab, classicsEnabled, userDetails]);
 
   const selectedTabIndex = visibleTabs.findIndex(
     (tab) => tab.id === selectedTab

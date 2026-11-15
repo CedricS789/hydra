@@ -69,6 +69,10 @@ const addGameToQueue = async (
       fileIndices,
       selectedFilesSize,
       customTrackers: globalTrackers,
+      repackTitle: payload.repackTitle ?? title,
+      downloadSourceName: payload.downloadSourceName ?? null,
+      repackFileSize: payload.repackFileSize ?? fileSize ?? null,
+      uploadDate: payload.uploadDate ?? null,
     };
 
     if (!DownloadOrchestrator.preparesRealDebridInBackground(download)) {

@@ -234,4 +234,29 @@ describe("game options category selection", () => {
       false
     );
   });
+
+  it("handles local_backups availability and fallback", () => {
+    assert.equal(
+      getAvailableGameSettingsCategory("local_backups", {
+        cloudSaveAccessAction: "open",
+        showLocalBackupsSettings: true,
+        showCloudSaveV2Settings: false,
+        showLegacyCloudSaveSettings: false,
+        showEpicCloudSettings: false,
+        showDownloadSettings: true,
+      }),
+      "local_backups"
+    );
+    assert.equal(
+      getAvailableGameSettingsCategory("local_backups", {
+        cloudSaveAccessAction: "open",
+        showLocalBackupsSettings: false,
+        showCloudSaveV2Settings: false,
+        showLegacyCloudSaveSettings: false,
+        showEpicCloudSettings: false,
+        showDownloadSettings: true,
+      }),
+      "general"
+    );
+  });
 });

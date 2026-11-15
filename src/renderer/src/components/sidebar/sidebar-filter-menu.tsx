@@ -26,6 +26,7 @@ const MENU_SIDE_OFFSET = 8;
 const MENU_COLLISION_PADDING = 16;
 
 interface SidebarFilterMenuProps {
+  showCategories?: boolean;
   category: LibraryCategory;
   onCategoryChange: (category: LibraryCategory) => void;
   sortBy: SortOption;
@@ -135,6 +136,7 @@ function FilterGroup({
 }
 
 export function SidebarFilterMenu({
+  showCategories = true,
   category,
   onCategoryChange,
   sortBy,
@@ -239,38 +241,42 @@ export function SidebarFilterMenu({
           }}
         >
           <div className="sidebar-filter-menu__column">
-            <DropdownMenuPrimitive.Group className="sidebar-filter-menu__group">
-              <DropdownMenuPrimitive.Label className="sidebar-filter-menu__label">
-                {t("platforms_label")}
-              </DropdownMenuPrimitive.Label>
+            {showCategories && (
+              <>
+                <DropdownMenuPrimitive.Group className="sidebar-filter-menu__group">
+                  <DropdownMenuPrimitive.Label className="sidebar-filter-menu__label">
+                    {t("platforms_label")}
+                  </DropdownMenuPrimitive.Label>
 
-              <DropdownMenuPrimitive.RadioGroup
-                value={category}
-                onValueChange={(value) =>
-                  onCategoryChange(value as LibraryCategory)
-                }
-              >
-                {categoryOptions.map((option) => (
-                  <DropdownMenuPrimitive.RadioItem
-                    key={option.value}
-                    value={option.value}
-                    onSelect={(event) => event.preventDefault()}
-                    className="sidebar-filter-menu__item"
+                  <DropdownMenuPrimitive.RadioGroup
+                    value={category}
+                    onValueChange={(value) =>
+                      onCategoryChange(value as LibraryCategory)
+                    }
                   >
-                    {option.icon}
-                    <span>{option.label}</span>
-                    <DropdownMenuPrimitive.ItemIndicator
-                      forceMount
-                      className="sidebar-filter-menu__item-indicator"
-                    >
-                      <CheckIcon size={14} />
-                    </DropdownMenuPrimitive.ItemIndicator>
-                  </DropdownMenuPrimitive.RadioItem>
-                ))}
-              </DropdownMenuPrimitive.RadioGroup>
-            </DropdownMenuPrimitive.Group>
+                    {categoryOptions.map((option) => (
+                      <DropdownMenuPrimitive.RadioItem
+                        key={option.value}
+                        value={option.value}
+                        onSelect={(event) => event.preventDefault()}
+                        className="sidebar-filter-menu__item"
+                      >
+                        {option.icon}
+                        <span>{option.label}</span>
+                        <DropdownMenuPrimitive.ItemIndicator
+                          forceMount
+                          className="sidebar-filter-menu__item-indicator"
+                        >
+                          <CheckIcon size={14} />
+                        </DropdownMenuPrimitive.ItemIndicator>
+                      </DropdownMenuPrimitive.RadioItem>
+                    ))}
+                  </DropdownMenuPrimitive.RadioGroup>
+                </DropdownMenuPrimitive.Group>
 
-            <DropdownMenuPrimitive.Separator className="sidebar-filter-menu__separator" />
+                <DropdownMenuPrimitive.Separator className="sidebar-filter-menu__separator" />
+              </>
+            )}
 
             <DropdownMenuPrimitive.Group className="sidebar-filter-menu__group">
               <DropdownMenuPrimitive.Label className="sidebar-filter-menu__label">

@@ -44,6 +44,7 @@ import "./update-classics-disc";
 import "./refresh-library-assets";
 import "./remove-game-from-favorites";
 import "./remove-game-from-library";
+import "./bulk-remove-games-from-library";
 import "./remove-game";
 import "./reset-game-achievements";
 import "./reset-game-playtime";

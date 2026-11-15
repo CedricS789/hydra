@@ -14,7 +14,11 @@ import { useAppSelector, useFeature, useUserDetails } from "@renderer/hooks";
 import { useSubscription } from "@renderer/hooks/use-subscription";
 import { FileDirectoryIcon, HistoryIcon } from "@primer/octicons-react";
 import { useLocation } from "react-router-dom";
-import { isAchievementSouvenirsEnabled } from "@shared";
+import {
+  isAchievementSouvenirsEnabled,
+  isClassicsEnabled,
+  isTransferGameEnabled,
+} from "@shared";
 import type { UserPreferences } from "@types";
 
 import "./settings-context-content-gameplay.scss";
@@ -43,6 +47,8 @@ const buildForm = (preferences: UserPreferences | null) => ({
     preferences?.hideLibraryAchievementProgress ?? false,
   autoplayAnimatedArtwork: preferences?.autoplayAnimatedArtwork ?? false,
   persistFiltersAndSorting: preferences?.persistFiltersAndSorting ?? false,
+  enableClassics: isClassicsEnabled(preferences),
+  enableTransferGame: isTransferGameEnabled(preferences),
 });
 
 export function SettingsContextContentGameplay() {
@@ -324,15 +330,17 @@ export function SettingsContextContentGameplay() {
           }
         />
 
-        <CheckboxField
-          label={t("hide_library_classics_badges")}
-          checked={form.hideLibraryClassicsBadges}
-          onChange={() =>
-            handleChange({
-              hideLibraryClassicsBadges: !form.hideLibraryClassicsBadges,
-            })
-          }
-        />
+        {form.enableClassics && (
+          <CheckboxField
+            label={t("hide_library_classics_badges")}
+            checked={form.hideLibraryClassicsBadges}
+            onChange={() =>
+              handleChange({
+                hideLibraryClassicsBadges: !form.hideLibraryClassicsBadges,
+              })
+            }
+          />
+        )}
 
         <CheckboxField
           label={t("hide_library_steam_badges")}
@@ -374,25 +382,51 @@ export function SettingsContextContentGameplay() {
         />
       </div>
 
+      {form.enableClassics && (
+        <div className="settings-context-panel__group">
+          <h3>{t("classics_appearance")}</h3>
+
+          <CheckboxField
+            label={t("hide_classics_bookmark")}
+            checked={form.hideClassicsBookmark}
+            onChange={() =>
+              handleChange({
+                hideClassicsBookmark: !form.hideClassicsBookmark,
+              })
+            }
+          />
+
+          <CheckboxField
+            label={t("classics_use_hero_layout")}
+            checked={form.classicsUseHeroLayout}
+            onChange={() =>
+              handleChange({
+                classicsUseHeroLayout: !form.classicsUseHeroLayout,
+              })
+            }
+          />
+        </div>
+      )}
+
       <div className="settings-context-panel__group">
-        <h3>{t("classics_appearance")}</h3>
+        <h3>{t("features")}</h3>
 
         <CheckboxField
-          label={t("hide_classics_bookmark")}
-          checked={form.hideClassicsBookmark}
+          label={t("enable_classics")}
+          checked={form.enableClassics}
           onChange={() =>
             handleChange({
-              hideClassicsBookmark: !form.hideClassicsBookmark,
+              enableClassics: !form.enableClassics,
             })
           }
         />
 
         <CheckboxField
-          label={t("classics_use_hero_layout")}
-          checked={form.classicsUseHeroLayout}
+          label={t("enable_transfer_game")}
+          checked={form.enableTransferGame}
           onChange={() =>
             handleChange({
-              classicsUseHeroLayout: !form.classicsUseHeroLayout,
+              enableTransferGame: !form.enableTransferGame,
             })
           }
         />

@@ -5,6 +5,8 @@ export const CATALOGUE_PAGINATION_REGION_ID = "catalogue-pagination";
 export const CATALOGUE_EMPTY_STATE_ID = "catalogue-empty-state";
 export const CATALOGUE_ERROR_STATE_ID = "catalogue-error-state";
 export const CATALOGUE_FILTERS_BUTTON_ID = "catalogue-filters-button";
+export const CATALOGUE_MANUAL_DOWNLOAD_BUTTON_ID =
+  "catalogue-manual-download-button";
 export const CATALOGUE_SORT_SELECT_ID = "catalogue-sort-select";
 export const CATALOGUE_CLEAR_FILTERS_ID = "catalogue-clear-filters";
 export const CATALOGUE_HIDDEN_FILTERS_BUTTON_ID =

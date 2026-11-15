@@ -11,7 +11,13 @@ import {
 import InfiniteScroll from "react-infinite-scroll-component";
 import { Tooltip } from "react-tooltip";
 import { useCallback, useContext, useMemo, useState } from "react";
-import { useFormat, useLibrary, useToast } from "@renderer/hooks";
+import {
+  useAppSelector,
+  useFormat,
+  useLibrary,
+  useToast,
+} from "@renderer/hooks";
+import { isClassicsEnabled } from "@shared";
 import { logger } from "@renderer/logger";
 import type { LibraryGame, UserGame } from "@types";
 import {
@@ -172,10 +178,23 @@ export function LibraryTab({
     [showErrorToast, showSuccessToast, t]
   );
 
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const classicsEnabled = isClassicsEnabled(userPreferences);
+
   const platformOptions: FilterDropdownOption<ProfilePlatform>[] = [
     { value: "all", label: t("platform_all"), icon: StackIcon },
     { value: "pc", label: t("platform_pc"), icon: DeviceDesktopIcon },
-    { value: "classics", label: t("platform_classics"), icon: ClassicsIcon },
+    ...(classicsEnabled
+      ? [
+          {
+            value: "classics" as const,
+            label: t("platform_classics"),
+            icon: ClassicsIcon,
+          },
+        ]
+      : []),
   ];
 
   const sortOptions: FilterDropdownOption<SortOption>[] = [
@@ -208,7 +227,7 @@ export function LibraryTab({
       <div className="profile-content__library-filters">
         <FilterDropdown
           placeholder={t("platform")}
-          value={platform}
+          value={!classicsEnabled && platform === "classics" ? "all" : platform}
           options={platformOptions}
           onChange={onPlatformChange}
         />

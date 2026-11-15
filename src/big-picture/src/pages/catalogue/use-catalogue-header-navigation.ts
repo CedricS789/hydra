@@ -4,6 +4,7 @@ import type { FocusOverrides } from "../../services";
 import {
   CATALOGUE_CLEAR_FILTERS_ID,
   CATALOGUE_FILTERS_BUTTON_ID,
+  CATALOGUE_MANUAL_DOWNLOAD_BUTTON_ID,
   CATALOGUE_GRID_REGION_ID,
   CATALOGUE_HEADER_CONTROLS_REGION_ID,
   CATALOGUE_HIDDEN_FILTERS_BUTTON_ID,
@@ -81,6 +82,7 @@ export function useCatalogueHeaderNavigation(itemIds: string[]) {
 
         if (
           position.id === CATALOGUE_FILTERS_BUTTON_ID ||
+          position.id === CATALOGUE_MANUAL_DOWNLOAD_BUTTON_ID ||
           position.id === CATALOGUE_SORT_SELECT_ID
         ) {
           nextOverrides[position.id] = {

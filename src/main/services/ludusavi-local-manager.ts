@@ -293,9 +293,8 @@ async function validate(ctx: Context, version: string) {
 }
 
 export const listSaveBackupVersions = (key: string) =>
-  gameOperation(key, async (ctx) => ({
-    title: ctx.canonical,
-    versions:
+  gameOperation(key, async (ctx) => {
+    const versions =
       (
         await json(ctx, [
           "backups",
@@ -305,8 +304,13 @@ export const listSaveBackupVersions = (key: string) =>
           "--",
           ctx.canonical,
         ])
-      ).games?.[ctx.canonical]?.backups ?? [],
-  }));
+      ).games?.[ctx.canonical]?.backups ?? [];
+    await tools.backfillGameBackupVersionSummary(key, versions);
+    return {
+      title: ctx.canonical,
+      versions,
+    };
+  });
 
 export const previewSaveRestore = (key: string, version: string) =>
   gameOperation(key, async (ctx) => {

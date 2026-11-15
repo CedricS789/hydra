@@ -14,6 +14,8 @@ import {
   useState,
 } from "react";
 import { useSearchParams } from "react-router-dom";
+import { isClassicsEnabled } from "@shared";
+import { useUserPreferences } from "../../hooks";
 
 const DEFAULT_PAGE_SIZE = 20;
 const WIDE_PAGE_SIZE = 30;
@@ -250,6 +252,8 @@ function normalizeLaunchboxFilters(
 }
 
 export function useCatalogueData() {
+  const userPreferences = useUserPreferences();
+  const classicsEnabled = isClassicsEnabled(userPreferences);
   const [searchParams, setSearchParams] = useSearchParams();
   const deferredTitle = useDeferredValue(searchParams.get("title") ?? "");
   const [pageSize, setPageSize] = useState(getCataloguePageSize);
@@ -286,7 +290,7 @@ export function useCatalogueData() {
 
   const values = useMemo<SearchGamesFormValues>(() => {
     const sortOption = getCatalogueSortOption(searchParams);
-    const mode = getCatalogueMode(searchParams);
+    const mode = classicsEnabled ? getCatalogueMode(searchParams) : "modern";
 
     return {
       mode,
@@ -302,7 +306,7 @@ export function useCatalogueData() {
         searchParams.get("downloadSourceFingerprints")
       ),
     };
-  }, [searchParams]);
+  }, [classicsEnabled, searchParams]);
 
   const updateSearchParams = useCallback(
     (newValues: Partial<SearchGamesFormValues>) => {
