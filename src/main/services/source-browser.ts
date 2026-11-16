@@ -26,6 +26,7 @@ import {
   sourceWebsiteHttpError,
   sourceNavigationDecision,
   sourceGamePageKind,
+  sourceSearchQuery,
 } from "../../shared/source-browser-policy";
 import { WindowManager } from "./window-manager";
 import { assertMultipartHosterDownloadsEnabled } from "./download/multipart-hoster-feature";
@@ -208,9 +209,10 @@ export async function openSourceBrowser(
   }
   const isWebsiteSelection = request.repack.sourceOrigin === "website";
   const isWebsiteSearch = isWebsiteSelection && request.readOnly !== true;
-  const exact = isWebsiteSearch ? "" : request.repack.sourcePageUrl ?? "";
+  const exact = isWebsiteSearch ? "" : (request.repack.sourcePageUrl ?? "");
   const sourceName = isWebsiteSelection
-    ? profile?.name ?? (profile ? new URL(profile.website).hostname : "Website")
+    ? (profile?.name ??
+      (profile ? new URL(profile.website).hostname : "Website"))
     : request.repack.downloadSourceName;
   const state: SourceBrowserState = {
     readOnly: request.readOnly === true,
@@ -619,7 +621,7 @@ export async function openSourceBrowser(
     load(
       profile.searchUrl.replaceAll(
         "{query}",
-        encodeURIComponent(request.gameTitle)
+        encodeURIComponent(sourceSearchQuery(request.gameTitle))
       )
     );
   return result;

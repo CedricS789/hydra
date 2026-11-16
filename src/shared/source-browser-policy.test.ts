@@ -10,6 +10,7 @@ import {
   sourceWebsiteHttpError,
   sourceNavigationDecision,
   sourceGamePageKind,
+  sourceSearchQuery,
   normalizeApprovedDomain,
   websiteSearchRepack,
 } from "./source-browser-policy.js";
@@ -290,6 +291,234 @@ test("source page addresses stay within the selected game", () => {
       "https://source.example/ghost-of-tsushima-2/",
       title,
       profile
+    ),
+    "blocked"
+  );
+  assert.equal(
+    sourceGamePageKind("https://source.example/?s=Tsushima", title, profile),
+    "search"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/page/2/?s=Ghost%20of%20Tsushima",
+      title,
+      profile
+    ),
+    "search"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/?s=Ghost%20of%20Tsushima%202",
+      title,
+      profile
+    ),
+    "blocked"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/?s=Ghost%20Recon",
+      title,
+      profile
+    ),
+    "blocked"
+  );
+  assert.equal(
+    sourceGamePageKind("https://source.example/?s=", title, profile),
+    "blocked"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/ghost-of-a-tale-free-download/",
+      title,
+      profile
+    ),
+    "blocked"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/ghostrunner-free-download/",
+      title,
+      profile
+    ),
+    "blocked"
+  );
+});
+
+test("fuzzy safeguard handles shortened searches, trademarks, editions, numerals, and punctuation", () => {
+  const profile = {
+    website: "https://source.example/",
+    searchUrl: "https://source.example/?s={query}",
+  };
+  const sekiro = "Sekiro™: Shadows Die Twice - GOTY Edition";
+  assert.equal(
+    sourceSearchQuery(sekiro),
+    "Sekiro: Shadows Die Twice - GOTY Edition"
+  );
+  for (const url of [
+    "https://source.example/?s=Sekiro%E2%84%A2%3A%20Shadows%20Die%20Twice%20-%20GOTY%20Edition",
+    "https://source.example/?s=Sekiro",
+    "https://source.example/?s=Sekiro%20Shadows%20Die%20Twice",
+    "https://source.example/?s=Shadows%20Die%20Twice",
+    "https://source.example/?s=Sekiro%20GOTY",
+    "https://source.example/?s=Sekro",
+  ]) {
+    assert.equal(sourceGamePageKind(url, sekiro, profile), "search", url);
+  }
+  for (const url of [
+    "https://source.example/sekiro-shadows-die-twice-free-download/",
+    "https://source.example/sekiro-shadows-die-twice-goty-edition/",
+    "https://source.example/sekiro-shadows-die-twice-v1-06-free-download/",
+    "https://source.example/sekiro-free-download/",
+  ]) {
+    assert.equal(sourceGamePageKind(url, sekiro, profile), "game", url);
+  }
+  for (const url of [
+    "https://source.example/?s=Sekiro%202",
+    "https://source.example/?s=F1%202015",
+    "https://source.example/sekiro-2-free-download/",
+    "https://source.example/aviassembly-free-download/",
+  ]) {
+    assert.equal(sourceGamePageKind(url, sekiro, profile), "blocked", url);
+  }
+
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/baldurs-gate-3-free-download/",
+      "Baldur's Gate 3",
+      profile
+    ),
+    "game"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/baldur-s-gate-3-free-download/",
+      "Baldur's Gate 3",
+      profile
+    ),
+    "game"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/?s=BG3",
+      "Baldur's Gate 3",
+      profile
+    ),
+    "search"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/spider-man-remastered-free-download/",
+      "Marvel's Spider-Man Remastered",
+      profile
+    ),
+    "game"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/?s=Spiderman",
+      "Marvel's Spider-Man Remastered",
+      profile
+    ),
+    "search"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/civilization-6-free-download/",
+      "Sid Meier’s Civilization® VI",
+      profile
+    ),
+    "game"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/gta-5-free-download/",
+      "Grand Theft Auto V",
+      profile
+    ),
+    "game"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/?s=GTA%205",
+      "Grand Theft Auto V",
+      profile
+    ),
+    "search"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/elden-ring-free-download/",
+      "ELDEN RING Shadow of the Erdtree Edition",
+      profile
+    ),
+    "game"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/resident-evil-4-remake-free-download/",
+      "Resident Evil 4 (2023)",
+      profile
+    ),
+    "game"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/stalker-2-heart-of-chornobyl-free-download/",
+      "S.T.A.L.K.E.R. 2: Heart of Chornobyl",
+      profile
+    ),
+    "game"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/nierautomata-free-download/",
+      "NieR:Automata™",
+      profile
+    ),
+    "game"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/call-of-duty-modern-warfare-free-download/",
+      "Call of Duty: Black Ops",
+      profile
+    ),
+    "blocked"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/the-witcher-2-free-download/",
+      "The Witcher® 3: Wild Hunt - Complete Edition",
+      profile
+    ),
+    "blocked"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/red-dead-redemption-free-download/",
+      "Red Dead Redemption 2",
+      profile
+    ),
+    "blocked"
+  );
+
+  const pathProfile = {
+    website: "https://source.example/",
+    searchUrl: "https://source.example/search/{query}",
+  };
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/search/Sekiro",
+      sekiro,
+      pathProfile
+    ),
+    "search"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://source.example/search/F1%202015",
+      sekiro,
+      pathProfile
     ),
     "blocked"
   );

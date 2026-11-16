@@ -1,6 +1,6 @@
 {
   "name": "hydralauncher-local",
-  "version": "4.4.1-remix.3",
+  "version": "4.4.1-remix.4",
   "description": "Hydra with Ludusavi Integrated — save backups and release comparison",
   "main": "./out/main/index.js",
   "author": "Los Broxas",
