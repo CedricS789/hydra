@@ -1,0 +1,83 @@
+@use "../../scss/globals.scss";
+
+.getting-started-guide__modal {
+  width: min(720px, calc(100vw - 40px));
+  max-width: 720px;
+}
+
+.getting-started-guide {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  h2 {
+    margin: 8px 0 0;
+    font-size: 24px;
+  }
+
+  p {
+    line-height: 1.55;
+    color: globals.$muted-color;
+    margin: 0;
+  }
+
+  &__progress {
+    display: flex;
+    gap: 6px;
+
+    span {
+      height: 4px;
+      flex: 1;
+      border-radius: 4px;
+      background: globals.$border-color;
+
+      &.is-active {
+        background: globals.$brand-teal;
+      }
+    }
+  }
+
+  &__sources {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid globals.$border-color;
+    border-radius: 8px;
+  }
+
+  &__message {
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: globals.$background-color;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 12px;
+    padding-top: 16px;
+    border-top: 1px solid globals.$border-color;
+
+    > div {
+      display: flex;
+      gap: 8px;
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .getting-started-guide {
+    padding: 18px;
+
+    &__actions {
+      flex-direction: column-reverse;
+
+      > div {
+        justify-content: flex-end;
+      }
+    }
+  }
+}

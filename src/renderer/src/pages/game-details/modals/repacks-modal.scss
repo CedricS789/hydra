@@ -242,3 +242,24 @@
   align-self: flex-end;
   margin-bottom: 8px;
 }
+
+.source-website-search {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid globals.$border-color;
+  margin-bottom: 8px;
+
+  > [role="group"] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  &__note {
+    color: globals.$muted-color;
+    font-size: globals.$tiny-font-size;
+    flex-basis: 100%;
+  }
+}

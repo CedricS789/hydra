@@ -1,39 +1,20 @@
 import { useEffect, useState, type ReactNode } from "react";
 import * as Menu from "@radix-ui/react-dropdown-menu";
 import { Button } from "@renderer/components/button/button";
-import { useSourceBrowser } from "@renderer/components/source-browser-button";
-import type { GameRepack } from "@types";
-import type { SourceBrowserRequest } from "../../../../../types/source-browser.types";
 import type { DownloadOptionInteraction } from "../../../../../shared/download-option-interaction";
 import "@renderer/components/dropdown-menu/dropdown-menu.scss";
 
 export function ReleaseDownloadOption({
   children,
   mode,
-  browsingEnabled,
-  request,
   onDownload,
-  onReview,
 }: {
   children: ReactNode;
   mode: DownloadOptionInteraction;
-  browsingEnabled: boolean;
-  request: SourceBrowserRequest;
   onDownload: () => void;
-  onReview: (repack: GameRepack) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  useEffect(() => setMenuOpen(false), [mode, browsingEnabled]);
-  const browser = useSourceBrowser(request, onReview);
-  const browse = () => {
-    setMenuOpen(false);
-    void browser.open();
-  };
-  const sourceButton = browsingEnabled ? (
-    <Button theme="outline" disabled={browser.busy} onClick={browse}>
-      {browser.busy ? "Source browser open…" : "View source"}
-    </Button>
-  ) : null;
+  useEffect(() => setMenuOpen(false), [mode]);
   return (
     <div className="repacks-modal__source-entry">
       {mode === "menu" ? (
@@ -42,7 +23,7 @@ export function ReleaseDownloadOption({
             <Button
               theme="dark"
               className="repacks-modal__repack-button"
-              aria-label={`Actions for ${request.repack.title}`}
+              aria-label="Open Hydra download options menu"
               onContextMenu={(event) => {
                 event.preventDefault();
                 setMenuOpen(true);
@@ -50,7 +31,7 @@ export function ReleaseDownloadOption({
             >
               {children}
               <span className="repacks-modal__action-hint">
-                Choose an action…
+                Open download options…
               </span>
             </Button>
           </Menu.Trigger>
@@ -62,17 +43,8 @@ export function ReleaseDownloadOption({
               collisionPadding={16}
             >
               <Menu.Label className="dropdown-menu__title-bar">
-                Release actions
+                Hydra download
               </Menu.Label>
-              {browsingEnabled && (
-                <Menu.Item
-                  className="dropdown-menu__item"
-                  disabled={browser.busy}
-                  onSelect={browse}
-                >
-                  View source website
-                </Menu.Item>
-              )}
               <Menu.Item
                 className="dropdown-menu__item"
                 onSelect={() => {
@@ -95,18 +67,6 @@ export function ReleaseDownloadOption({
         </Button>
       ) : (
         <div className="repacks-modal__repack-static">{children}</div>
-      )}
-      {mode !== "menu" && sourceButton}
-      {mode === "website-only" && !browsingEnabled && (
-        <p className="repacks-modal__action-hint">
-          Source browsing is disabled. Enable it or change the download option
-          interaction in Settings → Advanced → Features.
-        </p>
-      )}
-      {browser.error && (
-        <p role="alert" className="local-edition__error">
-          {browser.error}
-        </p>
       )}
     </div>
   );

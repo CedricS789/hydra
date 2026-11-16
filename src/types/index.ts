@@ -34,6 +34,9 @@ export interface DiskUsage {
 }
 
 export interface GameRepack {
+  /** Identifies manual website selections separately from Hydra feed entries. */
+  sourceOrigin?: "website";
+  websiteProfileId?: string;
   sourcePageUrl?: string | null;
   id: string;
   title: string;
@@ -183,6 +186,8 @@ export type AppUpdaterEvent =
 
 /* Events */
 export interface StartGameDownloadPayload {
+  sourceOrigin?: "website";
+  websiteProfileId?: string | null;
   downloadSourceId?: string | null;
   sourcePageUrl?: string | null;
   objectId: string;

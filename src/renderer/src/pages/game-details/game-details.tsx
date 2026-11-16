@@ -124,7 +124,12 @@ export default function GameDetails() {
               fileSize: repack.fileSize,
               repackTitle: repack.title,
               sourcePageUrl: repack.sourcePageUrl,
-              downloadSourceId: repack.downloadSourceId,
+              sourceOrigin: repack.sourceOrigin,
+              websiteProfileId: repack.websiteProfileId,
+              downloadSourceId:
+                repack.sourceOrigin === "website"
+                  ? null
+                  : repack.downloadSourceId,
               downloadSourceName: repack.downloadSourceName,
               repackFileSize: repack.fileSize,
               uploadDate: repack.uploadDate,

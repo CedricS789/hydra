@@ -28,10 +28,12 @@ export function SourceBrowserButton({
   enabled,
   onReview,
   renderTrigger,
+  label = "View source page",
 }: {
   request: SourceBrowserRequest;
   enabled: boolean;
   onReview: (repack: GameRepack) => void;
+  label?: string;
   renderTrigger?: (props: {
     disabled: boolean;
     onClick: () => void;
@@ -43,7 +45,7 @@ export function SourceBrowserButton({
   const trigger = {
     disabled: busy,
     onClick: () => void open(),
-    children: busy ? "Source browser open…" : "View source",
+    children: busy ? "Opening website…" : label,
   };
   return (
     <div className="source-browser-entry">

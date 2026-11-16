@@ -33,7 +33,13 @@ import { assertMultipartHosterDownloadsEnabled } from "./download/multipart-host
 const profilesKey = "sourceWebsiteProfiles";
 const browsers = new Map<
   number,
-  { window: BrowserWindow; owner: number; sourceId: string; close(): void }
+  {
+    window: BrowserWindow;
+    owner: number;
+    sourceId: string;
+    requestKey: string;
+    close(): void;
+  }
 >();
 let profileGeneration = 0;
 type Profiles = Record<string, SourceWebsiteProfile>;
@@ -122,7 +128,6 @@ export function saveSourceWebsiteProfile(
   profile: SourceWebsiteProfile
 ) {
   const next = profileUpdates.then(async () => {
-    await assertSourceBrowserEnabled();
     if (
       !id ||
       id.length > 500 ||
@@ -148,7 +153,6 @@ export function closeSourceBrowsers() {
 }
 
 export async function clearSourceWebsiteData(id: string) {
-  await assertSourceBrowserEnabled();
   // Close first so a live site cannot immediately recreate cookies.
   closeSourceBrowsers();
   const siteSession = session.fromPartition(partition(id));
@@ -163,14 +167,25 @@ export async function openSourceBrowser(
 ): Promise<GameRepack | null> {
   assertSourceBrowserOwner(event);
   await assertSourceBrowserEnabled();
+  const websiteProfileId =
+    request?.websiteProfileId ?? request?.repack?.downloadSourceId;
   if (
-    !request?.repack?.downloadSourceId ||
+    !websiteProfileId ||
     !request.objectId ||
     !request.gameTitle ||
     !request.repack.title
   )
     throw new Error("Missing source or game context.");
-  const sourceId = request.repack.downloadSourceId;
+  const sourceId = websiteProfileId;
+  const requestKey = JSON.stringify([
+    sourceId,
+    request.shop,
+    request.objectId,
+    request.gameTitle,
+    request.readOnly === true,
+    request.repack.title,
+    request.repack.sourcePageUrl ?? "",
+  ]);
   const generation = profileGeneration;
   const profile = (await getSourceWebsiteProfiles())[sourceId] ?? null;
   await assertSourceBrowserEnabled();
@@ -179,20 +194,29 @@ export async function openSourceBrowser(
       "Website permissions changed. Open the source browser again."
     );
   const existing = [...browsers.values()].find(
-    (browser) => browser.owner === event.sender.id
+    (browser) =>
+      browser.owner === event.sender.id && browser.requestKey === requestKey
   );
   if (existing) {
-    existing.window.focus();
-    throw new Error(
-      "Finish or close the source browser already open for this window."
-    );
+    if (!existing.window.isDestroyed()) {
+      if (existing.window.isMinimized()) existing.window.restore();
+      existing.window.focus();
+      return null;
+    }
+    for (const [id, browser] of browsers)
+      if (browser === existing) browsers.delete(id);
   }
-  const exact = request.repack.sourcePageUrl ?? "";
+  const isWebsiteSelection = request.repack.sourceOrigin === "website";
+  const isWebsiteSearch = isWebsiteSelection && request.readOnly !== true;
+  const exact = isWebsiteSearch ? "" : request.repack.sourcePageUrl ?? "";
+  const sourceName = isWebsiteSelection
+    ? profile?.name ?? (profile ? new URL(profile.website).hostname : "Website")
+    : request.repack.downloadSourceName;
   const state: SourceBrowserState = {
     readOnly: request.readOnly === true,
     title: request.gameTitle,
-    releaseTitle: request.repack.title,
-    sourceName: request.repack.downloadSourceName,
+    releaseTitle: isWebsiteSearch ? "" : request.repack.title,
+    sourceName,
     url: "",
     pageUrl: "",
     lookup: !profile ? "setup" : exact ? "exact" : "search",
@@ -207,7 +231,7 @@ export async function openSourceBrowser(
     height: 900,
     minWidth: 960,
     minHeight: 650,
-    title: "Source website — Hydra Ludusavi",
+    title: `${sourceName} · ${request.gameTitle} — Hydra Ludusavi`,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "../preload/source-browser.cjs"),
@@ -437,6 +461,7 @@ export async function openSourceBrowser(
     window: win,
     owner: event.sender.id,
     sourceId,
+    requestKey,
     close: () => finish(null),
   });
   const ownerGone = () => finish(null);

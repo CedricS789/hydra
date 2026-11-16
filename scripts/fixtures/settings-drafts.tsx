@@ -7,6 +7,7 @@ import { createRoot } from "react-dom/client";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import {
   SettingsDraftProvider,
+  useSettingsConfirmation,
   useSettingsDraft,
   useSettingsFormGuard,
   useSettingsProfile,
@@ -52,10 +53,6 @@ test("settings drafts: explicit saves, cancellation, failures, conflicts, profil
         preferences = { ...preferences, ...patch };
         onUpdated({ ...preferences });
       },
-      confirmSettingsChanges: async (kind: string, changes: string[]) => {
-        reviews.push({ kind, changes });
-        return accept;
-      },
       getMe: async () => ({ ...profile }),
     },
   });
@@ -82,7 +79,12 @@ test("settings drafts: explicit saves, cancellation, failures, conflicts, profil
       {
         path: "/settings",
         element: (
-          <SettingsDraftProvider>
+          <SettingsDraftProvider
+            confirmationOverride={async (kind, changes) => {
+              reviews.push({ kind, changes });
+              return accept;
+            }}
+          >
             <Editor />
           </SettingsDraftProvider>
         ),
@@ -345,4 +347,69 @@ test("review hides token values and compares only changed fields", () => {
     reviewSettings({ allowDirectTorrent: true }).join(" "),
     /public IP/
   );
+});
+
+test("settings confirmation uses the app modal and stays keyboard accessible", async () => {
+  function Prompt() {
+    const confirm = useSettingsConfirmation();
+    return (
+      <button onClick={() => void confirm("save", ["Automatic backups: Off"])}>
+        Request review
+      </button>
+    );
+  }
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const router = createMemoryRouter(
+    [
+      {
+        path: "/",
+        element: (
+          <SettingsDraftProvider>
+            <Prompt />
+          </SettingsDraftProvider>
+        ),
+      },
+    ],
+    { initialEntries: ["/"] }
+  );
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 10));
+  await act(async () => {
+    root.render(<RouterProvider router={router} />);
+    await flush();
+  });
+  try {
+    await act(async () => {
+      container.querySelector("button")!.click();
+      await flush();
+    });
+    const dialog = container.querySelector('[role="dialog"]');
+    assert.ok(dialog);
+    assert.match(dialog.textContent ?? "", /Automatic backups: Off/);
+    await act(async () => {
+      [...dialog.querySelectorAll("button")]
+        .find((button) => button.textContent === "Keep editing")!
+        .click();
+      await flush();
+    });
+    assert.equal(container.querySelector('[role="dialog"]'), null);
+    await act(async () => {
+      container.querySelector("button")!.click();
+      await flush();
+    });
+    const secondDialog = container.querySelector('[role="dialog"]');
+    assert.ok(secondDialog);
+    await act(async () => {
+      [...secondDialog.querySelectorAll("button")]
+        .find((button) => button.textContent === "Save changes")!
+        .click();
+      await flush();
+    });
+    assert.equal(container.querySelector('[role="dialog"]'), null);
+  } finally {
+    await act(async () => root.unmount());
+    router.dispose();
+    container.remove();
+  }
 });

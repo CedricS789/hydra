@@ -1,6 +1,7 @@
 import type { GameRepack } from "@types";
 
 export interface DownloadSourceMetadata {
+  sourceOrigin?: "website" | null;
   repackTitle?: string | null;
   downloadSourceName?: string | null;
   repackFileSize?: string | null;
@@ -19,6 +20,8 @@ export const pickDownloadSourceMetadata = (
   metadata?: DownloadSourceMetadata | null
 ): DownloadSourceMetadata => {
   const repackTitle = normalizeOptionalString(metadata?.repackTitle);
+  const sourceOrigin =
+    metadata?.sourceOrigin === "website" ? "website" : undefined;
   const downloadSourceName = normalizeOptionalString(
     metadata?.downloadSourceName
   );
@@ -27,6 +30,7 @@ export const pickDownloadSourceMetadata = (
 
   return {
     ...(repackTitle ? { repackTitle } : {}),
+    ...(sourceOrigin ? { sourceOrigin } : {}),
     ...(downloadSourceName ? { downloadSourceName } : {}),
     ...(repackFileSize ? { repackFileSize } : {}),
     ...(uploadDate ? { uploadDate } : {}),
@@ -36,11 +40,12 @@ export const pickDownloadSourceMetadata = (
 export const pickDownloadSourceMetadataFromRepack = (
   repack?: Pick<
     GameRepack,
-    "title" | "downloadSourceName" | "fileSize" | "uploadDate"
+    "title" | "sourceOrigin" | "downloadSourceName" | "fileSize" | "uploadDate"
   > | null
 ): DownloadSourceMetadata =>
   pickDownloadSourceMetadata({
     repackTitle: repack?.title,
+    sourceOrigin: repack?.sourceOrigin,
     downloadSourceName: repack?.downloadSourceName,
     repackFileSize: repack?.fileSize,
     uploadDate: repack?.uploadDate,
@@ -79,7 +84,7 @@ export const findMatchingRepackForUri = (
 export const formatDownloadSourceSummary = (
   metadata: Pick<
     DownloadSourceMetadata,
-    "repackFileSize" | "downloadSourceName" | "uploadDate"
+    "sourceOrigin" | "repackFileSize" | "downloadSourceName" | "uploadDate"
   > | null | undefined,
   formatDate: (date: string) => string
 ): string => {
@@ -95,10 +100,15 @@ export const formatDownloadSourceSummary = (
       formattedUploadDate = undefined;
     }
   }
+  const sourceName = normalizeOptionalString(metadata.downloadSourceName);
+  const formattedSourceName =
+    metadata.sourceOrigin === "website"
+      ? `Website selection · ${sourceName ?? "website"}`
+      : sourceName;
 
   return [
     normalizeOptionalString(metadata.repackFileSize),
-    normalizeOptionalString(metadata.downloadSourceName),
+    formattedSourceName,
     formattedUploadDate,
   ]
     .filter((part): part is string => Boolean(part))

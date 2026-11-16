@@ -1,4 +1,4 @@
-import { AppTitleBar, Sidebar, Toast } from "@renderer/components";
+import { AppTitleBar, GettingStartedGuide, Sidebar, Toast } from "@renderer/components";
 import { AutoUpdateSubHeader } from "@renderer/components/header/auto-update-sub-header";
 import { ScanGamesProvider } from "@renderer/context";
 import {
@@ -128,6 +128,35 @@ export function App() {
     useState(false);
   const [archivePaths, setArchivePaths] = useState<string[]>([]);
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
+  const [showGettingStarted, setShowGettingStarted] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const openGuide = () => setShowGettingStarted(true);
+    window.addEventListener("hydra:open-getting-started-guide", openGuide);
+    void Promise.allSettled([
+      window.electron.getUserPreferences(),
+      window.electron.getDownloadSources(),
+      window.electron.getLibrary(true),
+    ])
+      .then(([preferencesResult, sourcesResult, gamesResult]) => {
+        if (
+          active &&
+          preferencesResult.status === "fulfilled" &&
+          sourcesResult.status === "fulfilled" &&
+          gamesResult.status === "fulfilled" &&
+          !preferencesResult.value?.firstRunGuideCompleted &&
+          sourcesResult.value.length === 0 &&
+          gamesResult.value.length === 0
+        )
+          setShowGettingStarted(true);
+      })
+      .catch((error) => console.warn("Could not check first-run setup", error));
+    return () => {
+      active = false;
+      window.removeEventListener("hydra:open-getting-started-guide", openGuide);
+    };
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -794,6 +823,11 @@ export function App() {
       />
 
       <LevelUpModal />
+
+      <GettingStartedGuide
+        visible={showGettingStarted}
+        onClose={() => setShowGettingStarted(false)}
+      />
 
       <CloudSubscriptionModal
         visible={isHydraCloudModalVisible}

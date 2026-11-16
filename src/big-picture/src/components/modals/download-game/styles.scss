@@ -376,3 +376,24 @@
     width: 100%;
   }
 }
+
+.source-website-search {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+
+  > [role="group"] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  &__note {
+    flex-basis: 100%;
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+}

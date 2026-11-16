@@ -1,4 +1,7 @@
-import { useSettingsOperationGuard } from "@renderer/context/settings/settings-draft.context";
+import {
+  useSettingsOperationGuard,
+  useSettingsConfirmation,
+} from "@renderer/context/settings/settings-draft.context";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector } from "@renderer/hooks";
@@ -10,6 +13,7 @@ import { useSettingsFormGuard } from "@renderer/context/settings/settings-draft.
 import "./settings-global-trackers.scss";
 
 export function SettingsGlobalTrackers() {
+  const confirm = useSettingsConfirmation();
   const { t } = useTranslation("settings");
   const dispatch = useAppDispatch();
   const preferences = useAppSelector((state) => state.userPreferences.value);
@@ -50,7 +54,7 @@ export function SettingsGlobalTrackers() {
     setSaveError(null);
     try {
       if (
-        !(await window.electron.confirmSettingsChanges("save", [
+        !(await confirm("save", [
           "Change global torrent trackers. Tracker servers can see information about direct torrent activity. This does not enable direct torrents by itself.",
         ]))
       )

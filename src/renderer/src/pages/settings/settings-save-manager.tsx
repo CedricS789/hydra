@@ -1,4 +1,7 @@
-import { useSettingsOperationGuard } from "@renderer/context/settings/settings-draft.context";
+import {
+  useSettingsOperationGuard,
+  useSettingsConfirmation,
+} from "@renderer/context/settings/settings-draft.context";
 import { useEffect, useRef, useState } from "react";
 import { useSettingsFormGuard } from "@renderer/context/settings/settings-draft.context";
 import { useTranslation } from "react-i18next";
@@ -25,6 +28,7 @@ export function SettingsSaveManager({
   reloadSettings,
   mode = "all",
 }: Props) {
+  const confirm = useSettingsConfirmation();
   const { t } = useTranslation("ludusavi");
   const [working, setWorking] = useState(false);
   useSettingsOperationGuard(`save-manager-${mode}`, working);
@@ -46,9 +50,7 @@ export function SettingsSaveManager({
   const loadAdvanced = async () => {
     if (
       yamlDirty &&
-      !(await window.electron.confirmSettingsChanges("discard", [
-        "Unsaved YAML save rules in this editor.",
-      ]))
+      !(await confirm("discard", ["Unsaved YAML save rules in this editor."]))
     )
       return;
     const value = await window.electron.getSaveAdvancedConfig();
@@ -305,7 +307,7 @@ export function SettingsSaveManager({
                 onClick={() =>
                   action(async () => {
                     if (
-                      !(await window.electron.confirmSettingsChanges("save", [
+                      !(await confirm("save", [
                         "Replace advanced save rules with standalone Ludusavi settings. Existing edits in the YAML editor will be replaced. A previous configuration copy is kept.",
                       ]))
                     )
@@ -384,12 +386,9 @@ export function SettingsSaveManager({
                     onClick={() =>
                       action(async () => {
                         if (
-                          !(await window.electron.confirmSettingsChanges(
-                            "save",
-                            [
-                              "Apply edited Ludusavi YAML rules. These can change file and registry matching, exclusions, redirects, and recovery behavior. Review every changed rule before proceeding.",
-                            ]
-                          ))
+                          !(await confirm("save", [
+                            "Apply edited Ludusavi YAML rules. These can change file and registry matching, exclusions, redirects, and recovery behavior. Review every changed rule before proceeding.",
+                          ]))
                         )
                           return;
                         if (
@@ -413,10 +412,9 @@ export function SettingsSaveManager({
                     disabled={disabled || !yamlDirty}
                     onClick={async () => {
                       if (
-                        await window.electron.confirmSettingsChanges(
-                          "discard",
-                          ["Unsaved YAML save rules in this editor."]
-                        )
+                        await confirm("discard", [
+                          "Unsaved YAML save rules in this editor.",
+                        ])
                       )
                         setAdvanced(savedAdvanced);
                     }}

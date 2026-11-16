@@ -394,26 +394,24 @@ export function RepacksModal({
         </div>
 
         <div className="repacks-modal__repacks">
-          {filteredRepacks.length === 0 && (
-            <SourceWebsiteSearch
-              enabled={sourceBrowsingEnabled}
-              shop={downloadGame?.shop ?? game?.shop ?? shop}
-              objectId={
-                downloadGame?.objectId ?? game?.objectId ?? objectId ?? ""
-              }
-              gameTitle={game?.title ?? gameTitle}
-              onReview={handleRepackClick}
-              onSettings={() => {
-                onClose();
-                navigate("/settings?tab=advanced");
-              }}
-              renderButton={({ id, label, ...props }) => (
-                <Button key={id} type="button" theme="outline" {...props}>
-                  {label}
-                </Button>
-              )}
-            />
-          )}
+          <SourceWebsiteSearch
+            enabled={sourceBrowsingEnabled}
+            shop={downloadGame?.shop ?? game?.shop ?? shop}
+            objectId={
+              downloadGame?.objectId ?? game?.objectId ?? objectId ?? ""
+            }
+            gameTitle={game?.title ?? gameTitle}
+            onReview={handleRepackClick}
+            onSettings={() => {
+              onClose();
+              navigate("/settings?tab=advanced");
+            }}
+            renderButton={({ id, label, ...props }) => (
+              <Button key={id} type="button" theme="outline" {...props}>
+                {label}
+              </Button>
+            )}
+          />
           {showSteamOption && game && (
             <Button
               theme="dark"
@@ -496,22 +494,7 @@ export function RepacksModal({
                   <ReleaseDownloadOption
                     key={repack.id}
                     mode={interactionMode}
-                    browsingEnabled={sourceBrowsingEnabled}
-                    request={{
-                      shop: downloadGame?.shop ?? game?.shop ?? shop,
-                      objectId:
-                        downloadGame?.objectId ??
-                        game?.objectId ??
-                        objectId ??
-                        "",
-                      gameTitle: game?.title ?? gameTitle,
-                      repack,
-                    }}
                     onDownload={() => handleRepackClick(repack)}
-                    onReview={(selection) => {
-                      setRepack(selection);
-                      setShowSelectFolderModal(true);
-                    }}
                   >
                     <span
                       className={`repacks-modal__availability-orb repacks-modal__availability-orb--${availabilityStatus}`}

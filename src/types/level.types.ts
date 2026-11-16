@@ -169,6 +169,8 @@ export interface Download {
   debridPreparationDeadline?: number;
   customTrackers?: string[];
   repackTitle?: string | null;
+  sourceOrigin?: "website" | null;
+  websiteProfileId?: string | null;
   downloadSourceName?: string | null;
   repackFileSize?: string | null;
   uploadDate?: string | null;
@@ -287,6 +289,8 @@ export interface UserPreferences {
   enableTransferGame?: boolean;
   enableSourceBrowser?: boolean;
   downloadOptionInteraction?: import("../shared/download-option-interaction").DownloadOptionInteraction;
+  sourceWebsiteSearchOrder?: string[];
+  firstRunGuideCompleted?: boolean;
 }
 
 export interface NetworkInterface {

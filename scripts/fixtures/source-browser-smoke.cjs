@@ -1,4 +1,5 @@
 // Runs exclusively against controlled pages and a temporary database/profile.
+/* global globalThis */
 const { app, BrowserWindow, session } = require("electron");
 const assert = require("node:assert/strict");
 const path = require("node:path");
@@ -90,6 +91,25 @@ app
       sender: owner.webContents,
       senderFrame: owner.webContents.mainFrame,
     };
+    data.set("userPreferences", { enableSourceBrowser: false });
+    assert.deepEqual(
+      await service.getSourceWebsiteProfiles(),
+      { [sourceId]: { ...profile, approvedDomains: ["fixture.example"] } },
+      "Website profile management remains available while browsing is disabled"
+    );
+    await service.saveSourceWebsiteProfile(sourceId, profile);
+    assert.deepEqual(
+      data.get("sourceWebsiteProfiles"),
+      { [sourceId]: { ...profile, approvedDomains: ["fixture.example"] } },
+      "Saving a website profile does not require a source feed or enabled browsing"
+    );
+    await service.clearSourceWebsiteData(sourceId);
+    await assert.rejects(
+      service.openSourceBrowser(sender, request),
+      /browsing is disabled/i,
+      "The setting still prevents opening source websites"
+    );
+    data.set("userPreferences", { enableSourceBrowser: true });
     const siteSession = session.fromPartition(partition);
     const requests = [];
     const fixtureResponse = (req) => {
@@ -186,9 +206,10 @@ app
       (await service.getSourceWebsiteProfiles())[sourceId].approvedDomains,
       ["fixture.example"]
     );
-    assert.equal(
+    assert.deepEqual(
       data.get("sourceWebsiteProfiles")[sourceId].approvedDomains,
-      undefined
+      ["fixture.example"],
+      "Saving a profile persists its validated website hostname"
     );
     await wait(
       () =>
@@ -643,6 +664,7 @@ app
       repack: {
         ...request.repack,
         id: "website-search:independent",
+        sourceOrigin: "website",
         title: request.gameTitle,
         downloadSourceId: independentId,
         downloadSourceName: "Independent website",

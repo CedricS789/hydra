@@ -1060,8 +1060,6 @@ contextBridge.exposeInMainWorld("electron", {
   },
   autoLaunch: (autoLaunchProps: { enabled: boolean; minimized: boolean }) =>
     ipcRenderer.invoke("autoLaunch", autoLaunchProps),
-  confirmSettingsChanges: (kind: "save" | "discard", changes: string[]) =>
-    ipcRenderer.invoke("confirmSettingsChanges", kind, changes),
   authenticateRealDebrid: (apiToken: string) =>
     ipcRenderer.invoke("authenticateRealDebrid", apiToken),
   authenticatePremiumize: (apiToken: string) =>

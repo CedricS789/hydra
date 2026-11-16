@@ -58,22 +58,11 @@ app
     const labels = await js(
       "[...document.querySelectorAll('[role=menuitem]')].map(e=>e.textContent)"
     );
-    assert.deepEqual(labels, [
-      "View source website",
-      "Download options in Hydra…",
-    ]);
+    assert.deepEqual(labels, ["Download options in Hydra…"]);
     await js(
       "[...document.querySelectorAll('[role=menuitem]')].find(e=>e.textContent.includes('Download options')).click()"
     );
     await wait(async () => (await calls()).downloads === 1);
-    await configure("native");
-    await configure("menu");
-    await openMenu();
-    await js(
-      "[...document.querySelectorAll('[role=menuitem]')].find(e=>e.textContent.includes('View source')).click()"
-    );
-    await wait(async () => (await calls()).browsers === 1);
-    assert.equal((await calls()).downloads, 0);
     await configure("native");
     await configure("menu");
     await js(
@@ -94,18 +83,9 @@ app
     );
     await js("document.querySelector('.repacks-modal__repack-static').click()");
     assert.equal((await calls()).downloads, 0);
-    await js(
-      "[...document.querySelectorAll('button')].find(e=>e.textContent==='View source').click()"
-    );
-    await wait(async () => (await calls()).browsers === 1);
     assert.equal((await calls()).downloads, 0);
     await configure("website-only", false);
     assert.equal(await js("document.querySelectorAll('button').length"), 0);
-    assert.ok(
-      await js(
-        "document.body.textContent.includes('Source browsing is disabled')"
-      )
-    );
     await configure("native", false);
     await card();
     assert.equal((await calls()).downloads, 1);
@@ -117,7 +97,7 @@ app
     );
     assert.equal((await calls()).downloads, 0);
     console.log(
-      "Release picker UI checks passed: native default, action menus, website-only cards, and browsing-disabled behavior."
+      "Release picker UI checks passed: native default, Hydra action menus, and website-only cards."
     );
     win.destroy();
     app.exit(0);

@@ -1,4 +1,7 @@
-import { useSettingsOperationGuard } from "@renderer/context/settings/settings-draft.context";
+import {
+  useSettingsOperationGuard,
+  useSettingsConfirmation,
+} from "@renderer/context/settings/settings-draft.context";
 import { useSettingsFormGuard } from "@renderer/context/settings/settings-draft.context";
 import { settingsValueEqual } from "../../../../shared/settings-changes";
 import { useEffect, useState } from "react";
@@ -18,6 +21,7 @@ const emptyGameSettings: LudusaviGameSettings = {
 };
 
 export function SettingsLudusaviAdvanced() {
+  const confirm = useSettingsConfirmation();
   const { t } = useTranslation("ludusavi");
   const { state, error: stateError, refresh } = useLudusaviLocalState();
   const [settings, setSettings] = useState<LudusaviLocalSettings>();
@@ -25,7 +29,6 @@ export function SettingsLudusaviAdvanced() {
   const [advancedGameKey, setAdvancedGameKey] = useState("");
   const [savePathsText, setSavePathsText] = useState("");
   const [trackingPathsText, setTrackingPathsText] = useState("");
-  const [pathsDirty, setPathsDirty] = useState(false);
   const [pathsAcknowledged, setPathsAcknowledged] = useState(false);
   const [retentionAcknowledged, setRetentionAcknowledged] = useState(false);
   const [pendingUnlink, setPendingUnlink] = useState(false);
@@ -44,12 +47,6 @@ export function SettingsLudusaviAdvanced() {
   const settingsDirty = Boolean(
     settings && savedSettings && !settingsValueEqual(settings, savedSettings)
   );
-  useSettingsFormGuard(
-    "backup-advanced",
-    settingsDirty || pathsDirty,
-    "Advanced save backup settings"
-  );
-
   useEffect(() => {
     if (state && !settingsDirty) {
       setSettings(state.settings);
@@ -76,6 +73,27 @@ export function SettingsLudusaviAdvanced() {
   );
   const advancedGameSettings =
     settings?.games[advancedGameKey] ?? emptyGameSettings;
+  const parsePathLines = (value: string) =>
+    value
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+  const pathsDirty = Boolean(
+    advancedGame &&
+      (!settingsValueEqual(
+        parsePathLines(savePathsText),
+        advancedGameSettings.savePaths
+      ) ||
+        !settingsValueEqual(
+          parsePathLines(trackingPathsText),
+          advancedGameSettings.trackingPaths
+        ))
+  );
+  useSettingsFormGuard(
+    "backup-advanced",
+    settingsDirty || pathsDirty,
+    "Advanced save backup settings"
+  );
 
   useEffect(() => {
     if (!advancedGame || pathsDirty) return;
@@ -209,12 +227,11 @@ export function SettingsLudusaviAdvanced() {
       review.push(
         "Change per-game backup rules, save matching, or automatic backup participation."
       );
-    if (!(await window.electron.confirmSettingsChanges("save", review)))
+    if (!(await confirm("save", review)))
       throw new Error("Changes were not saved.");
     const latest = await window.electron.saveLudusaviLocalSettings(next);
     setSettings(latest.settings);
     setSavedSettings(latest.settings);
-    setPathsDirty(false);
     setPathsAcknowledged(false);
     setRetentionAcknowledged(false);
     setNotice("Backup settings saved.");
@@ -503,7 +520,6 @@ export function SettingsLudusaviAdvanced() {
                 onChange={(event) => {
                   const nextKey = event.target.value;
                   setAdvancedGameKey(nextKey);
-                  setPathsDirty(false);
                   setPathsAcknowledged(false);
                   setPendingUnlink(false);
                   setUnlinkAcknowledged(false);
@@ -651,7 +667,6 @@ export function SettingsLudusaviAdvanced() {
                     disabled={busy}
                     onChange={(event) => {
                       setSavePathsText(event.target.value);
-                      setPathsDirty(true);
                       setPathsAcknowledged(false);
                     }}
                   />
@@ -664,7 +679,6 @@ export function SettingsLudusaviAdvanced() {
                     disabled={busy}
                     onChange={(event) => {
                       setTrackingPathsText(event.target.value);
-                      setPathsDirty(true);
                       setPathsAcknowledged(false);
                     }}
                   />

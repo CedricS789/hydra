@@ -10,6 +10,35 @@ export const isSourceBrowsingEnabled = (
   preferences?: { enableSourceBrowser?: boolean } | null
 ) => preferences?.enableSourceBrowser !== false;
 
+const defaultWebsiteRank = (profile: SourceWebsiteProfile) => {
+  const identity = `${profile.name ?? ""} ${profile.website}`.toLowerCase();
+  if (identity.includes("steamrip")) return 0;
+  if (identity.includes("fitgirl")) return 1;
+  if (identity.includes("dodi")) return 2;
+  return 3;
+};
+
+/** Put configured search websites in the saved user order, with new sites appended by the product defaults. */
+export function orderSourceWebsiteProfiles(
+  profiles: Record<string, SourceWebsiteProfile>,
+  savedOrder?: string[] | null
+) {
+  const ids = Object.keys(profiles);
+  const savedRank = new Map((savedOrder ?? []).map((id, index) => [id, index]));
+  return ids.sort((a, b) => {
+    const aSaved = savedRank.get(a);
+    const bSaved = savedRank.get(b);
+    if (aSaved !== undefined || bSaved !== undefined) {
+      if (aSaved === undefined) return 1;
+      if (bSaved === undefined) return -1;
+      if (aSaved !== bSaved) return aSaved - bSaved;
+    }
+    const rank = defaultWebsiteRank(profiles[a]) - defaultWebsiteRank(profiles[b]);
+    if (rank) return rank;
+    return (profiles[a].name ?? a).localeCompare(profiles[b].name ?? b);
+  });
+}
+
 /** Keep the real platform and Chromium version, without application products. */
 export function sourceWebsiteUserAgent(defaultAgent: string): string {
   const marker = " (KHTML, like Gecko)";
@@ -119,6 +148,8 @@ export function websiteSearchRepack(
   const valid = validateWebsiteProfile(profile);
   return {
     id: `website-search:${id}`,
+    sourceOrigin: "website",
+    websiteProfileId: id,
     title: gameTitle,
     fileSize: null,
     uploadDate: null,
@@ -315,14 +346,15 @@ export function buildSourceSelection(
       "These links cannot form a multipart download with Hydra's supported methods."
     );
   const sameRelease = releaseTitle.trim() === repack.title.trim();
+  const isWebsiteSelection = repack.sourceOrigin === "website";
   return {
     ...repack,
     title: releaseTitle.trim(),
     uris: mode === "parts" ? [validated[0]] : validated,
     uriGroups: mode === "parts" ? [validated] : undefined,
     unavailableUris: [],
-    fileSize: sameRelease ? repack.fileSize : null,
-    uploadDate: sameRelease ? repack.uploadDate : null,
+    fileSize: !isWebsiteSelection && sameRelease ? repack.fileSize : null,
+    uploadDate: !isWebsiteSelection && sameRelease ? repack.uploadDate : null,
     sourcePageUrl: websiteUrl(pageUrl).href,
   };
 }

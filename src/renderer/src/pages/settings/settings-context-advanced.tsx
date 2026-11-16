@@ -199,7 +199,9 @@ export function SettingsContextAdvanced() {
             }
           />
           <p>
-            Shows View source in desktop and Big Picture download options.
+            Shows one Search on action per configured website above the
+            download options. Searches start with the selected game’s title;
+            website selections are labeled separately from Hydra feed entries.
             Turning it off closes source windows and discards unsubmitted links;
             existing downloads continue.
           </p>
@@ -223,7 +225,7 @@ export function SettingsContextAdvanced() {
               {
                 key: "menu",
                 value: "menu",
-                label: "Action menu — choose what to do first",
+                label: "Hydra action menu — add a step before download options",
               },
               {
                 key: "website-only",
@@ -233,11 +235,11 @@ export function SettingsContextAdvanced() {
             ]}
           />
           <p>
-            Action menu lets you choose between viewing the website and opening
-            Hydra’s download options. Native restores direct access to download
-            options. Website only removes direct release selection and uses the
-            source website to choose files; it requires source browsing to be
-            enabled.
+            Website searches appear once per configured site, separately from
+            the Hydra feed list. Native opens Hydra’s download options directly
+            from a release. The Hydra action menu adds a menu step first.
+            Website only makes feed release cards non-clickable while leaving
+            the website search actions available when browsing is enabled.
           </p>
         </div>
       </details>

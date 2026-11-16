@@ -21,6 +21,7 @@ import {
 } from "../../../../shared/settings-changes";
 
 type DraftContext = {
+  confirm: (kind: "save" | "discard", changes: string[]) => Promise<boolean>;
   preferences: UserPreferences | null;
   stage: (values: Partial<UserPreferences>) => Promise<void>;
   commit: (
@@ -48,6 +49,8 @@ export type SettingsSaveActionsProps = {
   discard: () => void;
 };
 export const useSettingsDraft = () => useContext(context);
+export const useSettingsConfirmation = () =>
+  useSettingsDraft()?.confirm ?? (async () => false);
 
 export function useSettingsProfile<
   T extends {
@@ -105,11 +108,16 @@ export function SettingsDraftProvider({
   onSaved,
   renderActions,
   inlineFooter = false,
+  confirmationOverride,
 }: {
   children: ReactNode;
   inlineFooter?: boolean;
   onSaved?: (preferences: UserPreferences | null) => void;
   renderActions?: (props: SettingsSaveActionsProps) => ReactNode;
+  confirmationOverride?: (
+    kind: "save" | "discard",
+    changes: string[]
+  ) => Promise<boolean>;
 }) {
   const [saved, setSaved] = useState<UserPreferences | null>(null);
   const [patch, setPatch] = useState<Partial<UserPreferences>>({});
@@ -140,6 +148,82 @@ export function SettingsDraftProvider({
   }, []);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [confirmation, setConfirmation] = useState<{
+    kind: "save" | "discard";
+    changes: string[];
+    resolve: (accepted: boolean) => void;
+  } | null>(null);
+  const confirmationRef = useRef<{
+    kind: "save" | "discard";
+    changes: string[];
+    resolve: (accepted: boolean) => void;
+  } | null>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
+  const confirm = useCallback(
+    (kind: "save" | "discard", changes: string[]) => {
+      if (confirmationOverride) return confirmationOverride(kind, changes);
+      return new Promise<boolean>((resolve) => {
+        if (confirmationRef.current) {
+          resolve(false);
+          return;
+        }
+        returnFocus.current =
+          document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+        const pending = { kind, changes, resolve };
+        confirmationRef.current = pending;
+        setConfirmation(pending);
+      });
+    },
+    [confirmationOverride]
+  );
+  const resolveConfirmation = (accepted: boolean) => {
+    const pending = confirmationRef.current;
+    confirmationRef.current = null;
+    setConfirmation(null);
+    pending?.resolve(accepted);
+    returnFocus.current?.focus();
+    returnFocus.current = null;
+  };
+  useEffect(() => {
+    if (!confirmation) return;
+    const dialog = dialogRef.current;
+    const keepEditing = dialog?.querySelector<HTMLElement>(
+      "[data-settings-review-cancel]"
+    );
+    keepEditing?.focus();
+    const listener = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        resolveConfirmation(false);
+        return;
+      }
+      if (event.key === "Tab" && dialog) {
+        const focusable = [
+          ...dialog.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          ),
+        ];
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (!first || !last) {
+          event.preventDefault();
+          return;
+        }
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, [confirmation]);
   const alive = useRef(true);
   const closing = useRef(false);
   const dirty =
@@ -295,9 +379,7 @@ export function SettingsDraftProvider({
       busyRef.current = true;
       setBusy(true);
       try {
-        if (
-          await window.electron.confirmSettingsChanges("discard", descriptions)
-        ) {
+        if (await confirm("discard", descriptions)) {
           reset();
           action();
         }
@@ -308,7 +390,7 @@ export function SettingsDraftProvider({
         if (alive.current) setBusy(false);
       }
     },
-    [descriptions, reset]
+    [descriptions, reset, confirm]
   );
 
   useEffect(() => {
@@ -361,12 +443,7 @@ export function SettingsDraftProvider({
         const latest = await window.electron.getUserPreferences();
         const changes = changedSettings(latest, values);
         if (!Object.keys(changes).length) return;
-        if (
-          !(await window.electron.confirmSettingsChanges(
-            "save",
-            reviewSettings(changes)
-          ))
-        )
+        if (!(await confirm("save", reviewSettings(changes))))
           throw new Error(
             "Changes were not saved. Keep editing or discard them."
           );
@@ -376,7 +453,7 @@ export function SettingsDraftProvider({
         if (alive.current) setBusy(false);
       }
     },
-    [persist]
+    [persist, confirm]
   );
 
   const save = async () => {
@@ -399,7 +476,7 @@ export function SettingsDraftProvider({
     const submitted = { ...patch };
     try {
       if (
-        !(await window.electron.confirmSettingsChanges(
+        !(await confirm(
           "save",
           descriptions.filter(
             (item) => !item.endsWith("(use its own Save button)")
@@ -527,6 +604,7 @@ export function SettingsDraftProvider({
   return (
     <context.Provider
       value={{
+        confirm,
         preferences,
         stage,
         commit,
@@ -540,6 +618,65 @@ export function SettingsDraftProvider({
       }}
     >
       {children}
+      {confirmation && (
+        <div className="settings-review__backdrop">
+          <section
+            ref={dialogRef}
+            className="settings-review"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settings-review-title"
+          >
+            <div className="settings-review__accent" />
+            <header>
+              <h2 id="settings-review-title">
+                {confirmation.kind === "save"
+                  ? "Review settings changes"
+                  : "Unsaved settings"}
+              </h2>
+              <button
+                type="button"
+                aria-label="Keep editing"
+                onClick={() => resolveConfirmation(false)}
+              >
+                ×
+              </button>
+            </header>
+            <p>
+              {confirmation.kind === "save"
+                ? "Save these changes?"
+                : "Discard unsaved edits and continue?"}
+            </p>
+            <ul>
+              {confirmation.changes.map((change, index) => (
+                <li key={`${index}-${change}`}>{change}</li>
+              ))}
+            </ul>
+            <footer>
+              <button
+                data-settings-review-cancel
+                type="button"
+                onClick={() => resolveConfirmation(false)}
+              >
+                Keep editing
+              </button>
+              <button
+                className={
+                  confirmation.kind === "save"
+                    ? "settings-review__primary"
+                    : "settings-review__danger"
+                }
+                type="button"
+                onClick={() => resolveConfirmation(true)}
+              >
+                {confirmation.kind === "save"
+                  ? "Save changes"
+                  : "Discard edits"}
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
       {!inlineFooter && footer}
     </context.Provider>
   );

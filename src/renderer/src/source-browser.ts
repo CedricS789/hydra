@@ -39,7 +39,7 @@ function render(state: SourceBrowserState) {
   if (document.activeElement !== input("address"))
     input("address").value = state.url;
   element("status").textContent =
-    `${state.loading ? "Loading… · " : ""}${state.lookup === "exact" ? "Original release page supplied" : state.lookup === "search" ? "Source search: choose the matching release and version" : "Set up this source website to begin"}`;
+    `${state.loading ? "Loading… · " : ""}${state.lookup === "exact" ? "Selected website page" : state.lookup === "search" ? "Website search: choose the matching release and version" : "Set up this website to begin"}`;
   element("error").textContent = state.error;
   element("blocked-destination").hidden = !state.blockedNavigation;
   element("blocked-destination").textContent = state.blockedNavigation?.hostname

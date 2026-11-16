@@ -1178,10 +1178,6 @@ declare global {
     onScreenshotInputStatusChange: (
       cb: (status: ScreenshotInputStatus) => void
     ) => () => Electron.IpcRenderer;
-    confirmSettingsChanges: (
-      kind: "save" | "discard",
-      changes: string[]
-    ) => Promise<boolean>;
     autoLaunch: (autoLaunchProps: {
       enabled: boolean;
       minimized: boolean;

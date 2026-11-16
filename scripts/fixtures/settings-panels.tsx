@@ -58,7 +58,6 @@ test("real settings panels defer startup changes and require explicit backup sav
       autoLaunch: async () => {
         startupCalls++;
       },
-      confirmSettingsChanges: async () => accept,
       updateUserPreferences: async (patch: any) => {
         preferenceWrites.push(patch);
         fixture.preferences = { ...fixture.preferences, ...patch };
@@ -77,7 +76,7 @@ test("real settings panels defer startup changes and require explicit backup sav
       {
         path: "/general",
         element: (
-          <SettingsDraftProvider>
+          <SettingsDraftProvider confirmationOverride={async () => accept}>
             <SettingsContextGeneral
               appearance={{ theme: null, authorId: null, authorName: null }}
             />
@@ -87,7 +86,7 @@ test("real settings panels defer startup changes and require explicit backup sav
       {
         path: "/advanced",
         element: (
-          <SettingsDraftProvider>
+          <SettingsDraftProvider confirmationOverride={async () => accept}>
             <SettingsLudusaviAdvanced />
           </SettingsDraftProvider>
         ),

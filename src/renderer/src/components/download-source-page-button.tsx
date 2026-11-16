@@ -25,13 +25,20 @@ export function DownloadSourcePageButton({
     <SourceBrowserButton
       enabled={overrideEnabled ?? enabled}
       renderTrigger={renderTrigger}
+      label={
+        download.sourceOrigin === "website"
+          ? "View selected website page"
+          : "View source page"
+      }
       request={{
         shop: game.shop,
         objectId: game.objectId,
         gameTitle: game.title,
         readOnly: true,
+        websiteProfileId: download.websiteProfileId ?? undefined,
         repack: {
           id: game.id,
+          sourceOrigin: download.sourceOrigin ?? undefined,
           title: download.repackTitle ?? game.title,
           fileSize: download.repackFileSize ?? null,
           downloadSourceId:

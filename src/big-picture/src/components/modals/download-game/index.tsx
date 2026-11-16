@@ -1271,6 +1271,11 @@ function DownloadGameSourceList({
     );
   }, [navigate, onClose]);
 
+  const handleOpenWebsiteSettings = useCallback(() => {
+    onClose();
+    navigate(`${IS_DESKTOP ? "/big-picture" : ""}/settings?tab=advanced`);
+  }, [navigate, onClose]);
+
   const handleClearSearch = useCallback(() => {
     onSearchTermChange("");
   }, [onSearchTermChange]);
@@ -1354,6 +1359,21 @@ function DownloadGameSourceList({
               y: { duration: 0.18, ease: "easeOut" },
             }}
           >
+            <SourceWebsiteSearch
+              enabled={
+                sourceBrowserPreferences?.enableSourceBrowser !== false
+              }
+              shop={game.shop}
+              objectId={game.objectId}
+              gameTitle={game.title}
+              onReview={onSelectOption}
+              onSettings={handleOpenWebsiteSettings}
+              renderButton={({ id, label, ...props }) => (
+                <Button key={id} focusId={`website-${id}`} {...props}>
+                  {label}
+                </Button>
+              )}
+            />
             {isSourceListLoading &&
               Array.from({ length: 5 }, (_, index) => (
                 <DownloadSourceOptionSkeleton
@@ -1361,23 +1381,6 @@ function DownloadGameSourceList({
                 />
               ))}
 
-            {!isSourceListLoading &&
-              (showStructuralEmptyState || showSearchEmptyState) && (
-                <SourceWebsiteSearch
-                  enabled={
-                    sourceBrowserPreferences?.enableSourceBrowser !== false
-                  }
-                  shop={game.shop}
-                  objectId={game.objectId}
-                  gameTitle={game.title}
-                  onReview={onSelectOption}
-                  renderButton={({ id, label, ...props }) => (
-                    <Button key={id} focusId={`empty-${id}`} {...props}>
-                      {label}
-                    </Button>
-                  )}
-                />
-              )}
             {showStructuralEmptyState && (
               <EmptyState
                 className="download-game-modal__source-list-empty-state"
@@ -1455,17 +1458,7 @@ function DownloadGameSourceList({
                 <BigPictureReleaseDownloadOption
                   key={option.id}
                   mode={getDownloadOptionInteraction(sourceBrowserPreferences)}
-                  browsingEnabled={
-                    sourceBrowserPreferences?.enableSourceBrowser !== false
-                  }
-                  request={{
-                    shop: game.shop,
-                    objectId: game.objectId,
-                    gameTitle: game.title,
-                    repack: option,
-                  }}
                   onDownload={() => onSelectOption(option)}
-                  onReview={onSelectOption}
                   option={
                     localDownloadSourceNameById.has(option.downloadSourceId)
                       ? {

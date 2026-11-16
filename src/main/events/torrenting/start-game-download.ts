@@ -74,6 +74,8 @@ const startGameDownload = async (
       customTrackers: globalTrackers,
       repackTitle: payload.repackTitle ?? null,
       sourcePageUrl: payload.sourcePageUrl ?? null,
+      sourceOrigin: payload.sourceOrigin ?? null,
+      websiteProfileId: payload.websiteProfileId ?? null,
       downloadSourceId: payload.downloadSourceId ?? null,
       downloadSourceName: payload.downloadSourceName ?? null,
       repackFileSize: payload.repackFileSize ?? fileSize ?? null,

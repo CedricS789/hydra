@@ -19,6 +19,8 @@ export interface BlockedSourceNavigation {
 
 export interface SourceBrowserRequest {
   readOnly?: boolean;
+  /** Website profile identity, independent from the Hydra feed identity. */
+  websiteProfileId?: string;
   shop: GameShop;
   objectId: string;
   gameTitle: string;

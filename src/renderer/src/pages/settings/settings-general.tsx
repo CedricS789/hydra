@@ -288,6 +288,23 @@ export function SettingsGeneral() {
 
   return (
     <div className="settings-general">
+      <section className="settings-general__getting-started">
+        <div>
+          <h3>Getting started</h3>
+          <p>
+            Reopen the setup guide for catalogs, save backups, and download
+            controls.
+          </p>
+        </div>
+        <Button
+          theme="outline"
+          onClick={() =>
+            window.dispatchEvent(new Event("hydra:open-getting-started-guide"))
+          }
+        >
+          Open setup guide
+        </Button>
+      </section>
       <TextField
         label={t("downloads_path")}
         value={form.downloadsPath}

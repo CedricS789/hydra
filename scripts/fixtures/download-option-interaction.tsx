@@ -6,9 +6,8 @@ import {
   type DownloadOptionInteraction,
 } from "../../src/shared/download-option-interaction";
 
-const calls = { downloads: 0, browsers: 0 };
+const calls = { downloads: 0 };
 const runtime = window as unknown as {
-  electron: { openSourceBrowser: () => Promise<null> };
   releasePickerTest: {
     configure: (
       mode: DownloadOptionInteraction,
@@ -16,23 +15,6 @@ const runtime = window as unknown as {
     ) => void;
     snapshot: () => typeof calls;
   };
-};
-runtime.electron = {
-  openSourceBrowser: async () => {
-    calls.browsers++;
-    return null;
-  },
-};
-const repack = {
-  id: "fixture",
-  title: "Fixture Release",
-  fileSize: "1 GB",
-  uris: [],
-  unavailableUris: [],
-  uploadDate: null,
-  downloadSourceId: "fixture-source",
-  downloadSourceName: "Fixture",
-  createdAt: "",
 };
 function Fixture() {
   const [config, setConfig] = useState({
@@ -42,7 +24,6 @@ function Fixture() {
   runtime.releasePickerTest = {
     configure: (mode, browsingEnabled) => {
       calls.downloads = 0;
-      calls.browsers = 0;
       setConfig({ mode, browsingEnabled });
     },
     snapshot: () => ({ ...calls }),
@@ -53,17 +34,10 @@ function Fixture() {
       data-browsing={String(config.browsingEnabled)}
     >
       <ReleaseDownloadOption
-        {...config}
-        request={{
-          shop: "steam",
-          objectId: "123",
-          gameTitle: "Fixture Game",
-          repack,
-        }}
+        mode={config.mode}
         onDownload={() => calls.downloads++}
-        onReview={() => calls.downloads++}
       >
-        <p>{repack.title}</p>
+        <p>Fixture Release</p>
       </ReleaseDownloadOption>
     </main>
   );
