@@ -45,6 +45,12 @@
     padding-left: 80px;
   }
 
+  // Keep the brand and version visible when the sidebar collapses to 0px.
+  &--sidebar-hidden &__brand {
+    width: auto;
+    padding-right: globals.$spacing-unit;
+  }
+
   &__cloud-text {
     background: linear-gradient(
       270deg,
@@ -76,8 +82,29 @@
     }
   }
 
-  &__navigation {
+  &__sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
     margin-left: globals.$spacing-unit;
+    border-radius: 4px;
+    color: globals.$muted-color;
+    cursor: pointer;
+    -webkit-app-region: no-drag;
+    transition:
+      opacity ease 0.1s,
+      background-color ease 0.1s;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  &__navigation {
+    margin-left: calc(globals.$spacing-unit / 2);
   }
 
   // Centers the search in the room between the arrows and the buttons.

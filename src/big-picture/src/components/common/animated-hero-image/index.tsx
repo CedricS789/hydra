@@ -1,11 +1,43 @@
 import "./styles.scss";
 
 import { motion, type HTMLMotionProps } from "framer-motion";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface AnimatedHeroImageProps
   extends Omit<HTMLMotionProps<"img">, "src"> {
   imageUrl: string;
+}
+
+const HERO_IDLE_ANIMATE = {
+  scale: 1.1,
+  x: -10,
+  y: -10,
+};
+
+const HERO_PAUSED_ANIMATE = {
+  scale: 1,
+  x: 0,
+  y: 0,
+};
+
+const HERO_IDLE_TRANSITION = {
+  duration: 20,
+  ease: "easeInOut" as const,
+  repeat: Infinity,
+  repeatType: "mirror" as const,
+};
+
+const HERO_PAUSED_TRANSITION = {
+  duration: 0,
+};
+
+function isHeroAnimationWindowActive() {
+  if (typeof globalThis.document === "undefined") return true;
+
+  return (
+    globalThis.document.hasFocus() &&
+    globalThis.document.visibilityState === "visible"
+  );
 }
 
 const FALLBACK_BACKGROUND_COLOR = "rgba(8, 8, 8, 1)";
@@ -99,6 +131,37 @@ export function AnimatedHeroImage({
   const imageRef = useRef<HTMLImageElement | null>(null);
   const blendCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameRef = useRef<number | null>(null);
+  const [isWindowActive, setIsWindowActive] = useState(
+    isHeroAnimationWindowActive
+  );
+
+  useEffect(() => {
+    if (typeof globalThis.window === "undefined") return;
+
+    const syncWindowActivity = () => {
+      setIsWindowActive(isHeroAnimationWindowActive());
+    };
+
+    syncWindowActivity();
+
+    globalThis.window.addEventListener("focus", syncWindowActivity);
+    globalThis.window.addEventListener("blur", syncWindowActivity);
+    globalThis.window.addEventListener("pagehide", syncWindowActivity);
+    globalThis.document?.addEventListener(
+      "visibilitychange",
+      syncWindowActivity
+    );
+
+    return () => {
+      globalThis.window.removeEventListener("focus", syncWindowActivity);
+      globalThis.window.removeEventListener("blur", syncWindowActivity);
+      globalThis.window.removeEventListener("pagehide", syncWindowActivity);
+      globalThis.document?.removeEventListener(
+        "visibilitychange",
+        syncWindowActivity
+      );
+    };
+  }, []);
 
   const clearBlendCanvas = useCallback(() => {
     const canvas = blendCanvasRef.current;
@@ -295,18 +358,11 @@ export function AnimatedHeroImage({
           src={imageUrl}
           alt={alt}
           className="animated-hero-image__main"
-          initial={{ scale: 1, x: 0, y: 0 }}
-          animate={{
-            scale: 1.1,
-            x: -10,
-            y: -10,
-          }}
-          transition={{
-            duration: 20,
-            ease: "easeInOut",
-            repeat: Infinity,
-            repeatType: "mirror",
-          }}
+          initial={HERO_PAUSED_ANIMATE}
+          animate={isWindowActive ? HERO_IDLE_ANIMATE : HERO_PAUSED_ANIMATE}
+          transition={
+            isWindowActive ? HERO_IDLE_TRANSITION : HERO_PAUSED_TRANSITION
+          }
           onLoad={(event) => {
             scheduleRender();
             onLoad?.(event);

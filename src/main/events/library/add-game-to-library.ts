@@ -8,6 +8,7 @@ import {
   levelKeys,
 } from "@main/level";
 import { clearFinishedDownload } from "@main/helpers";
+import { unexcludeLibraryGames } from "@main/services/library-exclusions";
 import { AchievementWatcherManager } from "@main/services/achievements/achievement-watcher-manager";
 import { getGameAssets } from "../catalogue/get-game-assets";
 
@@ -41,6 +42,7 @@ export const addGameToLibrary = async (
   platform?: string | null
 ) => {
   const gameKey = levelKeys.game(shop, objectId);
+  await unexcludeLibraryGames([{ shop, objectId }]);
   let game = await gamesSublevel.get(gameKey);
 
   const gameAssets =

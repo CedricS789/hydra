@@ -18,6 +18,9 @@ export interface SettingsScreenshotsGamepadProps {
   combo: ScreenshotGamepadButton[];
   disabled: boolean;
   onChange: (combo: ScreenshotGamepadButton[]) => void;
+  label?: string;
+  hint?: string;
+  defaultCombo?: readonly ScreenshotGamepadButton[];
 }
 
 const toGamepadButton = (value: string) =>
@@ -27,6 +30,9 @@ export function SettingsScreenshotsGamepad({
   combo,
   disabled,
   onChange,
+  label,
+  hint,
+  defaultCombo = DEFAULT_SCREENSHOT_GAMEPAD_COMBO,
 }: Readonly<SettingsScreenshotsGamepadProps>) {
   const { t } = useTranslation("settings");
   const { t: tInput } = useTranslation("screenshots_input");
@@ -88,11 +94,11 @@ export function SettingsScreenshotsGamepad({
       })}
     >
       <span className="settings-screenshots__field-label">
-        {t("screenshots_gamepad_combo")}
+        {label ?? t("screenshots_gamepad_combo")}
       </span>
 
       <small className="settings-screenshots__hint">
-        {t("screenshots_gamepad_combo_hint")}
+        {hint ?? t("screenshots_gamepad_combo_hint")}
       </small>
 
       <fieldset
@@ -146,16 +152,13 @@ export function SettingsScreenshotsGamepad({
           </Button>
         )}
 
-        {!isSameScreenshotGamepadCombo(
-          draft,
-          DEFAULT_SCREENSHOT_GAMEPAD_COMBO
-        ) && (
+        {!isSameScreenshotGamepadCombo(draft, defaultCombo) && (
           <Button
             className="settings-screenshots__combo-reset"
             theme="outline"
             size="small"
             disabled={disabled}
-            onClick={() => updateDraft([...DEFAULT_SCREENSHOT_GAMEPAD_COMBO])}
+            onClick={() => updateDraft([...defaultCombo])}
           >
             {t("screenshots_gamepad_reset")}
           </Button>

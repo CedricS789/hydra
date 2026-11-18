@@ -7,6 +7,7 @@ import { settingsContext } from "@renderer/context";
 import type { GameShop, LudusaviLocalSettings } from "@types";
 import "./settings-local-edition.scss";
 import { SettingsSaveDiscovery } from "./settings-save-discovery";
+import { SettingsHydraConfigBackup } from "./settings-hydra-config-backup";
 import { useDate, useLibrary, useLudusaviLocalState } from "@renderer/hooks";
 import { useGameOptionsModal } from "@renderer/context/game-options-modal/game-options-modal.context";
 import { buildGameDetailsPath } from "@renderer/helpers";
@@ -33,6 +34,7 @@ export function SettingsLudusavi() {
 
   const [settings, setSettings] = useState<LudusaviLocalSettings>();
   const [includeDisabledBulk, setIncludeDisabledBulk] = useState(false);
+  const [includeHydraConfigBulk, setIncludeHydraConfigBulk] = useState(false);
   const [overviewFilter, setOverviewFilter] = useState("");
   const mainHeading = useRef<HTMLHeadingElement>(null);
   const [working, setWorking] = useState(false);
@@ -189,12 +191,15 @@ export function SettingsLudusavi() {
             </div>
             <div className="local-edition__actions">
               <Button
-                disabled={busy || !state.games.length}
+                disabled={
+                  busy || (!state.games.length && !includeHydraConfigBulk)
+                }
                 onClick={() =>
                   action(async () => {
                     await save();
                     await window.electron.runLudusaviLocalBulkBackup(
-                      includeDisabledBulk
+                      includeDisabledBulk,
+                      includeHydraConfigBulk
                     );
                   })
                 }
@@ -209,6 +214,12 @@ export function SettingsLudusavi() {
             checked={includeDisabledBulk}
             disabled={busy}
             onChange={(e) => setIncludeDisabledBulk(e.target.checked)}
+          />
+          <CheckboxField
+            label={t("include_hydra_config_bulk")}
+            checked={includeHydraConfigBulk}
+            disabled={busy}
+            onChange={(e) => setIncludeHydraConfigBulk(e.target.checked)}
           />
 
           {bulk.running && (
@@ -233,6 +244,17 @@ export function SettingsLudusavi() {
                   failed: lastBulkSummary.failed,
                 })}
               </p>
+              {lastBulkSummary.configBackup && (
+                <p
+                  className={
+                    lastBulkSummary.configBackup.status === "failed"
+                      ? "local-edition__error"
+                      : "local-edition__hint"
+                  }
+                >
+                  {lastBulkSummary.configBackup.message}
+                </p>
+              )}
               {bulkIssueCount > 0 && (
                 <details>
                   <summary>
@@ -398,6 +420,12 @@ export function SettingsLudusavi() {
             setSettings(latest.settings);
             await updateLibrary();
           }}
+        />
+
+        <SettingsHydraConfigBackup
+          mode="summary"
+          busy={busy}
+          onOpenAdvanced={() => setCurrentCategoryId("advanced")}
         />
 
         <div className="local-edition__advanced-entry">

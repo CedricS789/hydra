@@ -738,7 +738,13 @@
     "Return to desktop mode": "Voltar ao modo desktop",
     "Put the system to sleep": "Colocar o sistema em suspensão",
     "Restart your device": "Reiniciar seu dispositivo",
-    "Shut down your device": "Desligar seu dispositivo"
+    "Shut down your device": "Desligar seu dispositivo",
+    "Quit Hydra": "Sair do Hydra",
+    "Close the application": "Fechar o aplicativo",
+    "Quit Hydra?": "Sair do Hydra?",
+    "Hydra will close. Active downloads and background services will stop.": "O Hydra será fechado. Os downloads ativos e os serviços em segundo plano serão interrompidos.",
+    "Could not quit Hydra": "Não foi possível sair do Hydra",
+    "Please try again or close Hydra from the system tray.": "Tente novamente ou feche o Hydra pela bandeja do sistema."
   },
   "format": {
     "playtime_hours_one": "{{count}} hora",

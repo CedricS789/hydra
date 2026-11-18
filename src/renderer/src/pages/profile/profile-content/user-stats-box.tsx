@@ -1,9 +1,12 @@
-import localEdition from "../../../../../shared/local-edition.json";
 import { useCallback, useContext } from "react";
 import { userProfileContext } from "@renderer/context";
 import { useTranslation } from "react-i18next";
-import { useFormat, useUserDetails } from "@renderer/hooks";
+import { useAppSelector, useFormat, useUserDetails } from "@renderer/hooks";
 import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@renderer/constants";
+import {
+  isHydraAchievementPointsEnabled,
+  resolveSocialPreferences,
+} from "@shared";
 import HydraIcon from "@renderer/assets/icons/hydra.svg?react";
 import { useSubscription } from "@renderer/hooks/use-subscription";
 import { ClockIcon, TrophyIcon } from "@primer/octicons-react";
@@ -16,6 +19,14 @@ export function UserStatsBox() {
   const { userDetails } = useUserDetails();
   const { t } = useTranslation("user_profile");
   const { numberFormatter } = useFormat();
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const social = resolveSocialPreferences(userPreferences);
+  const showHydraPoints = isHydraAchievementPointsEnabled(userPreferences);
+  const showPlaytime = isMe || social.showOtherPlayersPlaytime;
+  const showRankingPercentile =
+    social.showGlobalLeaderboards || social.showGameRankingCard;
 
   const formatPlayTime = useCallback(
     (playTimeInSeconds: number) => {
@@ -68,7 +79,7 @@ export function UserStatsBox() {
           </li>
         )}
 
-        {!localEdition.hideHydraPoints &&
+        {showHydraPoints &&
           (isMe || userStats.achievementsPointsEarnedSum !== undefined) && (
             <li className="user-stats__list-item">
               <h3 className="user-stats__list-title">{t("earned_points")}</h3>
@@ -80,12 +91,14 @@ export function UserStatsBox() {
                       userStats.achievementsPointsEarnedSum.value
                     )}
                   </p>
-                  <p title={t("ranking_updated_weekly")}>
-                    {t("top_percentile", {
-                      percentile:
-                        userStats.achievementsPointsEarnedSum.topPercentile,
-                    })}
-                  </p>
+                  {showRankingPercentile && (
+                    <p title={t("ranking_updated_weekly")}>
+                      {t("top_percentile", {
+                        percentile:
+                          userStats.achievementsPointsEarnedSum.topPercentile,
+                      })}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <button
@@ -101,20 +114,24 @@ export function UserStatsBox() {
             </li>
           )}
 
-        <li className="user-stats__list-item">
-          <h3 className="user-stats__list-title">{t("total_play_time")}</h3>
-          <div className="user-stats__stats-row">
-            <p className="user-stats__list-description">
-              <ClockIcon />
-              {formatPlayTime(userStats.totalPlayTimeInSeconds.value)}
-            </p>
-            <p title={t("ranking_updated_weekly")}>
-              {t("top_percentile", {
-                percentile: userStats.totalPlayTimeInSeconds.topPercentile,
-              })}
-            </p>
-          </div>
-        </li>
+        {showPlaytime && (
+          <li className="user-stats__list-item">
+            <h3 className="user-stats__list-title">{t("total_play_time")}</h3>
+            <div className="user-stats__stats-row">
+              <p className="user-stats__list-description">
+                <ClockIcon />
+                {formatPlayTime(userStats.totalPlayTimeInSeconds.value)}
+              </p>
+              {showRankingPercentile && (
+                <p title={t("ranking_updated_weekly")}>
+                  {t("top_percentile", {
+                    percentile: userStats.totalPlayTimeInSeconds.topPercentile,
+                  })}
+                </p>
+              )}
+            </div>
+          </li>
+        )}
 
         {hasKarma && karma !== undefined && karma !== null && (
           <li className="user-stats__list-item user-stats__list-item--karma">

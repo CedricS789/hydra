@@ -24,7 +24,11 @@ import { CloudSaveWidget } from "./cloud-save-v2";
 import { getCloudSaveVisibility } from "./cloud-save-visibility";
 import { SimilarGames } from "./similar-games/similar-games";
 
-import { AuthPage, getDisplayedPlayTimeInMilliseconds } from "@shared";
+import {
+  AuthPage,
+  getDisplayedPlayTimeInMilliseconds,
+  resolveSocialPreferences,
+} from "@shared";
 import { cloudSyncContext, gameDetailsContext } from "@renderer/context";
 
 import cloudIconAnimated from "@renderer/assets/icons/cloud-animated.gif";
@@ -258,6 +262,7 @@ export function GameDetailsContent() {
   );
   const hideClassicsBookmark = userPreferences?.hideClassicsBookmark ?? false;
   const classicsUseHeroLayout = userPreferences?.classicsUseHeroLayout ?? false;
+  const social = resolveSocialPreferences(userPreferences);
 
   const isCustomGame = game?.shop === "custom";
   const isLaunchboxGame = shop === "launchbox";
@@ -506,7 +511,7 @@ export function GameDetailsContent() {
           <div className="game-details__description-content">
             <DescriptionHeader />
 
-            {(showPrompt || isPromptPending) && (
+            {social.showCommunityReviews && (showPrompt || isPromptPending) && (
               <ReviewPromptBanner
                 pending={!showPrompt}
                 onYesClick={handleReviewPromptYes}
@@ -556,19 +561,22 @@ export function GameDetailsContent() {
               />
             )}
 
-            {shop !== "custom" && shop && objectId && (
-              <div ref={reviewsRef}>
-                <GameReviews
-                  shop={shop}
-                  objectId={objectId}
-                  game={game}
-                  userDetailsId={userDetails?.id}
-                  hasUserReviewed={hasUserReviewed}
-                  isCheckingUserReview={isCheckingUserReview}
-                  onUserReviewedChange={updateHasUserReviewed}
-                />
-              </div>
-            )}
+            {social.showCommunityReviews &&
+              shop !== "custom" &&
+              shop &&
+              objectId && (
+                <div ref={reviewsRef}>
+                  <GameReviews
+                    shop={shop}
+                    objectId={objectId}
+                    game={game}
+                    userDetailsId={userDetails?.id}
+                    hasUserReviewed={hasUserReviewed}
+                    isCheckingUserReview={isCheckingUserReview}
+                    onUserReviewedChange={updateHasUserReviewed}
+                  />
+                </div>
+              )}
           </div>
 
           {shop !== "custom" && <Sidebar />}

@@ -23,8 +23,9 @@ export interface UseGameLeaderboardOptions {
   objectId: string | undefined;
   period: LeaderboardPeriod;
   scope: LeaderboardScope;
-  metric: LeaderboardMetric;
+  metric: LeaderboardMetric | null;
   isExtended: boolean;
+  allowFriendsScope?: boolean;
 }
 
 export function useGameLeaderboard({
@@ -34,6 +35,7 @@ export function useGameLeaderboard({
   scope,
   metric,
   isExtended,
+  allowFriendsScope = true,
 }: UseGameLeaderboardOptions) {
   const { userDetails } = useUserDetails();
   const [loaded, setLoaded] = useState<LoadedLeaderboard | null>(null);
@@ -43,9 +45,13 @@ export function useGameLeaderboard({
   const requestIdRef = useRef(0);
 
   const isLoggedIn = Boolean(userDetails);
-  const isEligible = Boolean(objectId) && isLeaderboardShop(shop);
-  const effectiveScope = isExtended && isLoggedIn ? scope : "global";
-  const effectiveMetric = isExtended ? metric : "playtime";
+  const effectiveMetric: LeaderboardMetric = isExtended
+    ? (metric ?? "playtime")
+    : "playtime";
+  const isEligible =
+    Boolean(objectId) && isLeaderboardShop(shop) && metric !== null;
+  const effectiveScope =
+    isExtended && isLoggedIn && allowFriendsScope ? scope : "global";
   const viewerId = userDetails?.id ?? null;
   const boardKey = getLeaderboardBoardKey(shop, objectId ?? "", viewerId);
   const requestKey = `${boardKey}|${period}|${effectiveScope}|${effectiveMetric}|${attempt}`;

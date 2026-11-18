@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   isClassicsEnabled,
+  isHydraAchievementPointsEnabled,
   isTransferGameEnabled,
 } from "./feature-preferences.js";
 
@@ -19,4 +20,18 @@ test("isTransferGameEnabled defaults to true and respects explicit false", () =>
   assert.equal(isTransferGameEnabled({}), true);
   assert.equal(isTransferGameEnabled({ enableTransferGame: true }), true);
   assert.equal(isTransferGameEnabled({ enableTransferGame: false }), false);
+});
+
+test("isHydraAchievementPointsEnabled defaults to false and respects explicit true", () => {
+  assert.equal(isHydraAchievementPointsEnabled(null), false);
+  assert.equal(isHydraAchievementPointsEnabled(undefined), false);
+  assert.equal(isHydraAchievementPointsEnabled({}), false);
+  assert.equal(
+    isHydraAchievementPointsEnabled({ showHydraAchievementPoints: false }),
+    false
+  );
+  assert.equal(
+    isHydraAchievementPointsEnabled({ showHydraAchievementPoints: true }),
+    true
+  );
 });

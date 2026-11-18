@@ -4,14 +4,18 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@renderer/components";
 import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@renderer/constants";
 import { useFeature, useFormat } from "@renderer/hooks";
-import { getDisplayedPlayTimeInMilliseconds } from "@shared";
-import type { RemoveFilesTarget } from "@shared";
+import {
+  getDisplayedPlayTimeInMilliseconds,
+  type RemoveFilesTarget,
+  type ResolvedDangerZonePreferences,
+} from "@shared";
 import type { LibraryGame, UserDetails } from "@types";
 
 import { MyScreenshotsDangerZone } from "./my-screenshots-danger-zone";
 
 interface DangerZoneSectionProps {
   game: LibraryGame;
+  dangerZone: ResolvedDangerZonePreferences;
   deleting: boolean;
   isDeletingAchievements: boolean;
   hasAchievements: boolean;
@@ -56,6 +60,7 @@ function DangerRow({
 
 export function DangerZoneSection({
   game,
+  dangerZone,
   deleting,
   isDeletingAchievements,
   hasAchievements,
@@ -86,12 +91,24 @@ export function DangerZoneSection({
   const canResetAchievements =
     !deleting && !isDeletingAchievements && hasAchievements && !!userDetails;
 
+  const isInstalledUninstall = removeFilesTarget?.kind === "installed";
   const getFilesDescription = () => {
     if (isGameDownloading) return t("danger_files_downloading");
     if (!removeFilesTarget) return t("danger_files_none");
+    if (isInstalledUninstall) return t("danger_uninstall_description");
     return t("danger_files_description");
   };
   const canRemoveFiles = !deleting && !isGameDownloading && !!removeFilesTarget;
+  const showFilesRow =
+    dangerZone.enableDangerZoneRemoveGameFiles &&
+    (game.shop !== "custom" || removeFilesTarget !== null);
+
+  const showTableRows =
+    dangerZone.enableDangerZoneChangePlaytime ||
+    dangerZone.enableDangerZoneResetPlaytime ||
+    dangerZone.enableDangerZoneRemoveFromLibrary ||
+    showFilesRow ||
+    (game.shop !== "custom" && dangerZone.enableDangerZoneResetAchievements);
 
   return (
     <div className="game-options-modal__danger-zone">
@@ -102,79 +119,95 @@ export function DangerZoneSection({
         </h4>
       </div>
 
-      <div className="game-options-modal__danger-table">
-        <DangerRow
-          label={t("danger_playtime_label")}
-          description={t("danger_playtime_description", { time: playTime })}
-        >
-          <Button
-            onClick={onOpenChangePlaytime}
-            theme="outline"
-            className="game-options-modal__warning-button"
-          >
-            {t("danger_change")}
-          </Button>
-        </DangerRow>
-
-        <DangerRow
-          label={t("danger_reset_playtime_label")}
-          description={t("danger_reset_playtime_description")}
-        >
-          <Button onClick={onOpenResetPlaytime} theme="danger">
-            {t("danger_reset")}
-          </Button>
-        </DangerRow>
-
-        {game.shop !== "custom" && (
-          <DangerRow
-            label={t("danger_achievements_label")}
-            description={getAchievementsDescription()}
-            disabled={!canResetAchievements}
-          >
-            <Button
-              onClick={onOpenResetAchievements}
-              theme="danger"
-              disabled={!canResetAchievements}
+      {showTableRows && (
+        <div className="game-options-modal__danger-table">
+          {dangerZone.enableDangerZoneChangePlaytime && (
+            <DangerRow
+              label={t("danger_playtime_label")}
+              description={t("danger_playtime_description", { time: playTime })}
             >
-              {t("danger_reset")}
-            </Button>
-          </DangerRow>
-        )}
+              <Button
+                onClick={onOpenChangePlaytime}
+                theme="outline"
+                className="game-options-modal__warning-button"
+              >
+                {t("danger_change")}
+              </Button>
+            </DangerRow>
+          )}
 
-        {game.shop !== "custom" && (
-          <DangerRow
-            label={t("danger_files_label")}
-            description={getFilesDescription()}
-            disabled={!canRemoveFiles}
-          >
-            <Button
-              onClick={() => {
-                if (removeFilesTarget) onOpenRemoveFiles(removeFilesTarget);
-              }}
-              theme="danger"
+          {dangerZone.enableDangerZoneResetPlaytime && (
+            <DangerRow
+              label={t("danger_reset_playtime_label")}
+              description={t("danger_reset_playtime_description")}
+            >
+              <Button onClick={onOpenResetPlaytime} theme="danger">
+                {t("danger_reset")}
+              </Button>
+            </DangerRow>
+          )}
+
+          {game.shop !== "custom" &&
+            dangerZone.enableDangerZoneResetAchievements && (
+              <DangerRow
+                label={t("danger_achievements_label")}
+                description={getAchievementsDescription()}
+                disabled={!canResetAchievements}
+              >
+                <Button
+                  onClick={onOpenResetAchievements}
+                  theme="danger"
+                  disabled={!canResetAchievements}
+                >
+                  {t("danger_reset")}
+                </Button>
+              </DangerRow>
+            )}
+
+          {showFilesRow && (
+            <DangerRow
+              label={
+                isInstalledUninstall
+                  ? t("danger_uninstall_label")
+                  : t("danger_files_label")
+              }
+              description={getFilesDescription()}
               disabled={!canRemoveFiles}
             >
-              {t("danger_remove")}
-            </Button>
-          </DangerRow>
-        )}
+              <Button
+                onClick={() => {
+                  if (removeFilesTarget) onOpenRemoveFiles(removeFilesTarget);
+                }}
+                theme="danger"
+                disabled={!canRemoveFiles}
+              >
+                {isInstalledUninstall
+                  ? t("danger_uninstall_button")
+                  : t("danger_remove")}
+              </Button>
+            </DangerRow>
+          )}
 
-        <DangerRow
-          label={t("danger_library_label")}
-          description={t("danger_library_description")}
-          disabled={deleting}
-        >
-          <Button
-            onClick={onOpenRemoveFromLibrary}
-            theme="danger"
-            disabled={deleting}
-          >
-            {t("danger_remove")}
-          </Button>
-        </DangerRow>
-      </div>
+          {dangerZone.enableDangerZoneRemoveFromLibrary && (
+            <DangerRow
+              label={t("danger_library_label")}
+              description={t("danger_library_description")}
+              disabled={deleting}
+            >
+              <Button
+                onClick={onOpenRemoveFromLibrary}
+                theme="danger"
+                disabled={deleting}
+              >
+                {t("danger_remove")}
+              </Button>
+            </DangerRow>
+          )}
+        </div>
+      )}
 
-      {isFeatureEnabled(Feature.Screenshots) ? (
+      {isFeatureEnabled(Feature.Screenshots) &&
+      dangerZone.enableDangerZoneDeleteScreenshots ? (
         <MyScreenshotsDangerZone shop={game.shop} objectId={game.objectId} />
       ) : null}
     </div>

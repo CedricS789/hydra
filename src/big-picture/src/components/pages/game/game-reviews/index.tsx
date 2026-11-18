@@ -4,14 +4,19 @@ import {
   ThumbsUpIcon,
   UserIcon,
 } from "@phosphor-icons/react";
-import { sanitizeHtml } from "@shared";
+import { resolveSocialPreferences, sanitizeHtml } from "@shared";
 import type { GameReview, GameShop } from "@types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IS_DESKTOP } from "../../../../constants";
 import { getItemFocusTarget } from "../../../../helpers";
 import { BIG_PICTURE_SIDEBAR_ITEM_IDS } from "../../../../layout/navigation";
-import { useDate, useFormat } from "../../../../hooks";
+import {
+  useDate,
+  useFormat,
+  useUserDetails,
+  useUserPreferences,
+} from "../../../../hooks";
 import type { FocusOverrideTarget } from "../../../../services";
 import {
   GAME_COMMENTS_REGION_ID,
@@ -55,6 +60,10 @@ export function GameReviews({
 
   const { formatDistance } = useDate();
   const { formatPlayTime } = useFormat();
+  const { userDetails } = useUserDetails();
+  const userPreferences = useUserPreferences();
+  const showOtherPlayersPlaytime =
+    resolveSocialPreferences(userPreferences).showOtherPlayersPlaytime;
   const { t } = useTranslation("big_picture");
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -403,7 +412,9 @@ export function GameReviews({
                                 {review.score}/5
                               </span>
                               <span className="game-page__comment-review-rating-copy">
-                                {review.playTimeInSeconds &&
+                                {(userDetails?.id === review.user.id ||
+                                  showOtherPlayersPlaytime) &&
+                                review.playTimeInSeconds &&
                                 review.playTimeInSeconds > 0
                                   ? t("game_review_played_for", {
                                       time: formatPlayTime(

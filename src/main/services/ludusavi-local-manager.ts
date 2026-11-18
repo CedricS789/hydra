@@ -11,6 +11,7 @@ import type {
   LudusaviLocalSettings,
   LudusaviLocalResult,
   SaveOperationResult,
+  SaveSafetySnapshot,
 } from "@types";
 import { db } from "../level/level";
 import { gamesSublevel } from "../level/sublevels/games";
@@ -33,19 +34,25 @@ import {
 } from "./ludusavi-local-config";
 import {
   confinedSavePath,
+  confinedSafetySnapshotPath,
   validateSaveVersion,
 } from "./ludusavi-local-validation";
 
 const execute = promisify(execFile);
 const approvals = new SaveOperationApprovals();
 type Lock = Awaited<ReturnType<typeof acquireSaveBackupLock>>;
-type Context = Awaited<ReturnType<typeof tools.prepareConfig>> & {
+export interface SaveEngineContext {
+  binary: string;
+  configDir: string;
+  canonical: string;
   settings: LudusaviLocalSettings;
-  game: Game;
   lock: Lock;
+}
+type Context = SaveEngineContext & {
+  game: Game;
 };
 
-async function removeSaveScratch(directory: string) {
+export async function removeSaveScratch(directory: string) {
   const scratchRoot = await fs.realpath(path.join(tools.folder(), ".tmp"));
   const actual = await fs.realpath(directory);
   if (path.dirname(actual) !== scratchRoot)
@@ -85,16 +92,17 @@ async function command(
     const result = await operation;
     // Ludusavi 0.29 prints cloud --api JSON to stderr even on success.
     return result.stdout.trim() ? result.stdout : result.stderr;
-  } catch {
+  } catch (error) {
     throw new Error(
-      "The backup tool could not complete this command. Check configuration, storage access, and the selected data."
+      "The backup tool could not complete this command. Check configuration, storage access, and the selected data.",
+      { cause: error }
     );
   } finally {
     await handled;
   }
 }
 
-async function json(ctx: Context, args: string[]) {
+export async function runSaveToolJson(ctx: SaveEngineContext, args: string[]) {
   const data = JSON.parse(
     await command(
       ctx.binary,
@@ -105,6 +113,54 @@ async function json(ctx: Context, args: string[]) {
   assertSaveApiSuccess(data);
   return data;
 }
+
+const json = runSaveToolJson;
+
+async function resolveRestoreRoot(
+  ctx: SaveEngineContext,
+  snapshotId?: string
+) {
+  if (!snapshotId) return ctx.settings.destination;
+  return confinedSafetySnapshotPath(ctx.settings.destination, snapshotId);
+}
+
+export async function backupsForCanonical(
+  ctx: SaveEngineContext,
+  rootPath = ctx.settings.destination
+) {
+  try {
+    const data = await runSaveToolJson(ctx, [
+      "backups",
+      "--api",
+      "--path",
+      rootPath,
+      "--",
+      ctx.canonical,
+    ]);
+    return data.games?.[ctx.canonical];
+  } catch (error) {
+    const stdout = (error as { cause?: { stdout?: string } })?.cause?.stdout;
+    if (typeof stdout === "string" && stdout.trim()) {
+      try {
+        const parsed = JSON.parse(stdout) as SaveApiResponse;
+        if (
+          parsed &&
+          typeof parsed === "object" &&
+          !Object.keys(parsed.games ?? {}).length &&
+          parsed.errors &&
+          Object.keys(parsed.errors).every((k) => k === "unknownGames")
+        ) {
+          return undefined;
+        }
+      } catch {
+        /* Fall through and rethrow original error. */
+      }
+    }
+    throw error;
+  }
+}
+
+const backupsForGame = backupsForCanonical;
 
 async function gameOperation<T>(
   key: string,
@@ -121,6 +177,9 @@ async function gameOperation<T>(
     try {
       const prepared = await tools.prepareBaseConfig(settings);
       const linkedTitle = settings.games[key]?.manifestTitle;
+      const saveSteamId =
+        settings.games[key]?.steamId ??
+        (game.shop === "steam" ? game.objectId : undefined);
       let canonical = linkedTitle ?? game.title;
       try {
         // Recovery must work from existing archives even without a local manifest.
@@ -137,10 +196,8 @@ async function gameOperation<T>(
               "--api",
               "--path",
               settings.destination,
-              ...(!linkedTitle &&
-              game.shop === "steam" &&
-              /^\d+$/.test(game.objectId)
-                ? ["--steam-id", game.objectId]
+              ...(!linkedTitle && saveSteamId && /^\d+$/.test(saveSteamId)
+                ? ["--steam-id", saveSteamId]
                 : []),
               "--",
               canonical,
@@ -159,27 +216,22 @@ async function gameOperation<T>(
   });
 }
 
-async function restoreData(ctx: Context, version: string) {
-  const versions = (
-    await json(ctx, [
-      "backups",
-      "--api",
-      "--path",
-      ctx.settings.destination,
-      "--",
-      ctx.canonical,
-    ])
-  ).games?.[ctx.canonical];
+export async function restoreDataForCanonical(
+  ctx: SaveEngineContext,
+  version: string,
+  rootPath = ctx.settings.destination
+) {
+  const versions = await backupsForCanonical(ctx, rootPath);
   if (!versions?.backups?.some((item) => item.name === version))
     throw new Error("This backup version is no longer available.");
-  const data = await json(ctx, [
+  const data = await runSaveToolJson(ctx, [
     "restore",
     "--api",
     "--force",
     "--preview",
     "--no-cloud-sync",
     "--path",
-    ctx.settings.destination,
+    rootPath,
     "--backup",
     version,
     "--",
@@ -190,22 +242,18 @@ async function restoreData(ctx: Context, version: string) {
   return { data, versions };
 }
 
-async function approvalContext(ctx: Context, data: SaveApiResponse) {
-  const index = await json(ctx, [
-    "backups",
-    "--api",
-    "--path",
-    ctx.settings.destination,
-    "--",
-    ctx.canonical,
-  ]);
-  const archiveDirectory = index.games?.[ctx.canonical]?.backupPath;
+const restoreData = restoreDataForCanonical;
+
+async function approvalContext(
+  ctx: Context,
+  data: SaveApiResponse,
+  rootPath = ctx.settings.destination,
+  snapshotId?: string
+) {
+  const archiveDirectory = (await backupsForGame(ctx, rootPath))?.backupPath;
   let mappingHash = "";
   if (archiveDirectory) {
-    const directory = await confinedSavePath(
-      ctx.settings.destination,
-      archiveDirectory
-    );
+    const directory = await confinedSavePath(rootPath, archiveDirectory);
     const mapping = await confinedSavePath(
       directory,
       path.join(directory, "mapping.yaml")
@@ -220,6 +268,7 @@ async function approvalContext(ctx: Context, data: SaveApiResponse) {
     config: await fs.readFile(path.join(ctx.configDir, "config.yaml"), "utf8"),
     data,
     mappingHash,
+    snapshotId: snapshotId ?? "",
   };
 }
 
@@ -261,8 +310,12 @@ async function logOperation<T extends SaveOperationResult>(
   }
 }
 
-async function validate(ctx: Context, version: string) {
-  const { versions } = await restoreData(ctx, version);
+export async function validateCanonicalBackupVersion(
+  ctx: SaveEngineContext,
+  version: string,
+  rootPath = ctx.settings.destination
+) {
+  const { versions } = await restoreDataForCanonical(ctx, version, rootPath);
   if (!versions.backupPath) throw new Error("No backup location was reported.");
   const sevenZip = path.join(
     app.isPackaged ? process.resourcesPath : app.getAppPath(),
@@ -270,7 +323,7 @@ async function validate(ctx: Context, version: string) {
     "7z.exe"
   );
   return validateSaveVersion(
-    ctx.settings.destination,
+    rootPath,
     versions.backupPath,
     version,
     async (file) => {
@@ -292,41 +345,124 @@ async function validate(ctx: Context, version: string) {
   );
 }
 
+const validate = validateCanonicalBackupVersion;
+
+export async function listSafetySnapshotsForCanonical(
+  ctx: SaveEngineContext
+): Promise<SaveSafetySnapshot[]> {
+  const safetyRoot = path.join(
+    ctx.settings.destination,
+    ".hydra-restore-safety"
+  );
+  const entries = await fs
+    .readdir(safetyRoot, { withFileTypes: true })
+    .catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return [];
+      throw error;
+    });
+
+  const snapshots: SaveSafetySnapshot[] = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    let snapshotDir: string;
+    try {
+      snapshotDir = await confinedSafetySnapshotPath(
+        ctx.settings.destination,
+        entry.name
+      );
+    } catch {
+      continue;
+    }
+    const gameDirs = await fs
+      .readdir(snapshotDir, { withFileTypes: true })
+      .catch(() => []);
+    for (const gameDir of gameDirs) {
+      if (!gameDir.isDirectory()) continue;
+      try {
+        const confinedGameDir = await confinedSavePath(
+          snapshotDir,
+          path.join(snapshotDir, gameDir.name)
+        );
+        const mappingFile = await confinedSavePath(
+          confinedGameDir,
+          path.join(confinedGameDir, "mapping.yaml")
+        );
+        const mapping = YAML.parse(await fs.readFile(mappingFile, "utf8"), {
+          maxAliasCount: 50,
+        }) as {
+          name?: string;
+          backups?: {
+            name?: string;
+            when?: string;
+            files?: Record<string, unknown>;
+            registry?: { hash?: string | null };
+          }[];
+        };
+        if (
+          !mapping?.name ||
+          mapping.name.toLowerCase() !== ctx.canonical.toLowerCase() ||
+          !Array.isArray(mapping.backups) ||
+          !mapping.backups.length
+        )
+          continue;
+        const verified = await backupsForGame(ctx, snapshotDir);
+        const version = verified?.backups?.[0];
+        if (!version?.name) continue;
+        const mappedBackup =
+          mapping.backups.find((b) => b.name === version.name) ??
+          mapping.backups[0];
+        snapshots.push({
+          id: entry.name,
+          backup: version.name,
+          when: version.when || mappedBackup.when || "",
+          files: Object.values(mappedBackup.files ?? {}).filter(Boolean).length,
+          hasRegistry: Boolean(mappedBackup.registry?.hash),
+          path: snapshotDir,
+        });
+        break;
+      } catch {
+        /* Ignore unreadable or unrelated snapshot folders. */
+      }
+    }
+  }
+  return snapshots.sort((a, b) => b.when.localeCompare(a.when));
+}
+
 export const listSaveBackupVersions = (key: string) =>
   gameOperation(key, async (ctx) => {
-    const versions =
-      (
-        await json(ctx, [
-          "backups",
-          "--api",
-          "--path",
-          ctx.settings.destination,
-          "--",
-          ctx.canonical,
-        ])
-      ).games?.[ctx.canonical]?.backups ?? [];
+    const [versions, snapshots] = await Promise.all([
+      backupsForGame(ctx).then((entry) => entry?.backups ?? []),
+      listSafetySnapshotsForCanonical(ctx),
+    ]);
     await tools.backfillGameBackupVersionSummary(key, versions);
     return {
       title: ctx.canonical,
       versions,
+      snapshots,
     };
   });
 
-export const previewSaveRestore = (key: string, version: string) =>
+export const previewSaveRestore = (
+  key: string,
+  version: string,
+  snapshotId?: string
+) =>
   gameOperation(key, async (ctx) => {
-    const { data } = await restoreData(ctx, version);
+    const rootPath = await resolveRestoreRoot(ctx, snapshotId);
+    const { data } = await restoreData(ctx, version, rootPath);
     return approvals.issue(
       {
         operation: "restore",
         gameKey: key,
         title: ctx.canonical,
         backup: version,
+        ...(snapshotId ? { snapshotId } : {}),
         files: savePreviewFiles(data, ctx.canonical),
         registry: Object.entries(data.games?.[ctx.canonical]?.registry ?? {})
           .filter(([, value]) => !value.ignored)
           .map(([name]) => name),
       },
-      await approvalContext(ctx, data)
+      await approvalContext(ctx, data, rootPath, snapshotId)
     );
   });
 
@@ -428,7 +564,14 @@ async function snapshotLiveSaves(ctx: Context, data: SaveApiResponse) {
     const existingRegistry = Object.values(scanned.registry ?? {}).some(
       (item) => !item.ignored
     );
-    return existingFiles || existingRegistry ? safetyPath : undefined;
+    if (!existingFiles && !existingRegistry) return undefined;
+    const backupName = (await backupsForGame(ctx, safetyPath))?.backups?.[0]
+      ?.name;
+    return {
+      safetyPath,
+      safetySnapshotId: id,
+      safetyBackupName: backupName,
+    };
   } finally {
     // Only this operation's configuration is temporary; snapshots persist.
     await removeSaveScratch(configDir);
@@ -441,10 +584,14 @@ export const confirmSaveOperation = async (token: string) => {
     logOperation(ctx, requested.operation, async () => {
       if (requested.operation === "restore") {
         await tools.assertStopped(ctx.game, ctx.settings);
-        const { data } = await restoreData(ctx, requested.backup);
-        approvals.consume(token, await approvalContext(ctx, data));
-        await validate(ctx, requested.backup);
-        const safetyPath = await snapshotLiveSaves(ctx, data);
+        const sourceRoot = await resolveRestoreRoot(ctx, requested.snapshotId);
+        const { data } = await restoreData(ctx, requested.backup, sourceRoot);
+        approvals.consume(
+          token,
+          await approvalContext(ctx, data, sourceRoot, requested.snapshotId)
+        );
+        await validate(ctx, requested.backup, sourceRoot);
+        const safety = await snapshotLiveSaves(ctx, data);
         await tools.assertStopped(ctx.game, ctx.settings);
         const completed = await json(ctx, [
           "restore",
@@ -452,7 +599,7 @@ export const confirmSaveOperation = async (token: string) => {
           "--force",
           "--no-cloud-sync",
           "--path",
-          ctx.settings.destination,
+          sourceRoot,
           "--backup",
           requested.backup,
           "--",
@@ -463,10 +610,12 @@ export const confirmSaveOperation = async (token: string) => {
             "The selected game was not restored. Check the retained pre-restore snapshot before retrying."
           );
         return {
-          message: safetyPath
+          message: safety
             ? "The selected save version was restored. A pre-restore snapshot was kept separately."
             : "The selected save version was restored. No existing affected save data was found to snapshot.",
-          safetyPath,
+          safetyPath: safety?.safetyPath,
+          safetySnapshotId: safety?.safetySnapshotId,
+          safetyBackupName: safety?.safetyBackupName,
           files: savePreviewFiles(data, ctx.canonical).filter(
             (file) => !file.ignored
           ).length,
@@ -497,10 +646,15 @@ export const confirmSaveOperation = async (token: string) => {
   );
 };
 
-export const validateSaveBackup = (key: string, version: string) =>
+export const validateSaveBackup = (
+  key: string,
+  version: string,
+  snapshotId?: string
+) =>
   gameOperation(key, (ctx) =>
     logOperation(ctx, "validate", async () => {
-      const result = await validate(ctx, version);
+      const rootPath = await resolveRestoreRoot(ctx, snapshotId);
+      const result = await validate(ctx, version, rootPath);
       return {
         message: `Validation passed: ${result.files} mapped files checked; ${result.archives} ZIP archives passed integrity checks. Live saves were unchanged.`,
         files: result.files,
@@ -508,8 +662,8 @@ export const validateSaveBackup = (key: string, version: string) =>
     })
   );
 
-async function cloudData(
-  ctx: Context,
+export async function cloudDataForCanonical(
+  ctx: SaveEngineContext,
   direction: "upload" | "download",
   preview: boolean
 ) {
@@ -520,7 +674,7 @@ async function cloudData(
     throw new Error(
       `${REMOTE_SETUP_REQUIRED} Open Set up remote storage, select Other in the manager, and configure Rclone and cloud storage before previewing a transfer.`
     );
-  return json(ctx, [
+  return runSaveToolJson(ctx, [
     "cloud",
     direction,
     "--api",
@@ -532,6 +686,8 @@ async function cloudData(
     ctx.canonical,
   ]);
 }
+
+const cloudData = cloudDataForCanonical;
 
 export const previewSaveCloudTransfer = (
   key: string,
@@ -571,7 +727,7 @@ export const getSaveAdvancedConfig = () =>
     return YAML.stringify(prepared.config);
   });
 
-async function persistAdvancedConfig(
+export async function persistAdvancedConfig(
   text: string,
   settings: LudusaviLocalSettings
 ) {

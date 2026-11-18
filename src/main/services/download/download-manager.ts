@@ -16,6 +16,8 @@ import {
   DownloadError,
   FILE_EXTENSIONS_TO_EXTRACT,
   resolveArchiveOrgFile,
+  resolveHttpDownloadSettings,
+  type ResolvedHttpDownloadSettings,
 } from "@shared";
 import { WindowManager } from "../window-manager";
 import { SystemPath } from "../system-path";
@@ -194,6 +196,8 @@ export class DownloadManager {
   private static isPreparingDownload = false;
   private static jsBatch: JsBatchState | null = null;
   private static maxDownloadSpeedBytesPerSecond: number | null = null;
+  private static httpDownloadSettings: ResolvedHttpDownloadSettings | null =
+    null;
   private static startGeneration = 0;
   private static preparationController: AbortController | null = null;
   private static readonly preparedRealDebridDownloads = new Map<
@@ -446,6 +450,21 @@ export class DownloadManager {
     );
   }
 
+  public static async applyHttpDownloadSettings(
+    preferences?: Partial<UserPreferences> | null
+  ): Promise<void> {
+    const resolvedInput =
+      preferences === undefined
+        ? await db.get<string, UserPreferences | null>(
+            levelKeys.userPreferences,
+            { valueEncoding: "json" }
+          )
+        : preferences;
+    const settings = resolveHttpDownloadSettings(resolvedInput);
+    this.httpDownloadSettings = settings;
+    this.jsDownloader?.applyRuntimeSettings?.(settings);
+  }
+
   public static async applyDownloadSpeedLimit(
     value?: number | null
   ): Promise<void> {
@@ -520,6 +539,7 @@ export class DownloadManager {
   ) {
     if (!isDirectTorrentAllowed()) {
       await this.applyDownloadSpeedLimit();
+      await this.applyHttpDownloadSettings();
       return;
     }
     await TorrentService.initialize();
@@ -541,6 +561,7 @@ export class DownloadManager {
     }
 
     await this.applyDownloadSpeedLimit();
+    await this.applyHttpDownloadSettings();
   }
 
   private static async getDownloadStatusFromJs(): Promise<DownloadProgress | null> {
@@ -3313,6 +3334,9 @@ export class DownloadManager {
     this.jsDownloader.setMaxDownloadSpeedBytesPerSecond(
       this.maxDownloadSpeedBytesPerSecond
     );
+    if (this.httpDownloadSettings) {
+      this.jsDownloader.applyRuntimeSettings?.(this.httpDownloadSettings);
+    }
     this.isPreparingDownload = false;
     void this.runJsBatch();
   }
@@ -3342,6 +3366,9 @@ export class DownloadManager {
     downloader.setMaxDownloadSpeedBytesPerSecond(
       this.maxDownloadSpeedBytesPerSecond
     );
+    if (this.httpDownloadSettings) {
+      downloader.applyRuntimeSettings?.(this.httpDownloadSettings);
+    }
     this.isPreparingDownload = false;
     void downloader.startDownload().catch(async (error) => {
       if (
@@ -3396,11 +3423,27 @@ export class DownloadManager {
     this.jsDownloader.setMaxDownloadSpeedBytesPerSecond(
       this.maxDownloadSpeedBytesPerSecond
     );
+    if (this.httpDownloadSettings) {
+      this.jsDownloader.applyRuntimeSettings?.(this.httpDownloadSettings);
+    }
     this.isPreparingDownload = false;
+
+    const downloaderOptions: JsHttpDownloaderOptions = {
+      ...options,
+      resourceId: download.uri,
+    };
+    downloaderOptions.refreshUrl = async () => {
+      const refreshed = await this.getJsDownloadOptions(download);
+      if (!refreshed?.url) {
+        throw new Error("The download link is unavailable.");
+      }
+      downloaderOptions.headers = refreshed.headers;
+      return refreshed.url;
+    };
 
     this.logResolvedUrl(options.url);
     this.jsDownloader
-      .startDownload({ ...options, resourceId: download.uri })
+      .startDownload(downloaderOptions)
       .catch((err) =>
         this.reportRuntimeDownloadError(downloadId, err, myGeneration)
       );

@@ -3,8 +3,24 @@ import { getUriGroupDownloaders } from "./repack-uri-groups.js";
 import type { GameRepack } from "../types/index";
 import type {
   BlockedSourceNavigation,
+  SourceBrowserRequest,
   SourceWebsiteProfile,
 } from "../types/source-browser.types";
+
+/** Stable identity key for a source browser window request shared by main and renderer. */
+export function sourceBrowserRequestKey(request: SourceBrowserRequest): string {
+  const sourceId =
+    request?.websiteProfileId ?? request?.repack?.downloadSourceId ?? "";
+  return JSON.stringify([
+    sourceId,
+    request.shop,
+    request.objectId,
+    request.gameTitle,
+    request.readOnly === true,
+    request.repack.title,
+    request.repack.sourcePageUrl ?? "",
+  ]);
+}
 
 export const isSourceBrowsingEnabled = (
   preferences?: { enableSourceBrowser?: boolean } | null
@@ -859,6 +875,14 @@ function isFuzzyGamePageMatch(url: URL, gameTitle: string): boolean {
   );
 }
 
+function isSameSourceSiteHost(
+  candidateHost: string,
+  sourceHost: string
+): boolean {
+  const stripWww = (host: string) => host.toLowerCase().replace(/^www\./, "");
+  return stripWww(candidateHost) === stripWww(sourceHost);
+}
+
 // Conservative address matching: URLs that cannot establish their title are
 // blocked. The URL is a hint, not proof of the page's contents or its links.
 export function sourceGamePageKind(
@@ -868,6 +892,10 @@ export function sourceGamePageKind(
 ): "search" | "game" | "blocked" {
   try {
     const url = websiteUrl(raw);
+    const valid = validateWebsiteProfile(profile);
+    if (!valid.approvedDomains!.includes(url.hostname)) return "blocked";
+    const sourceHost = new URL(valid.website).hostname;
+    if (!isSameSourceSiteHost(url.hostname, sourceHost)) return "game";
     const searchQuery = extractSearchQueryFromUrl(url, profile);
     if (searchQuery !== null) {
       return isFuzzySearchMatch(searchQuery, gameTitle) ? "search" : "blocked";

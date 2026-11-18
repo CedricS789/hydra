@@ -1,0 +1,103 @@
+@use "../../scss/globals.scss";
+
+.settings-reset {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+
+  h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: globals.$muted-color;
+  }
+
+  > p {
+    margin: 0;
+    font-size: globals.$hint-font-size;
+    color: globals.$subtle-color;
+    line-height: 1.5;
+    max-width: 72ch;
+  }
+
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__card {
+    border: 1px solid globals.$border-color;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    h4 {
+      margin: 0;
+      font-size: globals.$body-font-size;
+      font-weight: 600;
+      color: globals.$muted-color;
+    }
+
+    > p {
+      margin: 0;
+      font-size: globals.$hint-font-size;
+      color: globals.$subtle-color;
+      line-height: 1.5;
+      max-width: 72ch;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 4px;
+  }
+
+  &__hint {
+    margin: 0;
+    color: globals.$subtle-color;
+    font-size: globals.$hint-font-size;
+    line-height: 1.5;
+    max-width: 72ch;
+  }
+
+  &__error {
+    margin: 0;
+    font-size: globals.$hint-font-size;
+    color: #ff9999;
+  }
+
+  &__review {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+
+  &__table {
+    overflow: auto;
+    max-height: 40vh;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: globals.$hint-font-size;
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: 10px;
+    border-bottom: 1px solid globals.$border-color;
+    overflow-wrap: anywhere;
+    min-width: 100px;
+  }
+}

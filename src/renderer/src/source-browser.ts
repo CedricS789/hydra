@@ -34,6 +34,7 @@ function render(state: SourceBrowserState) {
   const selectionChanged = current?.links.join("\n") !== state.links.join("\n");
   current = state;
   element("review").hidden = state.readOnly;
+  element("release-title-field").hidden = state.readOnly;
   element("add").hidden = state.readOnly;
   element("heading").textContent = `${state.sourceName} · ${state.title}`;
   if (document.activeElement !== input("address"))

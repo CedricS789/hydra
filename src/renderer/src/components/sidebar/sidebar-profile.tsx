@@ -13,7 +13,7 @@ import { useTranslation } from "react-i18next";
 import SteamLogo from "@renderer/assets/steam-logo.svg?react";
 import { Avatar } from "../avatar/avatar";
 import { ConfirmationModal } from "../confirmation-modal/confirmation-modal";
-import { AuthPage } from "@shared";
+import { AuthPage, resolveSocialPreferences } from "@shared";
 import { platformToSystem } from "@renderer/helpers";
 import { logger } from "@renderer/logger";
 import type {
@@ -118,6 +118,10 @@ export function SidebarProfile() {
 
   const { gameRunning } = useAppSelector((state) => state.gameRunning);
   const library = useAppSelector((state) => state.library.value);
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const social = resolveSocialPreferences(userPreferences);
 
   const isPlayStationGameRunning = useMemo(() => {
     if (gameRunning?.shop !== "launchbox") return false;
@@ -314,7 +318,9 @@ export function SidebarProfile() {
     } else {
       setDropdownOpen(true);
       // Warm the friends cache now so the friends window opens populated.
-      void globalThis.window.electron.prefetchFriends();
+      if (social.showFriends) {
+        void globalThis.window.electron.prefetchFriends();
+      }
     }
   };
 
@@ -406,6 +412,10 @@ export function SidebarProfile() {
     return <SteamLogo />;
   };
 
+  if (!social.showAccountProfileHeader) {
+    return null;
+  }
+
   return (
     <div className="sidebar-profile" ref={containerRef}>
       <button
@@ -420,12 +430,14 @@ export function SidebarProfile() {
               src={userDetails?.profileImageUrl}
               alt={userDetails?.displayName}
             />
-            {userDetails && chatUnreadCount > 0 && (
-              <output
-                className="sidebar-profile__unread-dot"
-                aria-label={t("unread_messages", { count: chatUnreadCount })}
-              />
-            )}
+            {social.showChatAndMessages &&
+              userDetails &&
+              chatUnreadCount > 0 && (
+                <output
+                  className="sidebar-profile__unread-dot"
+                  aria-label={t("unread_messages", { count: chatUnreadCount })}
+                />
+              )}
           </span>
 
           <div className="sidebar-profile__button-information">
@@ -464,42 +476,48 @@ export function SidebarProfile() {
             <span>{t("user_profile:see_profile")}</span>
           </button>
 
-          <button
-            type="button"
-            className="sidebar-profile__dropdown-item"
-            onClick={handleNotificationsClick}
-          >
-            <BellIcon size={16} />
-            <span>{t("notifications")}</span>
-            {notificationCount > 0 && (
-              <small className="sidebar-profile__dropdown-badge">
-                {notificationCount > 99 ? "99+" : notificationCount}
-              </small>
-            )}
-          </button>
+          {social.showNotificationsMenu && (
+            <button
+              type="button"
+              className="sidebar-profile__dropdown-item"
+              onClick={handleNotificationsClick}
+            >
+              <BellIcon size={16} />
+              <span>{t("notifications")}</span>
+              {notificationCount > 0 && (
+                <small className="sidebar-profile__dropdown-badge">
+                  {notificationCount > 99 ? "99+" : notificationCount}
+                </small>
+              )}
+            </button>
+          )}
 
-          <button
-            type="button"
-            className="sidebar-profile__dropdown-item"
-            onClick={handleFriendsClick}
-          >
-            <PeopleIcon size={16} />
-            <span>{t("friends")}</span>
-            {onlineFriendsCount > 0 && (
-              <small className="sidebar-profile__dropdown-badge sidebar-profile__dropdown-badge--online">
-                {onlineFriendsCount}
-              </small>
-            )}
-            {chatUnreadCount > 0 && (
-              <small
-                className="sidebar-profile__dropdown-badge sidebar-profile__dropdown-badge--unread"
-                title={t("unread_messages", { count: chatUnreadCount })}
-                aria-label={t("unread_messages", { count: chatUnreadCount })}
-              >
-                {formatBadgeCount(chatUnreadCount)}
-              </small>
-            )}
-          </button>
+          {social.showFriends && (
+            <button
+              type="button"
+              className="sidebar-profile__dropdown-item"
+              onClick={handleFriendsClick}
+            >
+              <PeopleIcon size={16} />
+              <span>{t("friends")}</span>
+              {onlineFriendsCount > 0 && (
+                <small className="sidebar-profile__dropdown-badge sidebar-profile__dropdown-badge--online">
+                  {onlineFriendsCount}
+                </small>
+              )}
+              {social.showChatAndMessages && chatUnreadCount > 0 && (
+                <small
+                  className="sidebar-profile__dropdown-badge sidebar-profile__dropdown-badge--unread"
+                  title={t("unread_messages", { count: chatUnreadCount })}
+                  aria-label={t("unread_messages", {
+                    count: chatUnreadCount,
+                  })}
+                >
+                  {formatBadgeCount(chatUnreadCount)}
+                </small>
+              )}
+            </button>
+          )}
 
           {hasActiveSubscription && (
             <button

@@ -1,4 +1,4 @@
-# Hydra + Ludusavi Integrated — 4.4.1-remix.4
+# Hydra + Ludusavi Integrated — 4.4.1-remix.5
 
 Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright and the MIT license are retained. These notes describe the source version. Installer availability is listed on the repository's published releases page.
 
@@ -27,7 +27,8 @@ Based on official Hydra v4.4.1. This is an unofficial fork; upstream copyright a
 - Check, download, and install controls for custom releases. The updater uses the configured custom repository.
 - Short display name **Hydra Ludusavi**, with the full name in formal installer details. Existing internal identifiers remain stable for settings and installer compatibility.
 - Theme import, CSS editing, and active-theme loading retained. Additional panels may require theme CSS adjustments.
-- Installer filename `hydra-ludusavi-4.4.1-remix.4-setup.exe`.
+- Installer filename `hydra-ludusavi-4.4.1-remix.5-setup.exe`.
+- Added a safety-first **Uninstall game** flow for standalone/repack/custom PC games (and Hydra downloads installed to a separate directory) with native Windows uninstaller detection (`unins000.exe` / `uninstall.exe` / Registry `UninstallString`), path and cross-game collision guardrails, Wine prefix isolation checks, and Desktop/Big Picture previews.
 - Source website browsing now strips trademark symbols (`™`, `®`, `©`) from initial searches and uses fuzzy title matching for search queries and game pages (supporting shortened queries, omitted editions/subtitles, minor typos, punctuation differences, and Roman/Arabic numeral equivalents while still blocking unrelated games and mismatched sequels).
 
 - Everyday labels use **Save backups**, with Ludusavi credited in settings. The game-page shortcut preselects the library game.

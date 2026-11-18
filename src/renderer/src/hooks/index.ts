@@ -10,6 +10,7 @@ export * from "./use-source-archive";
 export * from "./use-finished-download-step";
 export * from "./use-steam-library-executable";
 export * from "./use-steam-uninstall-action";
+export * from "./use-game-uninstall";
 export * from "./use-date";
 export * from "./use-toast";
 export * from "./redux";

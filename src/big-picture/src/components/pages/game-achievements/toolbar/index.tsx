@@ -1,4 +1,3 @@
-import localEdition from "../../../../../../shared/local-edition.json";
 import {
   ClockIcon,
   LockIcon,
@@ -49,6 +48,7 @@ export interface GameAchievementsToolbarProps {
   statusCounts: Record<AchievementStatusFilter, number>;
   firstAchievementRowId: string | null;
   points: { earned: number; total: number } | null;
+  showPoints?: boolean;
 }
 
 export function GameAchievementsToolbar({
@@ -61,6 +61,7 @@ export function GameAchievementsToolbar({
   statusCounts,
   firstAchievementRowId,
   points,
+  showPoints = false,
 }: Readonly<GameAchievementsToolbarProps>) {
   const { t, i18n } = useTranslation("achievement");
   const numberFormatter = new Intl.NumberFormat(i18n.language);
@@ -152,7 +153,7 @@ export function GameAchievementsToolbar({
           onValueChange={onSortChange}
         />
 
-        {!localEdition.hideHydraPoints && (
+        {showPoints && (
           <div className="game-achievements-page__toolbar-points">
             <span className="game-achievements-page__toolbar-points-label">
               {t("earned_points")}

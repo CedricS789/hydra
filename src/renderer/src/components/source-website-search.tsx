@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import type { GameRepack, GameShop } from "@types";
 import type { SourceWebsiteProfile } from "../../../types/source-browser.types";
 import {
   orderSourceWebsiteProfiles,
   websiteSearchRepack,
 } from "../../../shared/source-browser-policy";
+import { useSourceBrowserOpener } from "./source-browser-button";
 
 /** Shared flow; each surface supplies its own keyboard/controller buttons. */
 export function SourceWebsiteSearch({
@@ -15,6 +16,7 @@ export function SourceWebsiteSearch({
   onReview,
   onSettings,
   renderButton,
+  renderGroup,
 }: {
   enabled: boolean;
   shop: GameShop;
@@ -25,21 +27,30 @@ export function SourceWebsiteSearch({
   renderButton: (props: {
     id: string;
     label: string;
+    hostname?: string;
     disabled: boolean;
     onClick: () => void;
   }) => ReactNode;
+  renderGroup?: (children: ReactNode, headingId: string) => ReactNode;
 }) {
+  const headingId = useId();
   const [profiles, setProfiles] = useState<Record<
     string,
     SourceWebsiteProfile
   > | null>(null);
   const [orderedIds, setOrderedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const {
+    isOpening,
+    error: openError,
+    clearError,
+    open,
+  } = useSourceBrowserOpener(onReview);
   useEffect(() => {
     setProfiles(null);
     setError("");
+    clearError();
     if (!enabled) return;
     let active = true;
     setLoading(true);
@@ -67,70 +78,78 @@ export function SourceWebsiteSearch({
     return () => {
       active = false;
     };
-  }, [enabled, shop, objectId, gameTitle]);
+  }, [enabled, shop, objectId, gameTitle, clearError]);
   if (!enabled) return null;
-  const run = async (action: () => Promise<void>) => {
-    setBusy(true);
-    setError("");
-    try {
-      await action();
-    } catch (error) {
-      setError(String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const visibleError = error || openError;
+  const hasProfiles = Boolean(profiles && Object.keys(profiles).length > 0);
+  const buttons = hasProfiles
+    ? orderedIds.map((id) => {
+        const profile = profiles![id];
+        if (!profile) return null;
+        const hostname = new URL(profile.website).hostname;
+        const name = profile.name ?? hostname;
+        const request = {
+          websiteProfileId: id,
+          shop,
+          objectId,
+          gameTitle,
+          repack: websiteSearchRepack(id, profile, gameTitle),
+        };
+        const opening = isOpening(request);
+        return renderButton({
+          id: `search-website-${id}`,
+          label: opening ? `Opening ${name}…` : name,
+          hostname,
+          disabled: opening,
+          onClick: () => {
+            setError("");
+            void open(request);
+          },
+        });
+      })
+    : null;
+
   return (
-    <div className="source-website-search">
-      {loading && <span role="status">Loading websites…</span>}
-      {profiles && Object.entries(profiles).length > 0 && (
-        <div role="group" aria-label="Search on a website">
-          {orderedIds.map((id) => {
-            const profile = profiles[id];
-            if (!profile) return null;
-            const name = profile.name ?? new URL(profile.website).hostname;
-            return renderButton({
-              id: `search-website-${id}`,
-              label: busy ? `Opening ${name}…` : `Search on ${name}`,
-              disabled: busy,
-              onClick: () =>
-                void run(async () => {
-                  const selection = await window.electron.openSourceBrowser({
-                    websiteProfileId: id,
-                    shop,
-                    objectId,
-                    gameTitle,
-                    repack: websiteSearchRepack(id, profile, gameTitle),
-                  });
-                  if (selection) onReview(selection);
-                }),
-            });
-          })}
-        </div>
-      )}
-      {profiles && Object.keys(profiles).length > 0 && (
-        <span className="source-website-search__note">
-          Website searches are separate from Hydra feed results.
+    <section className="source-website-search" aria-labelledby={headingId}>
+      <span id={headingId} className="source-website-search__title">
+        Search on
+      </span>
+      {loading && (
+        <span className="source-website-search__status" role="status">
+          Loading websites…
         </span>
       )}
+      {hasProfiles &&
+        (renderGroup ? (
+          renderGroup(buttons, headingId)
+        ) : (
+          <div
+            className="source-website-search__list"
+            role="group"
+            aria-labelledby={headingId}
+          >
+            {buttons}
+          </div>
+        ))}
       {profiles && !Object.keys(profiles).length && (
-        <span>No websites configured.</span>
+        <span className="source-website-search__empty">
+          No websites configured.
+        </span>
       )}
-      {(!profiles || !Object.keys(profiles).length) && error && onSettings &&
+      {!loading &&
+        (!profiles || !Object.keys(profiles).length) &&
+        onSettings &&
         renderButton({
           id: "configure-websites",
           label: "Configure websites",
-          disabled: busy,
+          disabled: false,
           onClick: onSettings,
         })}
-      {profiles && !Object.keys(profiles).length && onSettings &&
-        renderButton({
-          id: "configure-websites",
-          label: "Configure websites",
-          disabled: busy,
-          onClick: onSettings,
-        })}
-      {error && <p role="alert">{error}</p>}
-    </div>
+      {visibleError && (
+        <p className="source-website-search__error" role="alert">
+          {visibleError}
+        </p>
+      )}
+    </section>
   );
 }

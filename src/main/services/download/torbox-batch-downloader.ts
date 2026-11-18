@@ -12,6 +12,7 @@ import { DownloadThrottle } from "./download-throttle";
 import {
   JsHttpDownloader,
   type JsHttpDownloaderOptions,
+  type JsHttpDownloaderRuntimeSettings,
   type JsHttpDownloaderStatus,
 } from "./js-http-downloader";
 import {
@@ -43,6 +44,7 @@ export class TorBoxBatchDownloader {
   private activeRun: Promise<void> | null = null;
   private status: JsHttpDownloaderStatus["status"] = "active";
   private isReconnecting = false;
+  private runtimeSettings: JsHttpDownloaderRuntimeSettings = {};
   private speed: JsBatchSpeedSample;
 
   constructor(
@@ -98,6 +100,13 @@ export class TorBoxBatchDownloader {
     this.throttle.setLimit(limit);
   }
 
+  applyRuntimeSettings(settings: JsHttpDownloaderRuntimeSettings): void {
+    this.runtimeSettings = { ...this.runtimeSettings, ...settings };
+    for (const worker of this.workers.values()) {
+      worker.applyRuntimeSettings(this.runtimeSettings);
+    }
+  }
+
   startDownload(): Promise<void> {
     if (!this.activeRun) this.activeRun = this.run();
     return this.activeRun;
@@ -135,6 +144,7 @@ export class TorBoxBatchDownloader {
     this.prefetch(position + 1);
 
     const downloader = new JsHttpDownloader();
+    downloader.applyRuntimeSettings(this.runtimeSettings);
     this.workers.set(index, downloader);
     const options = this.getOptions(index, prepared.url);
     options.throttle = this.throttle;
@@ -145,9 +155,17 @@ export class TorBoxBatchDownloader {
       file.bytesDownloaded === 0 ||
       readResourceIdentity(path.join(options.savePath, options.filename!)) !==
         null;
-    options.allowParallelRanges = true;
+    const allowParallel = this.runtimeSettings.parallelDownloadsEnabled ?? true;
+    const configuredConnections =
+      this.runtimeSettings.parallelConnections ?? PARALLEL_RANGE_COUNT;
+    options.allowParallelRanges = allowParallel;
     options.parallelRangeConnections =
-      file.size > PARALLEL_RANGE_SIZE ? PARALLEL_RANGE_COUNT : 1;
+      allowParallel && file.size > PARALLEL_RANGE_SIZE
+        ? configuredConnections
+        : 1;
+    if (this.runtimeSettings.rangeSizeBytes) {
+      options.parallelRangeSize = this.runtimeSettings.rangeSizeBytes;
+    }
     options.refreshUrl = () => this.resolveLink(index, this.controller.signal);
     if (!this.transferStarted) {
       this.throttle.reset();

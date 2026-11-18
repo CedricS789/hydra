@@ -732,7 +732,13 @@
     "Return to desktop mode": "Вернуться в обычный режим",
     "Put the system to sleep": "Перевести систему в спящий режим",
     "Restart your device": "Перезагрузить устройство",
-    "Shut down your device": "Выключить устройство"
+    "Shut down your device": "Выключить устройство",
+    "Quit Hydra": "Выйти из Hydra",
+    "Close the application": "Закрыть приложение",
+    "Quit Hydra?": "Выйти из Hydra?",
+    "Hydra will close. Active downloads and background services will stop.": "Hydra закроется. Активные загрузки и фоновые службы будут остановлены.",
+    "Could not quit Hydra": "Не удалось выйти из Hydra",
+    "Please try again or close Hydra from the system tray.": "Повторите попытку или закройте Hydra из области уведомлений."
   },
   "format": {
     "similar_games": "Похожие игры",

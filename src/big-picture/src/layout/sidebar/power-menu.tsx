@@ -5,6 +5,7 @@ import {
   MoonIcon,
   PowerIcon,
   SignOutIcon,
+  XCircleIcon,
 } from "@phosphor-icons/react";
 import type { SystemPowerAction } from "@types";
 import { FocusItem, Modal, VerticalFocusGroup } from "../../components/common";
@@ -13,35 +14,83 @@ import { IS_DESKTOP } from "../../constants";
 import { useBigPictureToast } from "../../hooks";
 import "./power-menu.scss";
 
-const POWER_OPTIONS = [
+type ConfirmedPowerAction = "quit-app" | SystemPowerAction;
+
+interface ConfirmedPowerOption {
+  action: ConfirmedPowerAction;
+  focusId: string;
+  label: string;
+  subtitle: string;
+  title: string;
+  description: string;
+  icon: typeof PowerIcon;
+  scope: "app" | "system";
+  optionDanger?: boolean;
+  confirmDanger?: boolean;
+  errorTitle: string;
+  errorMessage: string;
+}
+
+const CONFIRMED_POWER_OPTIONS: readonly ConfirmedPowerOption[] = [
+  {
+    action: "quit-app",
+    focusId: "big-picture-power-quit",
+    label: "Quit Hydra",
+    subtitle: "Close the application",
+    title: "Quit Hydra?",
+    description:
+      "Hydra will close. Active downloads and background services will stop.",
+    icon: XCircleIcon,
+    scope: "app",
+    errorTitle: "Could not quit Hydra",
+    errorMessage: "Please try again or close Hydra from the system tray.",
+  },
   {
     action: "suspend",
+    focusId: "big-picture-power-suspend",
     label: "Suspend",
     subtitle: "Put the system to sleep",
     title: "Suspend the system?",
     description:
       "The system will sleep. Downloads will pause until it wakes up.",
     icon: MoonIcon,
+    scope: "system",
+    errorTitle: "Could not change the system power state",
+    errorMessage:
+      "The system may have blocked the request or require additional permissions.",
   },
   {
     action: "restart",
+    focusId: "big-picture-power-restart",
     label: "Restart",
     subtitle: "Restart your device",
     title: "Restart the system?",
     description:
       "The system will restart. Save your game and any open work before continuing.",
     icon: ArrowClockwiseIcon,
+    scope: "system",
+    confirmDanger: true,
+    errorTitle: "Could not change the system power state",
+    errorMessage:
+      "The system may have blocked the request or require additional permissions.",
   },
   {
     action: "power-off",
+    focusId: "big-picture-power-power-off",
     label: "Power Off",
     subtitle: "Shut down your device",
     title: "Power off the system?",
     description:
       "The system will shut down. Save your game and any open work before continuing.",
     icon: PowerIcon,
+    scope: "system",
+    optionDanger: true,
+    confirmDanger: true,
+    errorTitle: "Could not change the system power state",
+    errorMessage:
+      "The system may have blocked the request or require additional permissions.",
   },
-] as const;
+];
 
 interface PowerMenuProps {
   visible: boolean;
@@ -55,35 +104,48 @@ export function PowerMenu({
   onExitBigPicture,
 }: Readonly<PowerMenuProps>) {
   const [selectedAction, setSelectedAction] =
-    useState<SystemPowerAction | null>(null);
+    useState<ConfirmedPowerAction | null>(null);
   const [loading, setLoading] = useState(false);
   const pendingRef = useRef(false);
   const { showErrorToast } = useBigPictureToast();
-  const selectedOption = POWER_OPTIONS.find(
+  const selectedOption = CONFIRMED_POWER_OPTIONS.find(
     (option) => option.action === selectedAction
   );
   const canControlSystem =
     IS_DESKTOP &&
     ["win32", "linux", "darwin"].includes(globalThis.window.electron.platform);
 
+  const isOptionEnabled = (option: ConfirmedPowerOption) =>
+    option.scope === "app" ? IS_DESKTOP : canControlSystem;
+
   const closeConfirmation = () => {
     if (!pendingRef.current) setSelectedAction(null);
   };
 
   const confirmAction = async () => {
-    if (!selectedAction || !canControlSystem || pendingRef.current) return;
+    if (
+      !selectedOption ||
+      !isOptionEnabled(selectedOption) ||
+      pendingRef.current
+    )
+      return;
 
     pendingRef.current = true;
     setLoading(true);
     try {
-      await globalThis.window.electron.executeSystemPowerAction(selectedAction);
+      if (selectedOption.action === "quit-app") {
+        await globalThis.window.electron.quitApp();
+      } else {
+        await globalThis.window.electron.executeSystemPowerAction(
+          selectedOption.action
+        );
+      }
       setSelectedAction(null);
       onClose();
     } catch {
       setSelectedAction(null);
-      showErrorToast("Could not change the system power state", {
-        message:
-          "The system may have blocked the request or require additional permissions.",
+      showErrorToast(selectedOption.errorTitle, {
+        message: selectedOption.errorMessage,
       });
     } finally {
       pendingRef.current = false;
@@ -121,15 +183,15 @@ export function PowerMenu({
               onExitBigPicture();
             }}
           />
-          {POWER_OPTIONS.map((option) => (
+          {CONFIRMED_POWER_OPTIONS.map((option) => (
             <PowerMenuOption
               key={option.action}
-              focusId={`big-picture-power-${option.action}`}
+              focusId={option.focusId}
               label={option.label}
               subtitle={option.subtitle}
               icon={option.icon}
-              danger={option.action === "power-off"}
-              disabled={!canControlSystem}
+              danger={option.optionDanger}
+              disabled={!isOptionEnabled(option)}
               onClick={() => setSelectedAction(option.action)}
             />
           ))}
@@ -144,7 +206,7 @@ export function PowerMenu({
           onClose={closeConfirmation}
           onConfirm={confirmAction}
           loading={loading}
-          danger={selectedAction !== "suspend"}
+          danger={Boolean(selectedOption.confirmDanger)}
           backdropClassName="power-menu-confirmation-backdrop"
         />
       )}

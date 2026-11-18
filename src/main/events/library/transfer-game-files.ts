@@ -29,6 +29,9 @@ const activeTransfers = new Map<
   }
 >();
 
+export const isGameTransferring = (shop: GameShop, objectId: string): boolean =>
+  activeTransfers.has(levelKeys.game(shop, objectId));
+
 // ── Steam‑style copy engine ─────────────────────────────────────────────────
 class SteamCopyEngine {
   private bytesCopied = 0;

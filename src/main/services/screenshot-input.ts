@@ -22,11 +22,11 @@ import {
 } from "./game-running-state";
 import { logger } from "./logger";
 import {
-  NativeAddon,
   type ScreenshotInputNativeConfig,
   type ScreenshotInputNativeEvent,
   type ScreenshotInputNativeStatus,
 } from "./native-addon";
+import { NativeInputCoordinator } from "./native-input-coordinator";
 import {
   isScreenshotsFeatureEnabled,
   onScreenshotsFeatureChange,
@@ -277,9 +277,10 @@ export class ScreenshotInputService {
     }
 
     try {
-      const probe = NativeAddon.probeScreenshotInput(
-        toScreenshotInputNativeConfig(this.settings)
-      );
+      const probe = NativeInputCoordinator.probe({
+        ...toScreenshotInputNativeConfig(this.settings),
+        keyboardEnabled: true,
+      });
       this.setStatus(
         withPortalHotkeyHint(
           toScreenshotInputStatus(probe, this.settings, false),
@@ -387,23 +388,30 @@ export class ScreenshotInputService {
         this.settings.gamepadCombo
       )
     ) {
-      try {
-        NativeAddon.updateScreenshotInputBinding(
-          toScreenshotInputNativeConfig(this.settings)
-        );
-      } catch (error) {
-        logger.error("Failed to update screenshot input binding", error);
-      }
+      const generation = this.sessionGeneration;
+      NativeInputCoordinator.setScreenshotRegistration({
+        active: true,
+        ...this.settings.hotkey,
+        gamepadEnabled: this.settings.gamepadEnabled,
+        gamepadButtons: [...this.settings.gamepadCombo],
+        onEvent: (event) => this.handleNativeEvent(event, generation),
+      });
     }
   }
 
   private static startListening() {
     const generation = ++this.sessionGeneration;
     try {
-      const nativeStatus = NativeAddon.startScreenshotInput(
-        toScreenshotInputNativeConfig(this.settings),
-        (event) => this.handleNativeEvent(event, generation)
-      );
+      const nativeStatus = NativeInputCoordinator.setScreenshotRegistration({
+        active: true,
+        ...this.settings.hotkey,
+        gamepadEnabled: this.settings.gamepadEnabled,
+        gamepadButtons: [...this.settings.gamepadCombo],
+        onEvent: (event) => this.handleNativeEvent(event, generation),
+      });
+      if (!nativeStatus) {
+        throw new Error("Native input session unavailable");
+      }
       this.listening = true;
       this.listeningSince = performance.now();
       this.nativeStatus = nativeStatus;
@@ -486,11 +494,7 @@ export class ScreenshotInputService {
     this.nativeStatus = null;
     this.unregisterPortalShortcut();
 
-    try {
-      NativeAddon.stopScreenshotInput();
-    } catch (error) {
-      logger.error("Failed to stop screenshot input", error);
-    }
+    NativeInputCoordinator.setScreenshotRegistration(null);
 
     logger.info("Screenshot input stopped");
     this.setStatus({ ...this.status, active: false });

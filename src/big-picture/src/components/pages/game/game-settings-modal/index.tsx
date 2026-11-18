@@ -1,8 +1,11 @@
+import localEdition from "../../../../../../shared/local-edition.json";
+import { isDangerZoneTabVisible } from "@shared";
 import type { LibraryGame } from "@types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SidebarModal, type SidebarModalTab } from "../../../common";
 import { resolvePreferredGameAssets } from "../../../../helpers";
+import { Feature, useFeature, useUserPreferences } from "../../../../hooks";
 import { useUserDetails } from "../../../../hooks/use-user-details.hook";
 
 import "./styles.scss";
@@ -38,13 +41,19 @@ import {
   GAME_COMPATIBILITY_SETTINGS_PRIMARY_CONTROL_ID,
 } from "./compatibility-tab";
 import {
+  GameLocalBackupsSettingsTab,
+  GAME_LOCAL_BACKUPS_PRIMARY_CONTROL_ID,
+} from "./local-backups-tab";
+import {
   shouldShowCloudSaveV2Tab,
   shouldShowLegacyCloudSaveTab,
+  shouldShowLocalBackupsTab,
 } from "./cloud-tab-visibility";
 
-type GameSettingsTabId =
+export type GameSettingsTabId =
   | "launch"
   | "customization"
+  | "local_backups"
   | "hydra_cloud"
   | "hydra_cloud_legacy"
   | "compatibility"
@@ -54,6 +63,7 @@ type GameSettingsTabId =
 const GAME_SETTINGS_TAB_FOCUS_IDS: Record<GameSettingsTabId, string> = {
   launch: GAME_LAUNCH_SETTINGS_PRIMARY_CONTROL_ID,
   customization: GAME_CUSTOMIZATION_SETTINGS_PRIMARY_CONTROL_ID,
+  local_backups: GAME_LOCAL_BACKUPS_PRIMARY_CONTROL_ID,
   hydra_cloud: GAME_CLOUD_V2_SETTINGS_PRIMARY_CONTROL_ID,
   hydra_cloud_legacy: GAME_CLOUD_SETTINGS_PRIMARY_CONTROL_ID,
   downloads: GAME_DOWNLOADS_SETTINGS_PRIMARY_CONTROL_ID,
@@ -65,6 +75,7 @@ interface GameSettingsModalProps {
   visible: boolean;
   game: LibraryGame;
   removeFilesGame?: LibraryGame;
+  initialTab?: GameSettingsTabId;
   launchSettings: GameLaunchSettingsProps;
   customizationSettings: GameCustomizationSettingsProps;
   cloudSettings: GameCloudSettingsProps;
@@ -75,14 +86,17 @@ export function GameSettingsModal({
   visible,
   game,
   removeFilesGame,
+  initialTab = "launch",
   launchSettings,
   customizationSettings,
   cloudSettings,
   onClose,
 }: Readonly<GameSettingsModalProps>) {
-  const { t } = useTranslation(["game_details", "header"]);
-  const [activeTabId, setActiveTabId] = useState<GameSettingsTabId>("launch");
+  const { t } = useTranslation(["game_details", "header", "ludusavi"]);
+  const [activeTabId, setActiveTabId] = useState<GameSettingsTabId>(initialTab);
   const { userDetails, hasActiveSubscription } = useUserDetails();
+  const userPreferences = useUserPreferences();
+  const { isFeatureEnabled } = useFeature();
   const preferredAssets = useMemo(
     () => resolvePreferredGameAssets(game, null),
     [game]
@@ -91,13 +105,18 @@ export function GameSettingsModal({
   const shouldShowCompatibilityTab =
     globalThis.window.electron.platform === "linux" || isDev;
   const shouldShowDownloadsTab = game.shop !== "custom";
+  const shouldShowDangerZoneTab = isDangerZoneTabVisible(userPreferences, {
+    isCustomGame: game.shop === "custom",
+    screenshotsFeatureEnabled: isFeatureEnabled(Feature.Screenshots),
+    includePlaytimeActions: false,
+  });
   const settingsLabel = t("settings", { ns: "header" });
 
   useEffect(() => {
     if (visible) {
-      setActiveTabId("launch");
+      setActiveTabId(initialTab);
     }
-  }, [visible]);
+  }, [initialTab, visible]);
 
   const launchContent = useMemo(
     () => <GameLaunchSettingsTab {...launchSettings} />,
@@ -111,16 +130,26 @@ export function GameSettingsModal({
     () => <GameCloudSettingsTab {...cloudSettings} />,
     [cloudSettings]
   );
-  const handleSelectExecutableFromCloudV2 = useCallback(() => {
+  const handleSelectExecutableFromSaveTab = useCallback(() => {
     setActiveTabId("launch");
   }, []);
   const cloudV2Content = useMemo(
     () => (
       <GameCloudV2SettingsTab
-        onSelectExecutable={handleSelectExecutableFromCloudV2}
+        onSelectExecutable={handleSelectExecutableFromSaveTab}
       />
     ),
-    [handleSelectExecutableFromCloudV2]
+    [handleSelectExecutableFromSaveTab]
+  );
+  const localBackupsContent = useMemo(
+    () => (
+      <GameLocalBackupsSettingsTab
+        game={game}
+        onSelectExecutable={handleSelectExecutableFromSaveTab}
+        onCloseModal={onClose}
+      />
+    ),
+    [game, handleSelectExecutableFromSaveTab, onClose]
   );
   const downloadContent = useMemo(
     () => <GameDownloadsSettingsTab game={game} />,
@@ -142,33 +171,43 @@ export function GameSettingsModal({
   );
 
   const isSignedIn = userDetails !== null;
+  const shouldShowLocalBackups = shouldShowLocalBackupsTab(
+    localEdition.hideCloudPromotions,
+    game.isDeleted
+  );
   const shouldShowCloudV2Tab = shouldShowCloudSaveV2Tab(
     game.shop,
     isSignedIn,
     hasActiveSubscription,
-    game.platform
+    game.platform,
+    localEdition.hideCloudPromotions
   );
   const shouldShowLegacyCloudTab = shouldShowLegacyCloudSaveTab(
     game.shop,
     isSignedIn,
     hasActiveSubscription,
-    game.platform
+    game.platform,
+    localEdition.hideCloudPromotions
   );
 
   useEffect(() => {
     const isUnavailableTab =
+      (activeTabId === "local_backups" && !shouldShowLocalBackups) ||
       (activeTabId === "hydra_cloud" && !shouldShowCloudV2Tab) ||
       (activeTabId === "hydra_cloud_legacy" && !shouldShowLegacyCloudTab) ||
-      (activeTabId === "downloads" && !shouldShowDownloadsTab);
+      (activeTabId === "downloads" && !shouldShowDownloadsTab) ||
+      (activeTabId === "danger_zone" && !shouldShowDangerZoneTab);
 
     if (isUnavailableTab) {
       setActiveTabId("launch");
     }
   }, [
     activeTabId,
+    shouldShowLocalBackups,
     shouldShowCloudV2Tab,
     shouldShowLegacyCloudTab,
     shouldShowDownloadsTab,
+    shouldShowDangerZoneTab,
   ]);
 
   const tabs = useMemo<SidebarModalTab<GameSettingsTabId>[]>(
@@ -183,6 +222,15 @@ export function GameSettingsModal({
         label: t("settings_category_customization"),
         content: customizationContent,
       },
+      ...(shouldShowLocalBackups
+        ? [
+            {
+              id: "local_backups",
+              label: t("title", { ns: "ludusavi" }),
+              content: localBackupsContent,
+            } satisfies SidebarModalTab<GameSettingsTabId>,
+          ]
+        : []),
       ...(shouldShowCloudV2Tab
         ? [
             {
@@ -223,11 +271,15 @@ export function GameSettingsModal({
             } satisfies SidebarModalTab<GameSettingsTabId>,
           ]
         : []),
-      {
-        id: "danger_zone",
-        label: t("settings_category_danger_zone"),
-        content: dangerContent,
-      },
+      ...(shouldShowDangerZoneTab
+        ? [
+            {
+              id: "danger_zone",
+              label: t("settings_category_danger_zone"),
+              content: dangerContent,
+            } satisfies SidebarModalTab<GameSettingsTabId>,
+          ]
+        : []),
     ],
     [
       cloudContent,
@@ -237,10 +289,13 @@ export function GameSettingsModal({
       dangerContent,
       downloadContent,
       launchContent,
+      localBackupsContent,
       shouldShowCloudV2Tab,
       shouldShowLegacyCloudTab,
+      shouldShowLocalBackups,
       shouldShowCompatibilityTab,
       shouldShowDownloadsTab,
+      shouldShowDangerZoneTab,
       t,
     ]
   );

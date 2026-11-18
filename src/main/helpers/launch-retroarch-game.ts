@@ -2,7 +2,12 @@ import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { db, gamesSublevel, levelKeys } from "@main/level";
-import { emulators, logger, retroarch } from "@main/services";
+import {
+  BigPictureGameWindowService,
+  emulators,
+  logger,
+  retroarch,
+} from "@main/services";
 import type {
   GameShop,
   RetroArchCoreName,
@@ -12,6 +17,7 @@ import type {
 import { resolveEmulatorWrappers } from "./launch-classics-game";
 import { resolveLaunchCommand } from "./resolve-launch-command";
 import { spawnDetachedEmulator } from "./spawn-detached-emulator";
+import { startCompanionAppsBeforeGame } from "@main/services/companion-apps";
 import {
   findFlatpakCommand,
   resolveFlatpakEmulatorLaunch,
@@ -122,11 +128,22 @@ export const launchRetroArchGame = async (
   let sessionStarted = false;
 
   try {
+    await startCompanionAppsBeforeGame();
+    BigPictureGameWindowService?.notifyGameLaunchDispatching?.({
+      gameKey,
+      executablePaths: [executableTarget],
+    });
     const processRef = await spawnDetachedEmulator(
       resolvedLaunchCommand,
       workingDirectory,
       () => new RetroArchNotConfiguredError(platform)
     );
+    if (processRef.pid) {
+      BigPictureGameWindowService?.notifyGameLaunchProcessSpawned?.(
+        gameKey,
+        processRef.pid
+      );
+    }
 
     if (sessionGame) {
       await emulators.startEmulatorSession({
@@ -143,6 +160,7 @@ export const launchRetroArchGame = async (
     processRef.unref();
   } catch (error) {
     if (!sessionStarted) {
+      BigPictureGameWindowService?.notifyGameLaunchEnded?.(gameKey, false);
       await cleanupEmulatorSouvenirSession(souvenirSession);
     }
     logger.error("Failed to spawn RetroArch", error);

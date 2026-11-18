@@ -3,8 +3,13 @@ import { describe, it } from "node:test";
 import { JSDOM } from "jsdom";
 
 import {
+  TRAILER_MUTED_STORAGE_KEY,
+  TRAILER_VOLUME_STORAGE_KEY,
+  readStoredTrailerMuted,
+  readStoredTrailerVolume,
   shouldPauseOnToggle,
   shouldSpaceTogglePlayback,
+  writeTrailerAudioState,
 } from "./gallery-playback.js";
 
 describe("shouldPauseOnToggle", () => {
@@ -71,5 +76,48 @@ describe("shouldSpaceTogglePlayback", () => {
 
   it("leaves Space alone for controls outside the gallery", () => {
     assert.equal(shouldSpaceTogglePlayback(byId("outside"), gallery), false);
+  });
+});
+
+describe("trailer audio storage", () => {
+  const createMemoryStorage = (initial: Record<string, string> = {}) => {
+    const map = new Map<string, string>(Object.entries(initial));
+    return {
+      getItem: (key: string) => map.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        map.set(key, value);
+      },
+      removeItem: (key: string) => {
+        map.delete(key);
+      },
+    };
+  };
+
+  it("defaults muted to true when saving is enabled and no value is stored", () => {
+    const storage = createMemoryStorage();
+    assert.equal(readStoredTrailerMuted(storage, true), true);
+    assert.equal(readStoredTrailerVolume(storage), 1);
+  });
+
+  it("reads and writes both volume and mute status when saving is enabled", () => {
+    const storage = createMemoryStorage();
+    assert.equal(writeTrailerAudioState(storage, 0.4, false, true), true);
+    assert.equal(storage.getItem(TRAILER_VOLUME_STORAGE_KEY), "0.4");
+    assert.equal(storage.getItem(TRAILER_MUTED_STORAGE_KEY), "false");
+    assert.equal(readStoredTrailerMuted(storage, true), false);
+    assert.equal(readStoredTrailerVolume(storage), 0.4);
+  });
+
+  it("ignores stored mute status and does not save it when saving is disabled", () => {
+    const storage = createMemoryStorage({
+      [TRAILER_VOLUME_STORAGE_KEY]: "0.7",
+      [TRAILER_MUTED_STORAGE_KEY]: "false",
+    });
+
+    assert.equal(readStoredTrailerMuted(storage, false), true);
+    assert.equal(writeTrailerAudioState(storage, 0.5, false, false), true);
+    assert.equal(storage.getItem(TRAILER_VOLUME_STORAGE_KEY), "0.5");
+    assert.equal(storage.getItem(TRAILER_MUTED_STORAGE_KEY), null);
+    assert.equal(writeTrailerAudioState(storage, 0.5, false, false), false);
   });
 });

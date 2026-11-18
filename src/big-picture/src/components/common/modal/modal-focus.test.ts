@@ -18,6 +18,15 @@ let verifyModalFocus: (
   enabled: boolean,
   navigateBeforeActivation: boolean
 ) => Promise<void>;
+let verifyBigPictureControls: (
+  scenario: "controller" | "mouse" | "keyboard" | "loading" | "modal"
+) => Promise<void>;
+let verifyBackupSettingsScreens: (advanced: boolean) => Promise<void>;
+let verifyResetSettingsScreens: (
+  bigPicture: boolean,
+  writes: () => number
+) => Promise<void>;
+let verifySettingsButtonNavigation: () => Promise<void>;
 
 function setGlobal(key: string, value: unknown) {
   previousGlobals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
@@ -30,6 +39,10 @@ before(async () => {
     url: "http://localhost/",
   });
   const window = dom.window;
+  Object.defineProperty(window, "electron", {
+    configurable: true,
+    value: { platform: "win32" },
+  });
   for (const key of [
     "window",
     "document",
@@ -41,6 +54,7 @@ before(async () => {
     "KeyboardEvent",
     "MouseEvent",
     "HTMLInputElement",
+    "HTMLButtonElement",
     "HTMLTextAreaElement",
     "SVGElement",
     "CustomEvent",
@@ -87,6 +101,16 @@ before(async () => {
         name: "test-package-resolution",
         setup(builder) {
           builder.onResolve(
+            { filter: /\.(svg|png|jpg|webp|wav)(\?react)?$/ },
+            (args) => ({ path: args.path, namespace: "test-asset" })
+          );
+          builder.onLoad({ filter: /.*/, namespace: "test-asset" }, (args) => ({
+            contents: args.path.endsWith("?react")
+              ? "export default function TestIcon() { return null; }"
+              : "export default 'test-asset';",
+            loader: "js",
+          }));
+          builder.onResolve(
             { filter: /^(lodash-es|electron-log)\// },
             (args) => ({
               path: require.resolve(args.path),
@@ -112,7 +136,63 @@ before(async () => {
     },
     define: { "process.env.NODE_ENV": '"test"' },
   });
-  ({ verifyModalFocus } = await import(pathToFileURL(output).href));
+  ({
+    verifyModalFocus,
+    verifyBigPictureControls,
+    verifyBackupSettingsScreens,
+    verifyResetSettingsScreens,
+    verifySettingsButtonNavigation,
+  } = await import(pathToFileURL(output).href));
+});
+
+describe("guarded settings resets", () => {
+  for (const bigPicture of [false, true]) {
+    it(`reviews, cancels and saves only explicit resets in ${bigPicture ? "Big Picture" : "desktop"}`, async () => {
+      let writes = 0,
+        runAtStartup = true;
+      const subscription = () => () => {};
+      Object.defineProperty(dom.window, "electron", {
+        configurable: true,
+        value: {
+          getUserPreferences: async () => ({ runAtStartup }),
+          onUserPreferencesUpdated: subscription,
+          onLudusaviStateChanged: subscription,
+          onCustomThemeUpdated: subscription,
+          onGamesRunning: subscription,
+          getLibrary: async () => [],
+          getSettingsResetStatus: async (target: { group: string }) => ({
+            target,
+            isDefault:
+              !["general", "combined"].includes(target.group) || !runAtStartup,
+            recovery: null,
+          }),
+          previewSettingsReset: async (target: { group: string }) => ({
+            token: "review",
+            target,
+            restoring: false,
+            expiresAt: Date.now() + 300_000,
+            changes: [
+              {
+                key: "runAtStartup",
+                label: "Run at startup",
+                before: "On",
+                after: "Off",
+              },
+            ],
+            warnings: ["Settings only"],
+            confirmationPhrase:
+              target.group === "combined" ? "RESET SETTINGS" : null,
+            directTorrentConfirmation: false,
+          }),
+          applySettingsReset: async () => {
+            writes++;
+            runAtStartup = false;
+          },
+        },
+      });
+      await verifyResetSettingsScreens(bigPicture, () => writes);
+    });
+  }
 });
 
 after(async () => {
@@ -144,4 +224,128 @@ describe("modal physical keyboard focus", () => {
       });
     }
   }
+});
+
+describe("Big Picture input and modal safeguards", () => {
+  for (const scenario of [
+    "controller",
+    "mouse",
+    "keyboard",
+    "loading",
+    "modal",
+  ] as const) {
+    it(scenario, async () => {
+      Object.defineProperty(dom.window, "electron", {
+        configurable: true,
+        value: { getUserPreferences: async () => null },
+      });
+      await verifyBigPictureControls(scenario);
+    });
+  }
+});
+
+describe("Big Picture backup and advanced settings", () => {
+  for (const advanced of [false, true]) {
+    it(
+      advanced
+        ? "guards tools and preserves newly added website drafts"
+        : "keeps sensitive backup controls out of everyday settings",
+      async () => {
+        const noopSubscription = () => () => {};
+        Object.defineProperty(dom.window, "electron", {
+          configurable: true,
+          value: {
+            getUserPreferences: async () => null,
+            getLibrary: async () => [],
+            onLibraryBatchComplete: noopSubscription,
+            onDownloadsUpdated: noopSubscription,
+            getNetworkInterfaces: async () => [],
+            getDownloadSources: async () => [],
+            getSourceWebsiteProfiles: async () => ({}),
+            clearSourceWebsiteData: async () => {
+              throw new Error("Fixture cookie clearing failed");
+            },
+            getExcludedLibraryGames: async () => [],
+            onExcludedLibraryGamesUpdated: noopSubscription,
+            getGamesRunning: async () => [],
+            onGamesRunning: noopSubscription,
+            hydraApi: { get: async () => [] },
+            onLudusaviStateChanged: noopSubscription,
+            getLudusaviLocalState: async () => ({
+              settings: {
+                enabled: true,
+                destination: "C:/fixture/backups",
+                fullRetention: 10,
+                games: {},
+              },
+              games: [],
+              history: [],
+              busy: false,
+              bulkProgress: { running: false },
+            }),
+          },
+        });
+        await verifyBackupSettingsScreens(advanced);
+      }
+    );
+  }
+});
+
+describe("Big Picture settings directional button navigation", () => {
+  it("supports 2D Left/Right/Up/Down navigation in Advanced tools, Companion Apps, Save Backups, and Reset", async () => {
+    const noopSubscription = () => () => {};
+    Object.defineProperty(dom.window, "electron", {
+      configurable: true,
+      value: {
+        platform: "win32",
+        getUserPreferences: async () => ({
+          companionAppsEnabled: true,
+          companionApps: [
+            {
+              id: "app-1",
+              name: "DS4Windows",
+              executablePath: "C:/Tools/DS4Windows.exe",
+              enabled: true,
+            },
+          ],
+        }),
+        onUserPreferencesUpdated: noopSubscription,
+        onLudusaviStateChanged: noopSubscription,
+        onCustomThemeUpdated: noopSubscription,
+        onGamesRunning: noopSubscription,
+        onExcludedLibraryGamesUpdated: noopSubscription,
+        onLibraryBatchComplete: noopSubscription,
+        onDownloadsUpdated: noopSubscription,
+        getLibrary: async () => [],
+        getNetworkInterfaces: async () => [],
+        getDownloadSources: async () => [],
+        getSourceWebsiteProfiles: async () => ({}),
+        getExcludedLibraryGames: async () => [],
+        getGamesRunning: async () => [],
+        hydraApi: { get: async () => [] },
+        getLudusaviLocalState: async () => ({
+          settings: {
+            enabled: true,
+            destination: "C:/fixture/backups",
+            fullRetention: 10,
+            games: {},
+          },
+          games: [{ key: "steam:1", title: "Portal" }],
+          gameSummaries: {},
+          history: [],
+          busy: false,
+          bulkProgress: { running: false },
+        }),
+        getSettingsResetStatus: async (target: { group: string }) => ({
+          target,
+          isDefault: target.group !== "general",
+          recovery:
+            target.group === "general"
+              ? { savedAt: Date.now(), interrupted: false }
+              : null,
+        }),
+      },
+    });
+    await verifySettingsButtonNavigation();
+  });
 });

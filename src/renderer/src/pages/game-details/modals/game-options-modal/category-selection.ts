@@ -10,6 +10,7 @@ export interface GameSettingsCategoryAvailability {
   showLegacyCloudSaveSettings: boolean;
   showEpicCloudSettings: boolean;
   showDownloadSettings: boolean;
+  showDangerZoneSettings?: boolean;
 }
 
 const epicCloudBridgeMethods = [
@@ -97,6 +98,13 @@ export const getAvailableGameSettingsCategory = (
   }
 
   if (category === "epic_cloud" && !availability.showEpicCloudSettings) {
+    return "general";
+  }
+
+  if (
+    category === "danger_zone" &&
+    availability.showDangerZoneSettings === false
+  ) {
     return "general";
   }
 

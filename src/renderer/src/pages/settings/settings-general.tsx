@@ -290,20 +290,34 @@ export function SettingsGeneral() {
     <div className="settings-general">
       <section className="settings-general__getting-started">
         <div>
-          <h3>Getting started</h3>
+          <h3>Setup &amp; Interactive Tutorials</h3>
           <p>
-            Reopen the setup guide for catalogs, save backups, and download
-            controls.
+            Reopen the first-time setup wizard for recommended sources and
+            folders, or launch step-by-step interactive tutorials across the UI.
           </p>
         </div>
-        <Button
-          theme="outline"
-          onClick={() =>
-            window.dispatchEvent(new Event("hydra:open-getting-started-guide"))
-          }
-        >
-          Open setup guide
-        </Button>
+        <div className="settings-general__getting-started-actions">
+          <Button
+            theme="outline"
+            onClick={() =>
+              window.dispatchEvent(
+                new Event("hydra:open-getting-started-guide")
+              )
+            }
+          >
+            Open setup wizard
+          </Button>
+          <Button
+            theme="outline"
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent("hydra:open-interactive-tutorial")
+              )
+            }
+          >
+            Interactive tutorials
+          </Button>
+        </div>
       </section>
       <TextField
         label={t("downloads_path")}

@@ -6,15 +6,16 @@
   gap: 16px;
 
   &__description {
-    font-size: globals.$small-font-size;
-    color: globals.$body-color;
+    font-size: globals.$hint-font-size;
+    color: globals.$subtle-color;
     margin: 0;
     line-height: 1.5;
+    max-width: 72ch;
   }
 
   &__error {
-    font-size: globals.$small-font-size;
-    color: globals.$error-color;
+    font-size: globals.$hint-font-size;
+    color: #ff8d8d;
     margin: 0;
     line-height: 1.5;
   }
@@ -44,9 +45,14 @@
     background: globals.$dark-background-color;
     color: #dadbe1;
     font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
-    font-size: globals.$small-font-size;
+    font-size: globals.$hint-font-size;
     line-height: 1.5;
-    resize: none;
+    resize: vertical;
+    transition: border-color 0.2s ease;
+
+    &:hover:not(:disabled) {
+      border-color: rgba(255, 255, 255, 0.5);
+    }
 
     &:focus {
       outline: none;
@@ -60,13 +66,18 @@
 
   &__url-input {
     width: 100%;
-    padding: 12px;
+    padding: 10px 12px;
     border: 1px solid globals.$border-color;
     border-radius: 8px;
     background: globals.$dark-background-color;
     color: #dadbe1;
     font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
-    font-size: globals.$small-font-size;
+    font-size: globals.$hint-font-size;
+    transition: border-color 0.2s ease;
+
+    &:hover:not(:disabled) {
+      border-color: rgba(255, 255, 255, 0.5);
+    }
 
     &:focus {
       outline: none;
@@ -76,5 +87,9 @@
     &::placeholder {
       color: rgba(255, 255, 255, 0.4);
     }
+  }
+
+  > .button {
+    align-self: flex-start;
   }
 }

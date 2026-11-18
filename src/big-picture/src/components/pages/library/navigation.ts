@@ -3,6 +3,8 @@ export const LIBRARY_HERO_ACTIONS_REGION_ID = "library-hero-actions";
 export const LIBRARY_HERO_LAUNCH_BUTTON_ID = "library-hero-launch-button";
 export const LIBRARY_HERO_OPEN_SETTINGS_BUTTON_ID =
   "library-hero-open-settings-button";
+export const LIBRARY_HERO_LOCAL_SAVE_BUTTON_ID =
+  "library-hero-local-save-button";
 export const LIBRARY_HERO_FAVORITE_BUTTON_ID = "library-hero-favorite-button";
 export const LIBRARY_FILTERS_TOOLBAR_REGION_ID = "library-filters-toolbar";
 export const LIBRARY_FILTERS_TABS_REGION_ID = "library-filters-tabs";

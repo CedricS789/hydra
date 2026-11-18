@@ -77,6 +77,7 @@ function InputModeMouseDetector() {
   useEffect(() => {
     const handlePointerActivity = (event: MouseEvent | WheelEvent) => {
       if (
+        event.type !== "mousedown" &&
         !shouldEnterMouseMode(
           useInputModeStore.getState().mode,
           GamepadService.getInstance().wasGamepadRecentlyActive()

@@ -178,6 +178,9 @@ export function ScreenshotCarousel({
   const autoplayEnabled = preferencesLoaded
     ? userPreferences.autoplayGameTrailers !== false
     : false;
+  const saveMuteStatus = preferencesLoaded
+    ? userPreferences.alwaysMuteTrailersByDefault !== true
+    : false;
 
   const mediaItems: MediaItem[] = useMemo(() => {
     const items: MediaItem[] = [];
@@ -608,6 +611,7 @@ export function ScreenshotCarousel({
             item={item}
             autoPlay={autoplayEnabled && index === selectedIndex}
             loadOnDemand={!autoplayEnabled}
+            saveMuteStatus={saveMuteStatus}
             isFullscreen={borrowed}
             idleTimeoutMs={borrowed ? MEDIA_VIEWER_IDLE_TIMEOUT_MS : undefined}
             indicatorTimeoutMs={

@@ -35,12 +35,22 @@ export const parseLeaderboardScope = (
     : "global";
 
 export const getServedMetrics = (
-  servedIds: readonly string[] | null
+  servedIds: readonly string[] | null,
+  isMetricAllowed: (metric: LeaderboardMetric) => boolean = () => true
 ): LeaderboardMetric[] => {
-  const served = LEADERBOARD_METRICS.filter((metric) =>
-    servedIds?.includes(metric)
+  if (servedIds === null) {
+    if (isMetricAllowed("playtime")) return ["playtime"];
+    return LEADERBOARD_METRICS.filter(isMetricAllowed).slice(0, 1);
+  }
+
+  const served = LEADERBOARD_METRICS.filter(
+    (metric) => servedIds.includes(metric) && isMetricAllowed(metric)
   );
-  return served.length > 0 ? served : ["playtime"];
+  if (served.length > 0) return served;
+
+  return servedIds.length === 0
+    ? LEADERBOARD_METRICS.filter(isMetricAllowed).slice(0, 1)
+    : [];
 };
 
 export interface LeaderboardUser {

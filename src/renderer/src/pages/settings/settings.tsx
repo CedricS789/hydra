@@ -24,6 +24,7 @@ import {
   PlayIcon,
   VideoIcon,
   ShieldCheckIcon,
+  QuestionIcon,
 } from "@primer/octicons-react";
 import { Camera, Gamepad2, ShieldAlert, Wrench } from "lucide-react";
 import { SettingsContextGeneral } from "./settings-context-general";
@@ -268,6 +269,39 @@ function SettingsContent() {
                       </Fragment>
                     );
                   })}
+                  <div className="settings__sidebar-divider" />
+                  <button
+                    type="button"
+                    className="settings__sidebar-button"
+                    onClick={() =>
+                      window.dispatchEvent(
+                        new Event("hydra:open-getting-started-guide")
+                      )
+                    }
+                  >
+                    <span className="settings__sidebar-button-icon">
+                      <GearIcon size={16} />
+                    </span>
+                    <span className="settings__sidebar-button-label">
+                      Setup wizard
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="settings__sidebar-button"
+                    onClick={() =>
+                      window.dispatchEvent(
+                        new CustomEvent("hydra:open-interactive-tutorial")
+                      )
+                    }
+                  >
+                    <span className="settings__sidebar-button-icon">
+                      <QuestionIcon size={16} />
+                    </span>
+                    <span className="settings__sidebar-button-label">
+                      Interactive tutorials
+                    </span>
+                  </button>
                 </aside>
 
                 <div className="settings__panel">

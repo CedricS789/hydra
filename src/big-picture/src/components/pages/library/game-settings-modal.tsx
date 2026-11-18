@@ -1,6 +1,6 @@
 import type { LibraryGame } from "@types";
 import { hasCloudSaveExecutableSelection } from "@shared";
-import { GameSettingsModal } from "../game";
+import { GameSettingsModal, type GameSettingsTabId } from "../game";
 import { BigPictureCloudSaveProvider } from "../game/cloud-save-v2";
 import { useGameSettingsModalState } from "../game/game-settings-modal/use-game-settings-modal-state";
 import { useGameDetails } from "../../../hooks";
@@ -8,12 +8,14 @@ import { useGameDetails } from "../../../hooks";
 interface LibraryGameSettingsModalProps {
   visible: boolean;
   game: LibraryGame | null;
+  initialTab?: GameSettingsTabId;
   onClose: () => void;
 }
 
 export function LibraryGameSettingsModal({
   visible,
   game,
+  initialTab = "launch",
   onClose,
 }: Readonly<LibraryGameSettingsModalProps>) {
   const objectId = game?.objectId ?? "";
@@ -58,6 +60,7 @@ export function LibraryGameSettingsModal({
         visible={visible}
         game={modalGame}
         removeFilesGame={presentationGame ?? modalGame}
+        initialTab={initialTab}
         launchSettings={launchSettings}
         customizationSettings={customizationSettings}
         cloudSettings={cloudSettings}

@@ -1,0 +1,111 @@
+.game-local-backups-tab {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing-unit) * 5);
+
+  &__card {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing-unit) * 4);
+    padding: calc(var(--spacing-unit) * 5);
+    border-radius: calc(var(--spacing-unit) * 3);
+    border: 1px solid var(--secondary-border);
+    background: var(--surface);
+  }
+
+  &__card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: calc(var(--spacing-unit) * 4);
+  }
+
+  &__title-row {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--spacing-unit) * 3);
+    flex-wrap: wrap;
+    margin-bottom: calc(var(--spacing-unit) * 2);
+  }
+
+  &__game-title {
+    margin: 0;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+
+    &--enabled {
+      background: rgba(138, 235, 19, 0.14);
+      color: var(--success);
+      border: 1px solid rgba(138, 235, 19, 0.3);
+    }
+
+    &--disabled {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-secondary);
+      border: 1px solid var(--secondary-border);
+    }
+  }
+
+  &__status-copy {
+    margin: 0;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  &__hint {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  &__error {
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: var(--error-background);
+    border: 1px solid var(--error-secondary);
+    color: var(--text-error);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  &__banner {
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: var(--sucess-background);
+    border: 1px solid var(--sucess-secondary);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--spacing-unit) * 3);
+    flex-wrap: wrap;
+  }
+
+  &__executable-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(var(--spacing-unit) * 4);
+    flex-wrap: wrap;
+    padding-top: calc(var(--spacing-unit) * 3);
+    border-top: 1px solid var(--secondary-border);
+  }
+}

@@ -1,3 +1,4 @@
+import { withResetDefaults } from "../../../../shared/settings-reset";
 import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import { useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -64,18 +65,23 @@ const resolveLanguage = (language: string | undefined) => {
 const buildForm = (
   preferences: UserPreferences | null,
   defaultDownloadsPath: string
-) => ({
-  downloadsPath: preferences?.downloadsPath ?? defaultDownloadsPath,
-  language: resolveLanguage(preferences?.language),
-  preferQuitInsteadOfHiding: preferences?.preferQuitInsteadOfHiding ?? false,
-  runAtStartup: preferences?.runAtStartup ?? false,
-  startMinimized: preferences?.startMinimized ?? false,
-  hideToTrayOnGameStart: preferences?.hideToTrayOnGameStart ?? false,
-  launchToLibraryPage: preferences?.launchToLibraryPage ?? false,
-  enableAutoInstall: preferences?.enableAutoInstall ?? false,
-  useNativeWindowDecorations: preferences?.useNativeWindowDecorations ?? false,
-  openFriendsWindowOnStartup: preferences?.openFriendsWindowOnStartup ?? false,
-});
+) => {
+  preferences = withResetDefaults(preferences);
+  return {
+    downloadsPath: preferences?.downloadsPath ?? defaultDownloadsPath,
+    language: resolveLanguage(preferences?.language),
+    preferQuitInsteadOfHiding: preferences?.preferQuitInsteadOfHiding ?? false,
+    runAtStartup: preferences?.runAtStartup ?? false,
+    startMinimized: preferences?.startMinimized ?? false,
+    hideToTrayOnGameStart: preferences?.hideToTrayOnGameStart ?? false,
+    launchToLibraryPage: preferences?.launchToLibraryPage ?? false,
+    enableAutoInstall: preferences?.enableAutoInstall ?? false,
+    useNativeWindowDecorations:
+      preferences?.useNativeWindowDecorations ?? false,
+    openFriendsWindowOnStartup:
+      preferences?.openFriendsWindowOnStartup ?? false,
+  };
+};
 
 export function SettingsContextGeneral({
   appearance,

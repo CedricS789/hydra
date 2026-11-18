@@ -20,6 +20,7 @@ export interface ModalProps {
   children: React.ReactNode;
   clickOutsideToClose?: boolean;
   className?: string;
+  busy?: boolean;
 }
 
 export function Modal({
@@ -34,6 +35,7 @@ export function Modal({
   children,
   clickOutsideToClose = true,
   className,
+  busy = false,
 }: ModalProps) {
   const [isClosing, setIsClosing] = useState(false);
   const [portalTarget, setPortalTarget] = useState<Element | null>(null);
@@ -43,6 +45,7 @@ export function Modal({
   const { t } = useTranslation("modal");
 
   const handleCloseClick = useCallback(() => {
+    if (busy) return;
     onCloseStart?.();
     setIsClosing(true);
     const zero = performance.now();
@@ -55,7 +58,7 @@ export function Modal({
         setIsClosing(false);
       }
     });
-  }, [onClose, onCloseStart]);
+  }, [onClose, onCloseStart, busy]);
 
   const isTopMostModal = () => {
     if (
@@ -145,6 +148,8 @@ export function Modal({
           className
         )}
         role="dialog"
+        aria-modal="true"
+        aria-busy={busy}
         aria-describedby={description ? descriptionId : undefined}
         ref={modalContentRef}
         data-hydra-dialog
@@ -166,6 +171,7 @@ export function Modal({
             onClick={handleCloseClick}
             className="modal__close-button"
             aria-label={t("close")}
+            disabled={busy}
           >
             <XIcon className="modal__close-button-icon" size={24} />
           </button>

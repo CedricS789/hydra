@@ -87,12 +87,19 @@ aside {
 aside h2 {
   font-size: 15px;
 }
-form label {
+form label,
+.field-label {
   display: block;
   margin: 12px 0;
 }
+.field-label {
+  margin-top: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #383838;
+}
 form label > input:not([type="checkbox"]),
-form label > select {
+form label > select,
+.field-label > input:not([type="checkbox"]) {
   display: block;
   width: 100%;
   margin-top: 5px;

@@ -24,6 +24,32 @@ export async function confinedSavePath(root: string, candidate: string) {
   return actual;
 }
 
+/** Confine a pre-restore safety snapshot folder under <destination>/.hydra-restore-safety. */
+export async function confinedSafetySnapshotPath(
+  destination: string,
+  snapshotId: string
+) {
+  if (
+    !snapshotId ||
+    snapshotId === "." ||
+    snapshotId === ".." ||
+    snapshotId.includes("/") ||
+    snapshotId.includes("\\") ||
+    path.basename(snapshotId) !== snapshotId
+  )
+    throw new Error("Invalid safety snapshot identifier.");
+  const safetyRoot = path.join(destination, ".hydra-restore-safety");
+  const candidate = await confinedSavePath(
+    safetyRoot,
+    path.join(safetyRoot, snapshotId)
+  ).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT")
+      throw new Error("The selected safety snapshot is no longer available.");
+    throw error;
+  });
+  return confinedSavePath(destination, candidate);
+}
+
 /** Check declared entries plus ZIP integrity, without extracting to live saves. */
 export async function validateSaveVersion(
   destination: string,
@@ -78,7 +104,11 @@ export async function validateSaveVersion(
     const file = await confinedSavePath(
       gameFolder,
       path.join(gameFolder, item.name)
-    );
+    ).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT")
+        throw new Error("The selected backup version is no longer available.");
+      throw error;
+    });
     if (item.name.endsWith(".zip")) entries.set(item.name, await archive(file));
   }
   let files = 0;
@@ -105,24 +135,56 @@ export async function validateSaveVersion(
       const file = await confinedSavePath(
         gameFolder,
         path.join(gameFolder, owner.name, member)
-      );
-      if (!(await fs.stat(file)).isFile())
+      ).catch((error: NodeJS.ErrnoException) => {
+        if (error.code === "ENOENT")
+          throw new Error(`A declared save is missing: ${source}`);
+        throw error;
+      });
+      const stat = await fs.stat(file).catch((error: NodeJS.ErrnoException) => {
+        if (error.code === "ENOENT")
+          throw new Error(`A declared save is missing: ${source}`);
+        throw error;
+      });
+      if (!stat.isFile())
         throw new Error(`A declared save is missing: ${source}`);
-      if (info.size !== undefined && (await fs.stat(file)).size !== info.size)
+      if (info.size !== undefined && stat.size !== info.size)
         throw new Error(`A saved file has an unexpected size: ${source}`);
     }
     files++;
   }
-  const registryOwner = differential?.registry?.hash ? differential : full;
+  const registryOwner =
+    differential?.registry && "hash" in differential.registry
+      ? differential
+      : full;
   if (registryOwner.registry?.hash) {
     if (registryOwner.name.endsWith(".zip")) {
-      if (!entries.get(registryOwner.name)?.has("registry.yaml"))
+      const archiveEntries = entries.get(registryOwner.name);
+      if (
+        !archiveEntries?.has("registry.reg") &&
+        !archiveEntries?.has("registry.yaml")
+      )
         throw new Error("The saved registry data is missing.");
-    } else
-      await confinedSavePath(
-        gameFolder,
-        path.join(gameFolder, registryOwner.name, "registry.yaml")
-      );
+    } else {
+      let foundRegistry = false;
+      for (const candidateName of ["registry.reg", "registry.yaml"]) {
+        const candidatePath = path.join(
+          gameFolder,
+          registryOwner.name,
+          candidateName
+        );
+        try {
+          const resolved = await confinedSavePath(gameFolder, candidatePath);
+          if ((await fs.stat(resolved)).isFile()) {
+            foundRegistry = true;
+            break;
+          }
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        }
+      }
+      if (!foundRegistry)
+        throw new Error("The saved registry data is missing.");
+    }
   }
   return { files, archives: entries.size };
 }

@@ -7,6 +7,8 @@ mod linux;
 mod unsupported;
 #[cfg(target_os = "windows")]
 mod windows;
+#[cfg(target_os = "windows")]
+mod windows_hid;
 
 #[cfg(target_os = "linux")]
 use linux as platform;
@@ -15,7 +17,10 @@ use unsupported as platform;
 #[cfg(target_os = "windows")]
 use windows as platform;
 
-use binding::{find_key, gamepad, Backend, HotkeyBinding, InputBinding, TriggerSource};
+use binding::{
+    find_key, gamepad, parse_hex_rgb, Backend, ControllerLedMode, HotkeyBinding, InputBinding,
+    TriggerAction, TriggerSource, WakeMode, DEFAULT_CONTROLLER_LED_RGB,
+};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi::Status;
 use napi_derive::napi;
@@ -30,11 +35,19 @@ pub struct ScreenshotInputConfig {
     pub shift: bool,
     pub gamepad_enabled: bool,
     pub gamepad_buttons: Vec<String>,
+    pub keyboard_enabled: Option<bool>,
+    pub wake_enabled: Option<bool>,
+    pub wake_mode: Option<String>,
+    pub wake_buttons: Option<Vec<String>>,
+    pub wake_hold_ms: Option<u32>,
+    pub controller_led_mode: Option<String>,
+    pub controller_led_color: Option<String>,
 }
 
 #[napi(object)]
 pub struct ScreenshotInputEvent {
     pub kind: String,
+    pub action: String,
     pub source: String,
     pub backend: String,
 }
@@ -103,13 +116,13 @@ impl EventKind {
 pub struct Context {
     stopped: AtomicBool,
     binding: RwLock<InputBinding>,
-    emit: Box<dyn Fn(EventKind, TriggerSource, Backend) + Send + Sync>,
+    emit: Box<dyn Fn(EventKind, TriggerAction, TriggerSource, Backend) + Send + Sync>,
 }
 
 impl Context {
     pub fn new(
         binding: InputBinding,
-        emit: Box<dyn Fn(EventKind, TriggerSource, Backend) + Send + Sync>,
+        emit: Box<dyn Fn(EventKind, TriggerAction, TriggerSource, Backend) + Send + Sync>,
     ) -> Self {
         Self {
             stopped: AtomicBool::new(false),
@@ -130,14 +143,18 @@ impl Context {
     }
 
     pub fn emit(&self, source: TriggerSource, backend: Backend) {
+        self.emit_action(TriggerAction::Screenshot, source, backend);
+    }
+
+    pub fn emit_action(&self, action: TriggerAction, source: TriggerSource, backend: Backend) {
         if !self.is_stopped() {
-            (self.emit)(EventKind::Trigger, source, backend);
+            (self.emit)(EventKind::Trigger, action, source, backend);
         }
     }
 
     pub fn report_stopped(&self, source: TriggerSource, backend: Backend) {
         if !self.is_stopped() {
-            (self.emit)(EventKind::Stopped, source, backend);
+            (self.emit)(EventKind::Stopped, TriggerAction::Screenshot, source, backend);
         }
     }
 
@@ -166,24 +183,72 @@ struct ParsedConfig {
 }
 
 fn parse_config(config: &ScreenshotInputConfig) -> ParsedConfig {
-    let hotkey = find_key(&config.key).map(|key| HotkeyBinding {
-        key,
-        ctrl: config.ctrl,
-        alt: config.alt,
-        shift: config.shift,
-    });
-    let gamepad_mask = gamepad::combo_mask(&config.gamepad_buttons).unwrap_or(0);
-    let keyboard = hotkey.is_some();
-    let gamepad = config.gamepad_enabled && gamepad_mask != 0;
+    let keyboard_requested = config.keyboard_enabled.unwrap_or(true);
+    let hotkey = if keyboard_requested {
+        find_key(&config.key).map(|key| HotkeyBinding {
+            key,
+            ctrl: config.ctrl,
+            alt: config.alt,
+            shift: config.shift,
+        })
+    } else {
+        None
+    };
+    let gamepad_mask = if config.gamepad_enabled {
+        gamepad::combo_mask(&config.gamepad_buttons).unwrap_or(0)
+    } else {
+        0
+    };
+    let wake_requested = config.wake_enabled.unwrap_or(false);
+    let wake_mask = if wake_requested {
+        config
+            .wake_buttons
+            .as_deref()
+            .and_then(gamepad::wake_combo_mask)
+            .unwrap_or(0)
+    } else {
+        0
+    };
+    let wake_mode = config
+        .wake_mode
+        .as_deref()
+        .map(WakeMode::from_str)
+        .unwrap_or(WakeMode::Press);
+    let wake_hold_ms = u64::from(config.wake_hold_ms.unwrap_or(400));
+    let controller_led_mode = config
+        .controller_led_mode
+        .as_deref()
+        .map(ControllerLedMode::from_str)
+        .unwrap_or(ControllerLedMode::Off);
+    let controller_led_color = config
+        .controller_led_color
+        .as_deref()
+        .and_then(parse_hex_rgb)
+        .unwrap_or(DEFAULT_CONTROLLER_LED_RGB);
+
+    let keyboard = keyboard_requested && hotkey.is_some();
+    let led_active = matches!(
+        controller_led_mode,
+        ControllerLedMode::Idle | ControllerLedMode::Active
+    );
+    let gamepad =
+        (config.gamepad_enabled && gamepad_mask != 0) || (wake_requested && wake_mask != 0) || led_active;
 
     ParsedConfig {
         binding: InputBinding {
             hotkey,
             gamepad_mask,
+            wake_mask,
+            wake_mode,
+            wake_hold_ms,
+            controller_led_mode,
+            controller_led_color,
         },
         options: StartOptions { keyboard, gamepad },
-        keyboard_error: hotkey.is_none().then_some("unsupported-key"),
-        gamepad_error: (config.gamepad_enabled && gamepad_mask == 0).then_some("invalid-combo"),
+        keyboard_error: (keyboard_requested && hotkey.is_none()).then_some("unsupported-key"),
+        gamepad_error: ((config.gamepad_enabled && gamepad_mask == 0)
+            || (wake_requested && wake_mask == 0))
+            .then_some("invalid-combo"),
     }
 }
 
@@ -236,10 +301,11 @@ pub fn start_screenshot_input(
     let parsed = parse_config(&config);
     let context = Arc::new(Context::new(
         parsed.binding,
-        Box::new(move |kind, source, backend| {
+        Box::new(move |kind, action, source, backend| {
             callback.call(
                 ScreenshotInputEvent {
                     kind: kind.as_str().to_string(),
+                    action: action.as_str().to_string(),
                     source: source.as_str().to_string(),
                     backend: backend.as_str().to_string(),
                 },
@@ -265,6 +331,8 @@ pub fn update_screenshot_input_binding(config: ScreenshotInputConfig) -> bool {
         return false;
     };
     current.context.set_binding(parse_config(&config).binding);
+    #[cfg(target_os = "windows")]
+    windows::notify_binding_updated(&current.platform);
     true
 }
 
@@ -294,6 +362,13 @@ mod tests {
             shift: false,
             gamepad_enabled: true,
             gamepad_buttons: buttons.iter().map(|value| value.to_string()).collect(),
+            keyboard_enabled: None,
+            wake_enabled: None,
+            wake_mode: None,
+            wake_buttons: None,
+            wake_hold_ms: None,
+            controller_led_mode: None,
+            controller_led_color: None,
         }
     }
 
@@ -306,6 +381,28 @@ mod tests {
         assert_eq!(parsed.binding.gamepad_mask, gamepad::BACK | gamepad::RB);
         assert!(parsed.options.keyboard && parsed.options.gamepad);
         assert!(parsed.keyboard_error.is_none() && parsed.gamepad_error.is_none());
+    }
+
+    #[test]
+    fn parses_wake_only_config_without_keyboard_hook() {
+        let mut value = config("MetaLeft", &[]);
+        value.gamepad_enabled = false;
+        value.keyboard_enabled = Some(false);
+        value.wake_enabled = Some(true);
+        value.wake_mode = Some("hold".to_string());
+        value.wake_buttons = Some(vec!["home".to_string()]);
+        value.wake_hold_ms = Some(400);
+        value.controller_led_mode = Some("active".to_string());
+        value.controller_led_color = Some("#0070d1".to_string());
+        let parsed = parse_config(&value);
+        assert!(!parsed.options.keyboard);
+        assert!(parsed.options.gamepad);
+        assert_eq!(parsed.binding.wake_mask, gamepad::HOME);
+        assert_eq!(parsed.binding.wake_mode, WakeMode::Hold);
+        assert_eq!(parsed.binding.wake_hold_ms, 400);
+        assert_eq!(parsed.binding.controller_led_color, [0, 112, 209]);
+        assert!(parsed.keyboard_error.is_none());
+        assert!(parsed.gamepad_error.is_none());
     }
 
     #[test]
@@ -330,7 +427,7 @@ mod tests {
         let counter = count.clone();
         let context = Context::new(
             InputBinding::default(),
-            Box::new(move |_, _, _| {
+            Box::new(move |_, _, _, _| {
                 counter.fetch_add(1, Ordering::SeqCst);
             }),
         );

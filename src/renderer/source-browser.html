@@ -31,10 +31,19 @@
     <aside>
       <p id="error" role="alert"></p>
       <p id="blocked-destination" role="alert" hidden></p>
+      <label id="release-title-field" class="field-label">
+        Selected release title *
+        <input
+          id="release-title"
+          form="review"
+          required
+          placeholder="Enter the title shown on the website"
+        />
+      </label>
       <h2>Selected links <span id="count">0</span></h2>
       <p>
-        Select a supported download link on the page, use its context menu, or
-        paste it below. Nothing downloads until reviewed in Hydra.
+        Select a supported download link on the page, right-click it, or paste
+        it below. Nothing downloads until reviewed in Hydra.
       </p>
       <form id="add">
         <input
@@ -45,14 +54,6 @@
       </form>
       <ol id="links"></ol>
       <form id="review">
-        <label>
-          Selected release title
-          <input
-            id="release-title"
-            required
-            placeholder="Enter the title shown on the website"
-          />
-        </label>
         <label
           >Selection type<select id="mode">
             <option value="single">Single link</option>

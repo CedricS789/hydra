@@ -259,4 +259,29 @@ describe("game options category selection", () => {
       "general"
     );
   });
+
+  it("handles danger_zone availability and fallback", () => {
+    assert.equal(
+      getAvailableGameSettingsCategory("danger_zone", {
+        cloudSaveAccessAction: "open",
+        showCloudSaveV2Settings: false,
+        showLegacyCloudSaveSettings: false,
+        showEpicCloudSettings: false,
+        showDownloadSettings: true,
+        showDangerZoneSettings: true,
+      }),
+      "danger_zone"
+    );
+    assert.equal(
+      getAvailableGameSettingsCategory("danger_zone", {
+        cloudSaveAccessAction: "open",
+        showCloudSaveV2Settings: false,
+        showLegacyCloudSaveSettings: false,
+        showEpicCloudSettings: false,
+        showDownloadSettings: true,
+        showDangerZoneSettings: false,
+      }),
+      "general"
+    );
+  });
 });

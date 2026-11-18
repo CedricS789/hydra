@@ -64,7 +64,7 @@ function getModalBackActions({
 }: Readonly<ModalBackActionProps>): ScreenActions {
   if (isExiting || isBusy) return { press: { b: swallowBPress } };
   if (enabled) return { press: { b: onBack } };
-  return {};
+  return { press: { b: swallowBPress } };
 }
 
 function ModalBackAction(props: Readonly<ModalBackActionProps>) {
@@ -121,8 +121,8 @@ export function Modal({
   };
 
   const handleCloseClick = useCallback(() => {
-    onClose();
-  }, [onClose]);
+    if (!busy) onClose();
+  }, [busy, onClose]);
 
   const handleHeaderKeyDown = (
     event: ReactKeyboardEvent<HTMLButtonElement>
@@ -176,7 +176,7 @@ export function Modal({
   }, [visible]);
 
   useEffect(() => {
-    if (!visible || !closeOnEscape) return;
+    if (!visible) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -184,12 +184,23 @@ export function Modal({
       if (useVirtualKeyboardStore.getState().target !== null) return;
       if (!isTopMostModal()) return;
 
-      handleCloseClick();
+      const active = document.activeElement;
+      if (
+        !busy &&
+        active instanceof HTMLElement &&
+        active.matches("input, textarea, select, [contenteditable='true']")
+      )
+        return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (closeOnEscape) handleCloseClick();
     };
 
-    globalThis.window.addEventListener("keydown", onKeyDown);
-    return () => globalThis.window.removeEventListener("keydown", onKeyDown);
-  }, [closeOnEscape, visible, handleCloseClick]);
+    globalThis.window.addEventListener("keydown", onKeyDown, true);
+    return () =>
+      globalThis.window.removeEventListener("keydown", onKeyDown, true);
+  }, [busy, closeOnEscape, visible, handleCloseClick]);
 
   useEffect(() => {
     if (!closeOnBackdrop || !visible) return;
@@ -269,6 +280,8 @@ export function Modal({
                       <button
                         className="modal__header-back-button"
                         onClick={onBack}
+                        disabled={busy}
+                        aria-label="Back"
                         onKeyDown={handleHeaderKeyDown}
                       >
                         <ArrowLeftIcon size={20} />
@@ -285,6 +298,8 @@ export function Modal({
                   <button
                     className="modal__header-close-button"
                     onClick={handleCloseClick}
+                    disabled={busy}
+                    aria-label="Close"
                     onKeyDown={handleHeaderKeyDown}
                   >
                     <XIcon size={24} />

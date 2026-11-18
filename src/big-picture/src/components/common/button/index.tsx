@@ -113,7 +113,7 @@ export function Button({
       <FocusItem
         id={focusId}
         focusable={focusable}
-        navigationState={disabled ? "disabled" : "active"}
+        navigationState={isEffectivelyDisabled ? "disabled" : "active"}
         navigationOverrides={focusNavigationOverrides}
         navigationOrder={focusNavigationOrder}
         stealFocusOnAppear={stealFocusOnAppear}
@@ -128,7 +128,7 @@ export function Button({
 
             onClick?.(event);
           }}
-          disabled={disabled}
+          disabled={isEffectivelyDisabled}
           aria-busy={loading}
           aria-disabled={isEffectivelyDisabled}
           aria-label={size === "icon" ? ariaLabel : undefined}
@@ -179,7 +179,7 @@ export function Button({
       <FocusItem
         id={focusId}
         focusable={focusable}
-        navigationState={disabled ? "disabled" : "active"}
+        navigationState={isEffectivelyDisabled ? "disabled" : "active"}
         navigationOverrides={focusNavigationOverrides}
         navigationOrder={focusNavigationOrder}
         stealFocusOnAppear={stealFocusOnAppear}
@@ -205,7 +205,7 @@ export function Button({
     <FocusItem
       id={focusId}
       focusable={focusable}
-      navigationState={disabled ? "disabled" : "active"}
+      navigationState={isEffectivelyDisabled ? "disabled" : "active"}
       navigationOverrides={focusNavigationOverrides}
       navigationOrder={focusNavigationOrder}
       stealFocusOnAppear={stealFocusOnAppear}

@@ -79,12 +79,14 @@ interface MyScreenshotsDangerSectionProps {
   shop: GameShop;
   objectId: string;
   fallbackFocusId: string;
+  primaryFocusId?: string;
 }
 
 export function MyScreenshotsDangerSection({
   shop,
   objectId,
   fallbackFocusId,
+  primaryFocusId,
 }: Readonly<MyScreenshotsDangerSectionProps>) {
   const { t } = useTranslation("screenshots");
   const { showSuccessToast, showErrorToast } = useBigPictureToast();
@@ -158,10 +160,14 @@ export function MyScreenshotsDangerSection({
       })}
     >
       <VerticalFocusGroup className="game-danger-zone-settings-tab__buttons">
-        {DELETIONS.map((deletion) => (
+        {DELETIONS.map((deletion, index) => (
           <Button
             key={deletion}
-            focusId={getMyScreenshotsDeleteFocusId(deletion)}
+            focusId={
+              index === 0 && primaryFocusId
+                ? primaryFocusId
+                : getMyScreenshotsDeleteFocusId(deletion)
+            }
             variant="danger"
             className="game-danger-zone-settings-tab__action-button"
             disabled={isDeleting || !hasSomethingToDelete(deletion, counts)}

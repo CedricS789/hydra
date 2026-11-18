@@ -4,7 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { useAppSelector, useUserDetails } from "@renderer/hooks";
 import {
   buildLeaderboardNotificationTarget,
+  isLeaderboardMetricVisible,
   parseLeaderboardNotification,
+  resolveSocialPreferences,
   type LeaderboardNotificationInfo,
 } from "@shared";
 import type { GameShop, Notification } from "@types";
@@ -35,9 +37,12 @@ const loadGameLogo = async (info: LeaderboardNotificationInfo) => {
 export function LeaderboardNotificationLayer() {
   const navigate = useNavigate();
   const { userDetails } = useUserDetails();
-  const slamEnabled = useAppSelector(
-    (state) => state.userPreferences.value?.leaderboardSlamEnabled ?? true
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
   );
+  const socialRef = useRef(resolveSocialPreferences(userPreferences));
+  socialRef.current = resolveSocialPreferences(userPreferences);
+  const slamEnabled = userPreferences?.leaderboardSlamEnabled ?? true;
   const slamEnabledRef = useRef(slamEnabled);
   slamEnabledRef.current = slamEnabled;
 
@@ -49,6 +54,14 @@ export function LeaderboardNotificationLayer() {
       window.electron.onLeaderboardNotification((notification) => {
         const info = parseLeaderboardNotification(notification);
         if (!info) return;
+        const social = socialRef.current;
+        if (
+          !social.showLeaderboardAlerts ||
+          !isLeaderboardMetricVisible(social, info.metric) ||
+          (info.scope === "friends" && !social.showFriends)
+        ) {
+          return;
+        }
 
         if (info.kind === "rank" && info.moment && slamEnabledRef.current) {
           void loadGameLogo(info).then((gameLogoUrl) =>

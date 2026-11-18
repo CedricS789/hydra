@@ -3,6 +3,7 @@ import {
   getGameCatalogueIdentity,
   getLibraryOperationalGame,
   isClassicsEnabled,
+  resolveDangerZonePreferences,
 } from "@shared";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -58,6 +59,7 @@ import { ConfirmationModal, DownloadGameModal } from "../../components/modals";
 import {
   LIBRARY_FILTERS_SEARCH_INPUT_ID,
   LIBRARY_HERO_LAUNCH_BUTTON_ID,
+  LIBRARY_HERO_LOCAL_SAVE_BUTTON_ID,
   LIBRARY_HERO_OPEN_SETTINGS_BUTTON_ID,
   LIBRARY_PAGE_REGION_ID,
 } from "../../components/pages/library/navigation";
@@ -132,6 +134,7 @@ export default function LibraryPage() {
   const { showSuccessToast } = useBigPictureToast();
   const userPreferences = useUserPreferences();
   const classicsEnabled = isClassicsEnabled(userPreferences);
+  const dangerZone = resolveDangerZonePreferences(userPreferences);
   const { library: rawLibrary, updateLibrary } = useLibrary();
   const library = useMemo(
     () =>
@@ -234,6 +237,9 @@ export default function LibraryPage() {
   const [settingsModalGame, setSettingsModalGame] =
     useState<LibraryGame | null>(null);
   const [isGameSettingsModalOpen, setIsGameSettingsModalOpen] = useState(false);
+  const [gameSettingsInitialTab, setGameSettingsInitialTab] = useState<
+    "launch" | "local_backups"
+  >("launch");
 
   const openDownloadModal = useCallback(
     (game: LibraryGame, restoreFocusId: string | null) => {
@@ -278,6 +284,14 @@ export default function LibraryPage() {
   const handleOpenHeroSettings = useCallback((game: LibraryGame) => {
     settingsModalRestoreFocusIdRef.current =
       LIBRARY_HERO_OPEN_SETTINGS_BUTTON_ID;
+    setGameSettingsInitialTab("launch");
+    setSettingsModalGame(getLibraryOperationalGame(game));
+    setIsGameSettingsModalOpen(true);
+  }, []);
+
+  const handleOpenHeroLocalBackups = useCallback((game: LibraryGame) => {
+    settingsModalRestoreFocusIdRef.current = LIBRARY_HERO_LOCAL_SAVE_BUTTON_ID;
+    setGameSettingsInitialTab("local_backups");
     setSettingsModalGame(getLibraryOperationalGame(game));
     setIsGameSettingsModalOpen(true);
   }, []);
@@ -285,6 +299,7 @@ export default function LibraryPage() {
   const handleOpenGameSettingsFromContextMenu = useCallback(
     (game: LibraryGame) => {
       settingsModalRestoreFocusIdRef.current = contextMenuState.restoreFocusId;
+      setGameSettingsInitialTab("launch");
       setSettingsModalGame(getLibraryOperationalGame(game));
       setIsGameSettingsModalOpen(true);
     },
@@ -458,6 +473,7 @@ export default function LibraryPage() {
           <LibraryHero
             onPrimaryAction={handleHeroPrimaryAction}
             onOpenSettings={handleOpenHeroSettings}
+            onOpenLocalBackups={handleOpenHeroLocalBackups}
             favoriteLoadingGameId={favoriteLoadingGameId}
             lastPlayedGames={lastPlayedGames}
             onToggleFavorite={toggleFavorite}
@@ -552,8 +568,16 @@ export default function LibraryPage() {
         onToggleFavorite={toggleFavorite}
         onViewAchievements={handleViewAchievements}
         onOptions={handleOpenGameSettingsFromContextMenu}
-        onUninstall={requestRemoveFiles}
-        onRemoveFromLibrary={requestRemoveFromLibrary}
+        onUninstall={
+          dangerZone.enableDangerZoneRemoveGameFiles
+            ? requestRemoveFiles
+            : undefined
+        }
+        onRemoveFromLibrary={
+          dangerZone.enableDangerZoneRemoveFromLibrary
+            ? requestRemoveFromLibrary
+            : undefined
+        }
       />
 
       {pendingAction ? (
@@ -593,6 +617,7 @@ export default function LibraryPage() {
         <LibraryGameSettingsModal
           visible={isGameSettingsModalOpen}
           game={settingsModalGame}
+          initialTab={gameSettingsInitialTab}
           onClose={handleCloseGameSettingsModal}
         />
       ) : null}

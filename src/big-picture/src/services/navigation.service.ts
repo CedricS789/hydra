@@ -81,7 +81,7 @@ interface SetFocusRegionOptions {
 const NAVIGATION_DEBUG_STORAGE_KEY = "hydra:big-picture:navigation-debug";
 
 function isNavigationDebugEnabled() {
-  const env = import.meta.env as unknown as Record<
+  const env = (import.meta.env ?? {}) as unknown as Record<
     string,
     string | boolean | undefined
   >;
@@ -759,51 +759,6 @@ export class NavigationService {
       return this.moveFocusByTree(currentNodeId, direction);
     }
 
-    let currentRegionId: string | null = currentNode.regionId;
-
-    while (currentRegionId) {
-      const currentRegion = this.regions.get(currentRegionId);
-
-      if (currentRegion?.layerId !== this.getActiveLayerId()) {
-        break;
-      }
-      const regionOverride = currentRegion.navigationOverrides?.[direction];
-
-      if (regionOverride) {
-        if (regionOverride.type === "block") {
-          return currentNodeId;
-        }
-
-        const overrideNodeId = this.resolveOverrideTargetToNode(
-          regionOverride,
-          direction
-        );
-
-        this.logMoveFocusOverrideResolution({
-          sourceType: "region",
-          sourceId: currentRegionId,
-          direction,
-          target: regionOverride,
-          resolvedNodeId: overrideNodeId,
-        });
-
-        if (overrideNodeId) {
-          return this.setFocus(overrideNodeId);
-        }
-
-        this.warnInvalidOverride({
-          sourceType: "region",
-          sourceId: currentRegionId,
-          direction,
-          target: regionOverride,
-        });
-
-        return this.moveFocusByTree(currentNodeId, direction);
-      }
-
-      currentRegionId = currentRegion.parentRegionId ?? null;
-    }
-
     return this.moveFocusByTree(currentNodeId, direction);
   }
 
@@ -1248,6 +1203,38 @@ export class NavigationService {
 
       if (nextNodeId) {
         return this.setFocus(nextNodeId);
+      }
+
+      const regionOverride = currentRegion.navigationOverrides?.[direction];
+
+      if (regionOverride) {
+        if (regionOverride.type === "block") {
+          return currentNodeId;
+        }
+
+        const overrideNodeId = this.resolveOverrideTargetToNode(
+          regionOverride,
+          direction
+        );
+
+        this.logMoveFocusOverrideResolution({
+          sourceType: "region",
+          sourceId: currentRegionId,
+          direction,
+          target: regionOverride,
+          resolvedNodeId: overrideNodeId,
+        });
+
+        if (overrideNodeId) {
+          return this.setFocus(overrideNodeId);
+        }
+
+        this.warnInvalidOverride({
+          sourceType: "region",
+          sourceId: currentRegionId,
+          direction,
+          target: regionOverride,
+        });
       }
 
       currentRegionId = currentRegion.parentRegionId ?? null;

@@ -82,6 +82,9 @@ async function fixture(
     detailsAssets?: boolean;
     nullAssets?: boolean;
     deferAssetsFor?: string;
+    rejectStats?: boolean;
+    rejectAssets?: boolean;
+    launch?: () => Promise<void>;
   } = {}
 ) {
   const dom = new JSDOM("<div id='root'></div>");
@@ -119,6 +122,9 @@ async function fixture(
     );
   };
   let libraryBatchHandler: (() => void) | null = null;
+  const libraryHandlers = new Set<() => void>();
+  let achievementHandler: (() => void) | null = null;
+  let unlocked: import("@types").UserAchievement[] = [];
   let deferredOnce = false;
   let resolveDeferredAssets: (() => void) | null = null;
   const bridge = {
@@ -148,13 +154,17 @@ async function fixture(
           }
         : null;
     },
-    getGameStats: async () => null,
+    getGameStats: async () => {
+      if (options.rejectStats) throw new Error("offline");
+      return null;
+    },
     getGameAssets: async (
       objectId: string,
       shop: string,
       requestOptions?: GameArtworkOptions
     ) => {
       calls.push(["assets", shop, objectId, requestOptions]);
+      if (options.rejectAssets) throw new Error("assets unavailable");
       if (options.nullAssets) return null;
       const result = compose(objectId, shop, requestOptions);
       const identity = requestOptions?.artworkIdentity ?? { shop, objectId };
@@ -171,13 +181,21 @@ async function fixture(
     },
     getUnlockedAchievements: async (objectId: string, shop: string) => {
       calls.push(["achievements", shop, objectId]);
-      return [];
+      return unlocked;
     },
     hydraApi: { get: async () => null },
     onLibraryBatchComplete: (handler: () => void) => {
+      libraryHandlers.add(handler);
       libraryBatchHandler = handler;
       return () => {
+        libraryHandlers.delete(handler);
         if (libraryBatchHandler === handler) libraryBatchHandler = null;
+      };
+    },
+    onAchievementUnlocked: (handler: () => void) => {
+      achievementHandler = handler;
+      return () => {
+        achievementHandler = null;
       };
     },
     syncEpicGameOnGamePage: async (objectId: string) => {
@@ -193,6 +211,7 @@ async function fixture(
     },
     openGame: (shop: string, objectId: string) => {
       calls.push(["open", shop, objectId]);
+      return options.launch?.();
     },
   };
   Object.assign(dom.window, { electron: bridge });
@@ -262,6 +281,8 @@ async function fixture(
     presentationGame: LibraryGame & { members: LibraryGame[] };
     catalogueGame: { shop: string; objectId: string };
     isGameRunning: boolean;
+    isLoading: boolean;
+    achievements: import("@types").UserAchievement[];
     shopDetails: ShopDetailsWithAssets | null;
     preferredAssets: {
       iconUrl: string | null;
@@ -289,11 +310,19 @@ async function fixture(
       return current;
     },
     calls,
+    async unlockAchievement() {
+      unlocked = [
+        { name: "FIRST", unlocked: true } as import("@types").UserAchievement,
+      ];
+      await act(async () => achievementHandler?.());
+    },
     async setArtwork(selection: GameArtworkSelection | null) {
       if (selection)
         selections.set(selection.shop + ":" + selection.objectId, selection);
       else selections.delete(epic.id);
-      await act(async () => libraryBatchHandler?.());
+      await act(async () => {
+        for (const handler of libraryHandlers) handler();
+      });
     },
     async setRunningGame(id: string) {
       runningGames = { [id]: { id, sessionDurationInMillis: 10000 } };
@@ -316,6 +345,46 @@ async function fixture(
 }
 
 describe("Big Picture catalogue page", () => {
+  it("refreshes achievements when an unlock arrives without reopening the game page", async () => {
+    const state = await fixture([epic]);
+    try {
+      assert.equal(state.details.achievements.length, 0);
+      await state.unlockAchievement();
+      assert.equal(state.details.achievements[0]?.name, "FIRST");
+    } finally {
+      await state.close();
+    }
+  });
+  it("remains usable offline when optional stats and artwork both fail", async () => {
+    const state = await fixture([epic], undefined, undefined, {
+      rejectStats: true,
+      rejectAssets: true,
+    });
+    try {
+      assert.equal(state.details.isLoading, false);
+      assert.equal(state.details.shopDetails?.name, epic.title);
+      await state.details.openGame();
+      assert.ok(state.calls.some(([action]) => action === "open"));
+    } finally {
+      await state.close();
+    }
+  });
+  it("awaits the real launch and propagates errors to the page", async () => {
+    let reject!: (error: Error) => void;
+    const pending = new Promise<void>((_yes, no) => {
+      reject = no;
+    });
+    const state = await fixture([epic], undefined, undefined, {
+      launch: () => pending,
+    });
+    try {
+      const failure = assert.rejects(state.details.openGame(), /launch failed/);
+      reject(new Error("launch failed"));
+      await failure;
+    } finally {
+      await state.close();
+    }
+  });
   it("keeps the downloading Epic identity separate from the installed Steam launch identity", async () => {
     const steam = {
       ...epic,

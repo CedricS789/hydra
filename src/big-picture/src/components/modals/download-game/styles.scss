@@ -377,23 +377,48 @@
   }
 }
 
+.download-game-modal__source-list__section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
 .source-website-search {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--secondary) 70%, black 30%);
+  border: 1px solid var(--border);
 
-  > [role="group"] {
+  &__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  &__list {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
   }
 
-  &__note {
-    flex-basis: 100%;
+  &__button {
+    gap: 6px;
+  }
+
+  &__status,
+  &__empty {
+    font-size: 13px;
     color: var(--text-secondary);
-    font-size: 12px;
+  }
+
+  &__error {
+    margin: 0;
+    font-size: 13px;
+    color: #f87171;
   }
 }

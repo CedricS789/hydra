@@ -522,4 +522,50 @@ test("fuzzy safeguard handles shortened searches, trademarks, editions, numerals
     ),
     "blocked"
   );
+
+  const containerProfile = {
+    website: "https://steamrip.com/",
+    searchUrl: "https://steamrip.com/?s={query}",
+    approvedDomains: ["www.filecrypt.cc", "www.steamrip.com"],
+  };
+  assert.equal(
+    sourceGamePageKind(
+      "https://steamrip.com/sekiro-shadows-die-twice-free-download-c2/",
+      sekiro,
+      containerProfile
+    ),
+    "game"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://www.filecrypt.cc/Container/ABCD1234.html",
+      sekiro,
+      containerProfile
+    ),
+    "game"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://www.filecrypt.cc/Link/1234?id=99",
+      sekiro,
+      containerProfile
+    ),
+    "game"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://www.steamrip.com/f1-2015-free-download/",
+      sekiro,
+      containerProfile
+    ),
+    "blocked"
+  );
+  assert.equal(
+    sourceGamePageKind(
+      "https://unapproved.example/Container/ABCD1234.html",
+      sekiro,
+      containerProfile
+    ),
+    "blocked"
+  );
 });

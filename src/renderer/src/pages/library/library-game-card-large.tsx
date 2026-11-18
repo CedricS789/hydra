@@ -22,7 +22,11 @@ import {
 } from "@renderer/helpers";
 import { AchievementProgress, SteamLibraryBadge } from "@renderer/components";
 import { GameVisibilityBadge } from "@renderer/components/game-visibility-badge/game-visibility-badge";
-import { formatBytes, getDisplayedPlayTimeInMilliseconds } from "@shared";
+import {
+  formatBytes,
+  getDisplayedPlayTimeInMilliseconds,
+  resolveManualPlaytimeWarningPreferences,
+} from "@shared";
 import {
   ClockIcon,
   AlertFillIcon,
@@ -100,6 +104,8 @@ export const LibraryGameCardLarge = memo(function LibraryGameCardLarge({
     (state) => state.userPreferences.value
   );
   const hideBadges = userPreferences?.hideLibraryGameBadges ?? false;
+  const { showManualPlaytimeWarningIcon } =
+    resolveManualPlaytimeWarningPreferences(userPreferences);
   const hideReadySizeBadges =
     userPreferences?.hideLibraryReadySizeBadges ?? false;
   const hideClassicsBadges =
@@ -467,7 +473,8 @@ export const LibraryGameCardLarge = memo(function LibraryGameCardLarge({
             />
             {!hideBadges && (
               <div className="library-game-card-large__playtime">
-                {game.hasManuallyUpdatedPlaytime ? (
+                {game.hasManuallyUpdatedPlaytime &&
+                showManualPlaytimeWarningIcon ? (
                   <AlertFillIcon
                     size={11}
                     className="library-game-card-large__manual-playtime"

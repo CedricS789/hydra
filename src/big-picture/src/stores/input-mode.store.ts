@@ -20,9 +20,6 @@ function applyGamepadStyle() {
     #big-picture[data-bp-input-mode="gamepad"] * {
       cursor: none !important;
     }
-    #big-picture[data-bp-input-mode="gamepad"] * {
-      pointer-events: none !important;
-    }
   `;
   document.head.appendChild(style);
   document.body.offsetHeight;

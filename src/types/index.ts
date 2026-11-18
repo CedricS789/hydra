@@ -893,6 +893,10 @@ export interface AchievementMetadataEntry {
 }
 
 export type GameLauncherStatus =
+  | "launch_preparing"
+  | "launch_dispatched"
+  | "launch_blocked"
+  | "launch_failed"
   | "generating_achievements"
   | "downloading_achievement_icons"
   | "preparing_compatibility_layer"
@@ -1173,6 +1177,7 @@ export * from "./download.types";
 export * from "./ludusavi.types";
 export * from "./how-long-to-beat.types";
 export * from "./level.types";
+export * from "./companion-app.types";
 export * from "./theme.types";
 export * from "./emulator.types";
 export * from "./retroarch.types";
@@ -1180,6 +1185,7 @@ export * from "./artwork.types";
 export * from "./cloud-save.types";
 export * from "./souvenir.types";
 export * from "./screenshot.types";
+export * from "./big-picture.types";
 export * from "./recompilation.types";
 
 export type ExtractionFailure =
@@ -1188,3 +1194,4 @@ export type ExtractionFailure =
   | { reason: "pkg-keys-unavailable" };
 export type { SystemPowerAction } from "./system-power";
 export * from "./local-edition.types";
+export * from "./uninstall.types";

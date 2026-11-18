@@ -133,10 +133,14 @@
     text-align: center;
   }
 
-  &__no-results-button {
-    display: flex;
-    justify-content: center;
-    width: 100%;
+  &__no-results-hint {
+    margin: 0;
+    max-width: 420px;
+    color: globals.$muted-color;
+    opacity: 0.85;
+    font-size: globals.$tiny-font-size;
+    line-height: 1.5;
+    text-align: center;
   }
 
   &__download-sources {
@@ -243,23 +247,53 @@
   margin-bottom: 8px;
 }
 
+.repacks-modal__section-label {
+  font-size: globals.$tiny-font-size;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: globals.$muted-color;
+  margin-top: 2px;
+}
+
 .source-website-search {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 0 12px;
-  border-bottom: 1px solid globals.$border-color;
-  margin-bottom: 8px;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid globals.$border-color;
 
-  > [role="group"] {
+  &__title {
+    font-size: globals.$small-font-size;
+    font-weight: 600;
+    color: globals.$body-color;
+  }
+
+  &__list {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
   }
-  &__note {
+
+  &__button {
+    min-height: 32px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: globals.$small-font-size;
+    gap: 6px;
+  }
+
+  &__status,
+  &__empty {
+    font-size: globals.$small-font-size;
     color: globals.$muted-color;
-    font-size: globals.$tiny-font-size;
-    flex-basis: 100%;
+  }
+
+  &__error {
+    margin: 0;
+    font-size: globals.$small-font-size;
+    color: globals.$danger-color;
   }
 }

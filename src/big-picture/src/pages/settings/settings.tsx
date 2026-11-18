@@ -3,9 +3,8 @@ import {
   useSettingsDraft,
   type SettingsSaveActionsProps,
 } from "@renderer/context/settings/settings-draft.context";
-import "@renderer/pages/settings/settings.scss";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
   HIDE_COMMUNITY_SCREENSHOTS_SETTING_ID,
@@ -16,6 +15,7 @@ import {
   BumperBadge,
   Button,
   HorizontalFocusGroup,
+  Modal,
   Tabs,
   type TabsItem,
   VerticalFocusGroup,
@@ -35,6 +35,7 @@ import {
 import { GamepadButtonType } from "../../types";
 import { useVirtualKeyboardStore } from "../../stores";
 import { AccountPrivacySettingsSection } from "./account-privacy";
+import { AdvancedSettingsSection } from "./advanced";
 import { BigPictureSettingsSection } from "./big-picture";
 import { CompatibilitySettingsSection } from "./compatibility";
 import { ContentSettingsSection } from "./content";
@@ -48,11 +49,13 @@ import { GeneralSettingsSection } from "./general";
 import { IntegrationsSettingsSection } from "./integrations";
 import { SETTINGS_PAGE_REGION_ID } from "./navigation";
 import { NotificationsSettingsSection } from "./notifications";
+import { SaveBackupsSettingsSection } from "./save-backups";
 import { ScreenshotsSettingsSection } from "./screenshots";
 import { SCREENSHOT_SETTINGS_FOCUS_IDS } from "./screenshots-section";
 import { useUserDetails } from "../../hooks";
 import {
   ACCOUNT_PRIVACY_PRIVACY_SELECT_ID,
+  ADVANCED_GATE_CHECKBOX_ID,
   COMPATIBILITY_COMMON_REDIST_BUTTON_ID,
   COMPATIBILITY_PROTON_OPTION_AUTO_FOCUS_ID,
   CONTENT_ITEM_FOCUS_IDS,
@@ -63,12 +66,14 @@ import {
   EMULATION_OVERVIEW_CARD_FOCUS_IDS,
   getIntegrationProviderCheckboxFocusId,
   NOTIFICATIONS_LIBRARY_ITEM_FOCUS_IDS,
+  SAVE_BACKUPS_PRIMARY_BUTTON_ID,
 } from "./settings-navigation";
 
 import "./page.scss";
 
 const ALL_SETTINGS_TABS = [
   { id: "general", label: "General" },
+  { id: "local_backups", label: "Save Backups" },
   { id: "downloads", label: "Downloads" },
   { id: "notifications", label: "Notifications" },
   { id: "content", label: "Content" },
@@ -78,6 +83,7 @@ const ALL_SETTINGS_TABS = [
   { id: "integrations", label: "Integrations" },
   { id: "compatibility", label: "Compatibility" },
   { id: "account-privacy", label: "Account and Privacy" },
+  { id: "advanced", label: "Advanced" },
 ] as const;
 
 const SETTINGS_PAGE_FADE_TRANSITION = {
@@ -122,6 +128,7 @@ const SETTINGS_TAB_CONTENT: Record<
   (props: SettingsSectionComponentProps) => React.JSX.Element | null
 > = {
   general: GeneralSettingsSection,
+  local_backups: SaveBackupsSettingsSection,
   downloads: DownloadsSettingsSection,
   notifications: NotificationsSettingsSection,
   content: ContentSettingsSection,
@@ -131,6 +138,7 @@ const SETTINGS_TAB_CONTENT: Record<
   integrations: IntegrationsSettingsSection,
   compatibility: CompatibilitySettingsSection,
   "account-privacy": AccountPrivacySettingsSection,
+  advanced: AdvancedSettingsSection,
 };
 
 function SettingsTabPanel({
@@ -183,13 +191,134 @@ function SettingsTabPanel({
   );
 }
 
+type SettingsConfirmRequest = {
+  kind: "save" | "discard";
+  changes: string[];
+  resolve: (accepted: boolean) => void;
+};
+
+const SETTINGS_REVIEW_CANCEL_BUTTON_ID = "settings-review-cancel-button";
+const SETTINGS_REVIEW_CONFIRM_BUTTON_ID = "settings-review-confirm-button";
+
 export default function Settings() {
+  const [confirmRequest, setConfirmRequest] =
+    useState<SettingsConfirmRequest | null>(null);
+  const confirmRequestRef = useRef<SettingsConfirmRequest | null>(null);
+
+  const requestConfirmation = useCallback(
+    (kind: "save" | "discard", changes: string[]) =>
+      new Promise<boolean>((resolve) => {
+        if (confirmRequestRef.current) {
+          resolve(false);
+          return;
+        }
+        const pending = { kind, changes, resolve };
+        confirmRequestRef.current = pending;
+        setConfirmRequest(pending);
+      }),
+    []
+  );
+
+  const settleConfirmation = useCallback((accepted: boolean) => {
+    const pending = confirmRequestRef.current;
+    confirmRequestRef.current = null;
+    setConfirmRequest(null);
+    pending?.resolve(accepted);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (confirmRequestRef.current) {
+        confirmRequestRef.current.resolve(false);
+        confirmRequestRef.current = null;
+      }
+    },
+    []
+  );
+
+  const isConfirmOpen = confirmRequest !== null;
+
   return (
     <SettingsDraftProvider
-      renderActions={(actions) => <SaveActions {...actions} />}
+      confirmationOverride={requestConfirmation}
+      renderActions={(actions) => (
+        <SaveActions {...actions} modalOpen={isConfirmOpen} />
+      )}
     >
       <SettingsContent />
+      <SettingsReviewModal
+        request={confirmRequest}
+        onSettle={settleConfirmation}
+      />
     </SettingsDraftProvider>
+  );
+}
+
+function SettingsReviewModal({
+  request,
+  onSettle,
+}: Readonly<{
+  request: SettingsConfirmRequest | null;
+  onSettle: (accepted: boolean) => void;
+}>) {
+  const { setFocus } = useNavigation();
+  const visible = request !== null;
+
+  useEffect(() => {
+    if (!visible) return;
+    const frameId = globalThis.window.requestAnimationFrame(() => {
+      setFocus(SETTINGS_REVIEW_CANCEL_BUTTON_ID);
+    });
+    return () => globalThis.window.cancelAnimationFrame(frameId);
+  }, [setFocus, visible]);
+
+  const isSave = request?.kind === "save";
+
+  return (
+    <Modal
+      visible={visible}
+      onClose={() => onSettle(false)}
+      title={isSave ? "Review settings changes" : "Unsaved settings"}
+      description={
+        isSave ? "Save these changes?" : "Discard unsaved edits and continue?"
+      }
+      initialFocusId={SETTINGS_REVIEW_CANCEL_BUTTON_ID}
+      className="settings-review-modal"
+      backdropClassName="settings-review-modal-backdrop"
+    >
+      <VerticalFocusGroup
+        regionId="settings-review-modal-content"
+        className="settings-review-modal__content"
+      >
+        {request && request.changes.length > 0 && (
+          <ul className="settings-review-modal__list">
+            {request.changes.map((change, index) => (
+              <li key={`${index}-${change}`}>{change}</li>
+            ))}
+          </ul>
+        )}
+
+        <HorizontalFocusGroup
+          regionId="settings-review-modal-actions"
+          className="settings-review-modal__actions"
+        >
+          <Button
+            variant="secondary"
+            focusId={SETTINGS_REVIEW_CANCEL_BUTTON_ID}
+            onClick={() => onSettle(false)}
+          >
+            Keep editing
+          </Button>
+          <Button
+            variant={isSave ? "primary" : "danger"}
+            focusId={SETTINGS_REVIEW_CONFIRM_BUTTON_ID}
+            onClick={() => onSettle(true)}
+          >
+            {isSave ? "Save changes" : "Discard edits"}
+          </Button>
+        </HorizontalFocusGroup>
+      </VerticalFocusGroup>
+    </Modal>
   );
 }
 
@@ -199,19 +328,37 @@ function SaveActions({
   busy,
   save,
   discard,
-}: SettingsSaveActionsProps) {
+  modalOpen,
+}: SettingsSaveActionsProps & { modalOpen: boolean }) {
   const { onButtonPressed, isActiveGamepadEvent } = useGamepad();
   const keyboardTarget = useVirtualKeyboardStore((state) => state.target);
   useEffect(
     () =>
       onButtonPressed(GamepadButtonType.START, (event) => {
-        if (isActiveGamepadEvent(event) && !keyboardTarget && canSave && !busy)
+        if (
+          isActiveGamepadEvent(event) &&
+          !keyboardTarget &&
+          !modalOpen &&
+          canSave &&
+          !busy
+        )
           save();
       }),
-    [onButtonPressed, isActiveGamepadEvent, keyboardTarget, canSave, busy, save]
+    [
+      onButtonPressed,
+      isActiveGamepadEvent,
+      keyboardTarget,
+      modalOpen,
+      canSave,
+      busy,
+      save,
+    ]
   );
   return (
-    <HorizontalFocusGroup regionId="settings-save-actions">
+    <HorizontalFocusGroup
+      regionId="settings-save-actions"
+      className="settings-save-bar__actions"
+    >
       <Button
         variant="secondary"
         disabled={!dirty || busy}
@@ -374,6 +521,11 @@ function SettingsContent() {
           type: "item",
           itemId: DOWNLOAD_DIRECTORIES_DEFAULT_SELECT_ID,
         };
+      case "local_backups":
+        return {
+          type: "item",
+          itemId: SAVE_BACKUPS_PRIMARY_BUTTON_ID,
+        };
       case "downloads":
         return requestedSection === "sources"
           ? {
@@ -439,6 +591,11 @@ function SettingsContent() {
               itemId: ACCOUNT_PRIVACY_PRIVACY_SELECT_ID,
             }
           : null;
+      case "advanced":
+        return {
+          type: "item",
+          itemId: ADVANCED_GATE_CHECKBOX_ID,
+        };
       default:
         return null;
     }

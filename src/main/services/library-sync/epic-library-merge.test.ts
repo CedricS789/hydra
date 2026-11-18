@@ -75,6 +75,7 @@ function fixture() {
     readGate: Promise.resolve(),
     fetchFail: false,
     cacheClears: 0,
+    excludedKeys: new Set<string>(),
     ownerStatus: 404,
     activeOwnerReads: 0,
     maxActiveOwnerReads: 0,
@@ -190,6 +191,9 @@ function fixture() {
         achievementCount: local?.achievementCount ?? 0,
         unlockedAchievementCount: local?.unlockedAchievementCount ?? 0,
       }),
+    },
+    "../library-exclusions": {
+      getExcludedLibraryKeySet: async () => state.excludedKeys,
     },
     "../achievements/achievement-batch-games": {
       trackAchievementBatchGame: () => {},
@@ -666,4 +670,34 @@ test("catalogue presentation metadata and Steam defaults keep Epic storage ident
   assert.equal(individual.canonicalId, metadata.canonicalId);
   assert.deepEqual(individual.availableShops, metadata.availableShops);
   assert.equal(individual.epicPlayTimeInMilliseconds, 101000);
+});
+
+test("excluded games stay deleted and are skipped during remote library merge", async () => {
+  const f = fixture();
+  const excludedExistingKey = `epic:${game.objectId}`;
+  f.state.excludedKeys.add(excludedExistingKey);
+  f.state.excludedKeys.add("steam:570");
+  f.state.remote.push({
+    ...f.state.remote[0],
+    id: "RemoteSteam570",
+    shop: "steam",
+    objectId: "570",
+    title: "Dota 2",
+    source: "steam",
+    hasActiveSteamImport: true,
+    hasActiveEpicImport: false,
+  } as (typeof f.state.remote)[number]);
+
+  f.local.set(excludedExistingKey, {
+    ...game,
+    isDeleted: true,
+    hasActiveEpicImport: true,
+  });
+
+  assert.equal(await f.merge(), true);
+  const existingAfter = f.local.get(excludedExistingKey)!;
+  assert.equal(existingAfter.isDeleted, true);
+  assert.equal(existingAfter.hasActiveEpicImport, false);
+  assert.equal(existingAfter.hasActiveSteamImport, false);
+  assert.equal(f.local.has("steam:570"), false);
 });

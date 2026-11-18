@@ -22,10 +22,22 @@ It keeps all of Hydra's launcher features—game catalogue, library management, 
 
 > **Note:** Hydra Ludusavi uses its own data folder (`%APPDATA%\hydralauncher-local`), so it won't overwrite or interfere with an existing official Hydra installation.
 
-### Step 2: Set up automatic save backups
+### Step 2: Complete the first-time setup wizard (and interactive tutorials)
 
-1. **Add your games:** Open **Settings → Save backups → Discover saved games**, then choose **Scan local saves** or **Find backed-up games**. Click **Add to My Games** for one result or **Add all to My Games**. Store metadata and artwork are matched when available; unmatched titles become custom entries. Games do not need to be installed or have an `.exe` to appear in the library or manage backups. Set the real executable in the game's options before launching it or using automatic backups after exit.
-2. **Pick a backup folder:** Go to **Settings → Advanced**, unlock Advanced, and choose where your backups should be stored (for example, a folder inside OneDrive or on another drive).
+On your first launch (when no sources or games are configured yet), Hydra Ludusavi opens the **Welcome & First-Time Setup** wizard automatically. You can reopen **Setup wizard** or launch **Interactive tutorials** anytime from the **Settings** sidebar or **Settings → General**:
+
+1. **Setup wizard (4 steps):**
+   - **Welcome & language:** Pick your display language.
+   - **Recommended sources:** Select **SteamRIP**, **FitGirl**, and **DODI** to add their Hydra catalog feeds and/or **Search on** website search profiles in one click.
+   - **Essential folders & defaults:** Set your **Default downloads folder**, review **Automatic save backups** and choose your **Save backup destination folder** (such as OneDrive, a second drive, or a NAS), and toggle tray minimization, archive auto-extraction, and download notifications.
+   - **Ready:** View your summary and jump directly into **Interactive tutorials**, save discovery, Debrid setup, or the Catalogue.
+2. **Interactive tutorials (live spotlight walkthroughs):**
+   - Separated from first-time setup so you can replay any guide anytime: **App & Navigation Tour**, **Finding & Downloading Games** (Catalogue, **Search on**, and **Open in browser + paste link**), **Automatic Save Backups**, and **Safety, Debrid & Approved Domains**.
+
+### Step 3: Fine-tune automatic save backups
+
+1. **Add or discover your games:** Open **Settings → Save backups → Discover saved games**, then choose **Scan local saves** or **Find backed-up games**. Click **Add to My Games** for one result or **Add all to My Games**. Store metadata and artwork are matched when available; unmatched titles become custom entries. Games do not need to be installed or have an `.exe` to appear in the library or manage backups. Set the real executable in the game's options before launching it or using automatic backups after exit.
+2. **Pick or update your backup folder:** If you skipped it during onboarding, go to **Settings → Advanced**, unlock Advanced, and choose where your backups should be stored (for example, a folder inside OneDrive or on another drive).
 3. **Run a quick test:** With your game closed, click **Preview save detection** and then **Back up now** to confirm your save files are detected properly.
 4. **Review automatic backups:** They are checked by default for new configurations. Existing preferences are preserved. Review the protected automatic-backup controls in **Settings → Advanced** if you need to change them, then use **Save backup settings**.
 
@@ -40,6 +52,7 @@ When a new official version of Hydra comes out, this repository automatically ad
 
 ### Features at a glance
 
+- **Guided first-time setup & interactive tutorials:** Setup launches on first run to pick your language, install **SteamRIP / FitGirl / DODI** catalog feeds and **Search on** profiles, and configure download/save-backup folders. Separate **Interactive tutorials** in Settings provide live spotlight walkthroughs across the UI anytime.
 - **Direct torrents blocked by default:** Torrent links require a configured debrid provider. Downloads, seeding, peer-based metadata lookup, and torrent auto-resume are blocked in the main process; debrid failure never enables a direct torrent fallback. See **Settings → Advanced → Download protection**. Re-enabling requires an acknowledgement and typed confirmation. Ordinary HTTP and Epic downloads remain available.
 - **Automatic backups on game exit:** Tracks the game `.exe` (and child processes in the game folder) and backs up saves automatically once the game closes.
 - **Version history & safe restores:** Browse past save backups, inspect their files, and restore any version with a confirmation preview. Current saves are snapshotted to `.hydra-restore-safety/` before a restore runs.
@@ -64,23 +77,34 @@ Some independent sections keep their own clearly named Save button: provider con
 
 Backup enable/disable controls, retention, save matching, and custom paths remain inside protected Advanced settings. Use **Save backup settings** to apply their pending edits. Disabling automatic backups and reducing retention retain their additional acknowledgements. Loading versions or opening the manager never silently saves edited backup settings. YAML and website permission changes require explicit review. Restores, remote transfers, library removal, and direct torrent access retain their separate confirmation steps.
 
+## Reset settings and recover previous settings
+
+Open **Settings → Advanced**, acknowledge the notice, then open **Reset and recovery**. The same tools are available in desktop and Big Picture mode. Category resets cover general behavior, appearance, notifications, Big Picture, screenshot controls, website browsing, downloads, optional features, download protection, and social visibility. **Reset app preferences** combines ordinary preference resets while keeping privacy choices and save configuration.
+
+Choose **Review reset** to see the current and proposed values. Nothing changes until you choose **Apply reset**. Save or discard existing edits first. Combined resets, backup behavior, and one game's custom save rules also require an acknowledgement and typing `RESET SETTINGS`. Sensitive recovery requires `RESTORE SETTINGS`; restoring direct torrent permission additionally requires its existing `ENABLE DIRECT TORRENTS` confirmation. Reducing retention can remove older versions during later backups, so review those limits carefully.
+
+Before a reset, the app saves a local configuration snapshot. **Restore previous settings** shows its date and lets you review recovery before applying it. One snapshot is kept for each reset group or selected game across restarts. If a reset is interrupted, its recovery copy remains available, with the previous completed snapshot retained until the operation finishes. Recovery restores only the affected settings; unrelated later edits are preserved. Snapshots live in the app's local settings database and contain no provider credentials or browser cookies.
+
+Resets preserve language, folder paths, account connections, credentials, website profiles/cookies, source feeds, library entries and exclusions, installed themes, and online account preferences. Automatic installation and archive-deletion permissions are preserved. Social visibility changes only through its separate reset. Appearance resets deactivate the active theme without deleting themes. Automatic backup behavior resets keep the destination and every game's rules; the separate game-rules reset affects only the game named in its review and keeps advanced YAML configuration. **No reset restores live saves, deletes game files or backups, or transfers data remotely.** Backup resets are blocked while games or save operations are active. Window decoration changes may require restarting the app; it will not restart automatically.
+
 ## Browse a download source before choosing files
 
-When no download options are found, choose **Search source websites** in the download options window, then choose a saved website. Hydra searches for the current game's title (stripping trademark symbols such as `™`, `®`, and `©` that break site search). This works in desktop and Big Picture without installing download source feeds. If no websites are configured, open desktop **Settings → Advanced → Features → Source website profiles and cookies**, enter a new profile name, choose **Add website profile**, fill in the HTTPS website and search address containing `{query}`, and **Save website profile** after reviewing the confirmation. Website profiles remain available when download feeds are removed. Profile management works with browsing disabled; enable browsing and save that preference before opening the browser.
+In **Download options**, any configured source websites appear in a dedicated **Search on** section at the top (separated from **Hydra feeds** results below). Click a website chip to search for the current game's title (stripping trademark symbols such as `™`, `®`, and `©` that break site search). When no feed sources are found, Download options reminds you to use **Search on** above—or **Open in browser** inside that window and paste the final hoster or magnet link back into Hydra if a site uses link protectors or captchas. This works in desktop and Big Picture without installing download source feeds. If no websites are configured, install the recommended sites from **Setup wizard**, or open desktop **Settings → Advanced → Features → Source website profiles and cookies**, enter a new profile name, choose **Add website profile**, fill in the HTTPS website and search address containing `{query}`, and **Save website profile** after reviewing the confirmation. Website profiles remain available when download feeds are removed. Profile management works with browsing disabled; enable browsing and save that preference before opening the browser.
 
-Selecting links in the website window opens Hydra's normal download options for review. A website search does not start a download, create a catalogue entry, or invent a release size or date. **Add source** still installs a download feed; it is a separate action. Disabling source website browsing hides the website search action. Search and game page safeguards use fuzzy matching against the selected game title and address—allowing shortened search queries (for example, searching `Sekiro` for `Sekiro™: Shadows Die Twice - GOTY Edition`), omitted edition or subtitle suffixes, minor typos, punctuation differences, and Roman/Arabic numeral equivalents—while blocking unrelated games and mismatched sequel numbers. Unusual aliases or opaque addresses can still be blocked, and a matching address does not prove the contents of a file.
+Selecting links in the website window opens Hydra's normal download options for review. A website search does not start a download, create a catalogue entry, or invent a release size or date. **Add source** in Settings still installs a download feed; it is a separate action. Disabling source website browsing hides the **Search on** section. On the source website itself, search and game page safeguards use fuzzy matching against the selected game title and address—allowing shortened search queries (for example, searching `Sekiro` for `Sekiro™: Shadows Die Twice - GOTY Edition`), omitted edition or subtitle suffixes, minor typos, punctuation differences, and Roman/Arabic numeral equivalents—while blocking unrelated games and mismatched sequel numbers. Explicitly approved third-party hostnames (such as link-container domains like `www.filecrypt.cc` added under **Approved browsing domains**) are permitted without requiring the game title in their URLs. Unusual aliases or opaque addresses on the source site can still be blocked, and a matching address does not prove the contents of a file.
 
 In a game's **Download options**, select **View source** beside a release. This opens a separate website window inside Hydra, where you can read the release description and comments. The button is also available in Big Picture; website navigation may require a keyboard or mouse.
 
 Configure the source once in **Settings → Advanced → Features → Source website profiles and cookies**. Verify its website and search address, then save its **Approved browsing domains**. The website hostname is included automatically; additional hostnames require an explicit entry. Existing saved profiles initially approve only their configured website hostname. Suggested addresses for FitGirl, DODI, and SteamRip must be checked before saving. A catalogue's JSON address is not its website, and appearing in a catalogue does not verify a file's safety.
 
-If the catalogue supplies an original page address on an approved domain, Hydra opens it. Otherwise, it searches the configured source website so you can choose the matching release. Unknown domains and incompatible addresses are blocked, including redirects, form submissions, and addresses typed into the browser. There is no temporary override in the browser; permanent changes require protected Advanced settings. Subdomains and lookalike addresses are not implicitly approved. Saving a profile closes that source's windows and discards unsubmitted selections so removed permissions take effect immediately.
+If the catalogue supplies an original page address on an approved domain, Hydra opens it. Otherwise, it searches the configured source website so you can choose the matching release. Unknown domains and incompatible addresses are blocked, including redirects, form submissions, and addresses typed into the browser. If a site triggers a popup link, Hydra prompts you to right-click the link to open it in the same window or use **Open in browser**. There is no temporary override in the browser; permanent changes require protected Advanced settings. Subdomains and lookalike addresses are not implicitly approved. Saving a profile closes that source's windows and discards unsubmitted selections so removed permissions take effect immediately.
 
 These restrictions control top-level pages. Normal HTTPS components used for comments, images, and CAPTCHA checks can still load under the browser's isolation rules. Approved domains and supported download links establish compatibility, not file safety. Supported hoster and magnet links enter the selection panel without opening a browser download; unsupported links cannot gain download support through a browsing exception.
 
-1. Click supported magnet or hoster links on the website to collect them, use **Add link to selection** in a link's context menu, or paste a supported link into the selection panel.
-2. Check the release title and version. For multiple links, choose **Alternative mirrors** and select one mirror, or **Ordered parts** and arrange the complete multipart set. Multipart downloads still require Hydra's existing feature support.
-3. Acknowledge the selection and click **Review in Hydra**. Choose the downloader/debrid provider and destination in the usual options, then start or queue the download. No file download starts in the website window.
+1. Enter the mandatory **Selected release title \*** at the top of the right-hand panel.
+2. Click supported magnet or hoster links on the website to collect them, right-click a link to add or open it, or paste a supported link into the selection panel.
+3. Choose **Single link**, **Alternative mirrors** (select one mirror), or **Ordered parts** (arrange the complete multipart set). Multipart downloads still require Hydra's existing feature support.
+4. Acknowledge the selection and click **Review in Hydra**. Choose the downloader/debrid provider and destination in the usual options, then start or queue the download. No file download starts in the website window.
 
 **Settings → Advanced → Features → Enable source website browsing** turns the feature on or off; it starts enabled. Turning it off closes source windows and discards unsubmitted selections. Active and queued downloads continue. The nested **Source website profiles and cookies** menu edits website addresses and clears a source's website data. Website sessions are separate from Hydra and from other sources.
 
@@ -91,6 +115,12 @@ The Downloads page can reopen the originating page for downloads started through
 To run the source browser's policy and Electron integration checks, use `node scripts/test-source-browser.mjs`. They use controlled pages, a temporary profile, and artifacts under `.tmp/source-browser-check/`; they do not download game files or build an installer.
 
 Use `node scripts/test-download-option-interaction.mjs` to check the release picker’s click behavior and menus in an isolated Electron window. Its artifacts stay under `.tmp/download-option-interaction/`.
+
+### Library Management & Big Picture Parity
+
+- **Unified Library Management & Exclusions:** Open **Settings → Advanced → Library Maintenance** (Desktop) or **Settings → Advanced → Library Management & Exclusions** (Big Picture) to manage both your current library items and excluded titles in one place (**In library** / **Excluded** tabs). Removing any game from your library (individually or in bulk) automatically adds it to the exclusion list so Steam sync, Epic sync, remote library merges, installed-game scans, LaunchBox, and RetroArch importers never bring it back automatically. From the **Excluded** tab you can search/filter by shop, **Restore** titles back into your library, **Un-exclude**, or clear exclusions; manually adding or downloading a game from the catalogue also un-excludes it.
+- **Social & Community Visibility:** Open **Settings → Advanced → Social & community visibility** (Desktop and Big Picture) to toggle leaderboards & rankings, other players' playtime & active player counts, community reviews & ratings, community screenshots, friends/chat/notifications, and the sidebar account header (or disable all social features at once).
+- **Big Picture parity:** Big Picture exposes the local Ludusavi Save Backups system (hero backup button, Save Backups settings section, per-game Backup settings & versions in Game Options, and Account & Privacy without Hydra Cloud upsells), native **Download from link** (`ManualDownloadModal`), direct-torrent policy notice, **Settings → Advanced**, and controller-friendly Save/Discard review when exiting or changing settings.
 
 ### Screenshots
 
@@ -207,3 +237,21 @@ For testing commands and internal architecture details, see the [detailed build 
 Hydra Launcher is developed by **Los Broxas** and its [contributors](https://github.com/hydralauncher/hydra/graphs/contributors). This is an unofficial personal fork and is not affiliated with or endorsed by the upstream team.
 
 Released under the [MIT License](LICENSE). Bundled tools such as [Ludusavi](https://github.com/mtkennerly/ludusavi) retain their own licenses.
+
+---
+
+## Build Commands Reference
+
+| Command                        | What it builds                                                                                                                                     | Output                                      | When to use it                                                    |
+| :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------ | :---------------------------------------------------------------- |
+| `npm run build`                | Typechecks + compiles JS/CSS bundles only (**no `.exe`**)                                                                                          | `out/`                                      | Quick check that the app compiles after code edits                |
+| `npm run build:native`         | Compiles only the Rust native addon (`hydra-native.node`)                                                                                          | `hydra-native/`                             | Only if you edited Rust code in `native/`                         |
+| `npm run build:unpack`         | Rebuilds native + `build` + unpacks Electron app folder (**no installer**)                                                                         | `.tmp/package/win-unpacked/`                | Testing the packaged app folder without running an installer      |
+| `npm run build:local`          | Fast JS build + Windows NSIS installer (assumes native/tools are already ready)                                                                    | `.tmp/package/*setup.exe`                   | Fast local installer rebuild when only TypeScript/React changed   |
+| `npm run build:win`            | Rebuilds native + JS build + **both** NSIS installer and portable `.exe`                                                                           | `.tmp/package/*setup.exe` & `*portable.exe` | Only if you also want the **portable** `.exe`                     |
+| `node scripts/build-local.cjs` | **Everything end-to-end:** Windows packaging tools, native/`classic-level`, `legendary`, typecheck, JS build, NSIS installer, package verification | `dist/*setup.exe`                           | **Recommended command** to produce the Windows installer reliably |
+
+**Rule of thumb:**
+
+- **Testing code changes while developing:** `npm run build` (or `npm run dev`)
+- **Building the Windows installer `.exe`:** `node scripts/build-local.cjs`

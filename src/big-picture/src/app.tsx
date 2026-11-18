@@ -14,7 +14,17 @@ import {
   Sidebar,
 } from "./layout";
 import { IS_DESKTOP } from "./constants";
-import { useBigPictureToast, useNavigation, useUserPreferences } from "./hooks";
+import {
+  useBigPictureToast,
+  useGamepad,
+  useNavigation,
+  useUserPreferences,
+} from "./hooks";
+import { GamepadButtonType } from "./types";
+import {
+  resolveBigPictureGamepadWakeSettings,
+  resolveBigPictureHomeNavigationTarget,
+} from "@shared";
 import {
   HorizontalFocusGroup,
   InputModeProvider,
@@ -35,6 +45,7 @@ import { getItemFocusTarget } from "./helpers";
 import {
   initializeBigPictureRunningGamesStore,
   useInputModeStore,
+  usePowerMenuStore,
 } from "./stores";
 import { NavigationAudioService, type FocusOverrides } from "./services";
 import { BigPictureI18nBridge, ensureBigPictureI18nResources } from "./i18n";
@@ -49,8 +60,22 @@ export default function App() {
   const navigate = useNavigate();
   const { showErrorToast, showSuccessToast, showWarningToast } =
     useBigPictureToast();
+  useEffect(
+    () =>
+      window.electron?.onShowToast?.((toast) => {
+        const show =
+          toast.type === "warning"
+            ? showWarningToast
+            : toast.type === "error"
+              ? showErrorToast
+              : showSuccessToast;
+        show(toast.title, { message: toast.message, duration: toast.duration });
+      }),
+    [showWarningToast, showErrorToast, showSuccessToast]
+  );
   const { nodes, regions, setFocusRegion } = useNavigation();
   const userPreferences = useUserPreferences();
+  const { onButtonPressed, isActiveGamepadEvent } = useGamepad();
   const inputMode = useInputModeStore((state) => state.mode);
   const [pendingRouteFocusPathname, setPendingRouteFocusPathname] = useState<
     string | null
@@ -198,6 +223,34 @@ export default function App() {
         inputMode === "gamepad"
     );
   }, [userPreferences?.bigPictureSoundsEnabled, inputMode]);
+
+  useEffect(() => {
+    const homeAction =
+      resolveBigPictureGamepadWakeSettings(userPreferences).homeButtonAction;
+
+    return onButtonPressed(GamepadButtonType.HOME, (event) => {
+      if (!isActiveGamepadEvent(event)) return;
+
+      const targetPath = resolveBigPictureHomeNavigationTarget(
+        homeAction,
+        pathname,
+        IS_DESKTOP
+      );
+      if (targetPath) {
+        usePowerMenuStore.getState().close();
+        navigate(targetPath);
+        return;
+      }
+
+      usePowerMenuStore.getState().toggle();
+    });
+  }, [
+    isActiveGamepadEvent,
+    navigate,
+    onButtonPressed,
+    pathname,
+    userPreferences,
+  ]);
 
   return (
     <Fragment>

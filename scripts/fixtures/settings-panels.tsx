@@ -32,12 +32,26 @@ test("real settings panels defer startup changes and require explicit backup sav
         exitDelaySeconds: 10,
         games: {},
       },
-      games: [],
+      games: [
+        {
+          key: "epic:alan-wake-2",
+          title: "Alan Wake 2",
+          executablePath: "C:/games/aw2.exe",
+        },
+        {
+          key: "steam:1091500",
+          title: "Cyberpunk 2077",
+          executablePath: "C:/games/cp2077.exe",
+        },
+      ],
       history: [],
       busy: false,
       bulkProgress: { running: false },
     },
     beforeManagerAction: undefined as undefined | (() => Promise<void>),
+    versionsManagerProps: undefined as
+      | undefined
+      | { gameKey: string; gameTitle?: string },
   };
   (globalThis as any).__settingsPanels = fixture;
   let accept = false,
@@ -144,6 +158,16 @@ test("real settings panels defer startup changes and require explicit backup sav
       await router.navigate("/advanced");
       await flush();
     });
+    assert.equal(
+      fixture.versionsManagerProps,
+      undefined,
+      "Multiple-game library must not silently auto-select Alan Wake 2 for recovery"
+    );
+    assert.match(
+      document.body.textContent ?? "",
+      /select_game_empty_prompt/,
+      "Prompts user to explicitly select a game before showing recovery or custom path controls"
+    );
     await clickCheckbox("enable");
     await clickCheckbox("confirm_disable_global_acknowledgement");
     await clickButton("confirm_disable_backups");
@@ -175,6 +199,14 @@ test("real settings panels defer startup changes and require explicit backup sav
     assert.equal(backupWrites.length, 1);
     assert.equal(backupWrites[0].enabled, false);
     await fixture.beforeManagerAction!();
+
+    await act(async () => {
+      await router.navigate("/advanced?game=steam%3A1091500");
+      await flush();
+    });
+    assert.equal(fixture.versionsManagerProps?.gameKey, "steam:1091500");
+    assert.equal(fixture.versionsManagerProps?.gameTitle, "Cyberpunk 2077");
+    assert.match(document.body.textContent ?? "", /paths_acknowledgement/);
   } finally {
     await act(async () => root.unmount());
     router.dispose();

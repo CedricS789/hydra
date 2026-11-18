@@ -1,7 +1,7 @@
 use super::super::binding::{
     evdev_codes, is_linux_gamepad, is_linux_keyboard, linux_trigger_axes, AxisRange, Backend,
-    GamepadTracker, HotkeyMatcher, LinuxGamepadState, ModifierTracker, Modifiers, TriggerAxis,
-    TriggerSource,
+    GamepadTracker, HotkeyMatcher, LinuxGamepadState, ModifierTracker, Modifiers, TriggerAction,
+    TriggerAxis, TriggerSource,
 };
 use super::super::Context;
 use super::{poll_fds, pollfd, WakePipe};
@@ -215,11 +215,9 @@ impl Watcher {
         let held = held_keys(&device);
         let keyboard =
             keyboard.then(|| ModifierTracker::from_held_keys(|code| held.contains(&code)));
+        let binding = self.context.binding();
         let gamepad = gamepad.then(|| {
-            GamepadTracker::new(
-                initial_gamepad_state(&device, &held),
-                self.context.binding().gamepad_mask,
-            )
+            GamepadTracker::new(initial_gamepad_state(&device, &held), &binding)
         });
         Some(Tracked {
             path,
@@ -268,8 +266,20 @@ impl Watcher {
                 }
             }
             if let Some(gamepad) = self.devices[index].gamepad.as_mut() {
-                if gamepad.handle(event_type, code, value, binding.gamepad_mask) {
-                    self.context.emit(TriggerSource::Gamepad, Backend::Evdev);
+                let events = gamepad.handle(event_type, code, value, &binding);
+                if events.screenshot {
+                    self.context.emit_action(
+                        TriggerAction::Screenshot,
+                        TriggerSource::Gamepad,
+                        Backend::Evdev,
+                    );
+                }
+                if events.wake {
+                    self.context.emit_action(
+                        TriggerAction::BigPictureWake,
+                        TriggerSource::Gamepad,
+                        Backend::Evdev,
+                    );
                 }
             }
         }
@@ -312,7 +322,17 @@ impl Watcher {
                     .map(|entry| pollfd(entry.device.as_raw_fd())),
             );
 
-            let ready = match poll_fds(&mut fds, RESCAN_TIMEOUT_MS) {
+            let binding = self.context.binding();
+            let now = std::time::Instant::now();
+            let hold_timeout = self
+                .devices
+                .iter()
+                .filter_map(|entry| entry.gamepad.as_ref())
+                .filter_map(|gamepad| gamepad.remaining_hold_ms(binding.wake_hold_ms, now))
+                .min();
+            let timeout_ms = hold_timeout.map_or(RESCAN_TIMEOUT_MS, |ms| ms.min(RESCAN_TIMEOUT_MS));
+
+            let ready = match poll_fds(&mut fds, timeout_ms) {
                 Ok(ready) => ready,
                 Err(_) => {
                     self.report_stopped();
@@ -322,8 +342,22 @@ impl Watcher {
             if fds[0].revents != 0 || self.context.is_stopped() {
                 return;
             }
+            let now = std::time::Instant::now();
+            for entry in &mut self.devices {
+                if let Some(gamepad) = entry.gamepad.as_mut() {
+                    if gamepad.poll_wake(&binding, now) {
+                        self.context.emit_action(
+                            TriggerAction::BigPictureWake,
+                            TriggerSource::Gamepad,
+                            Backend::Evdev,
+                        );
+                    }
+                }
+            }
             if ready == 0 {
-                self.scan();
+                if hold_timeout.is_none() {
+                    self.scan();
+                }
                 continue;
             }
 

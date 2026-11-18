@@ -26,8 +26,7 @@ import {
 import { GameShop } from "@types";
 import { downloadsSublevel, gamesSublevel, levelKeys } from "@main/level";
 
-const deleteGameFolder = async (
-  _event: Electron.IpcMainInvokeEvent,
+export const deleteGameFolderForGame = async (
   shop: GameShop,
   objectId: string,
   options: { deleteSourceArchive?: boolean; keepEpicUpdateFiles?: boolean } = {}
@@ -255,5 +254,12 @@ const deleteGameFolder = async (
     }
   }
 };
+
+const deleteGameFolder = async (
+  _event: Electron.IpcMainInvokeEvent,
+  shop: GameShop,
+  objectId: string,
+  options: { deleteSourceArchive?: boolean; keepEpicUpdateFiles?: boolean } = {}
+): Promise<void> => deleteGameFolderForGame(shop, objectId, options);
 
 registerEvent("deleteGameFolder", deleteGameFolder);

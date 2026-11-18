@@ -1,3 +1,4 @@
+import { withResetDefaults } from "../../../../shared/settings-reset";
 import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -7,20 +8,24 @@ import { settingsContext } from "@renderer/context";
 import { useAppSelector } from "@renderer/hooks";
 import type { BigPictureDiagnosticsPosition, UserPreferences } from "@types";
 
-const buildForm = (preferences: UserPreferences | null) => ({
-  launchInBigPicture: preferences?.launchInBigPicture ?? false,
-  bigPictureLaunchToLibraryPage:
-    preferences?.bigPictureLaunchToLibraryPage ??
-    preferences?.launchToLibraryPage ??
-    false,
-  bigPictureSoundsEnabled: preferences?.bigPictureSoundsEnabled ?? true,
-  bigPictureVirtualKeyboardEnabled:
-    preferences?.bigPictureVirtualKeyboardEnabled ?? true,
-  bigPictureDiagnosticsEnabled:
-    preferences?.bigPictureDiagnosticsEnabled ?? false,
-  bigPictureDiagnosticsPosition: (preferences?.bigPictureDiagnosticsPosition ??
-    "bottom-center") as BigPictureDiagnosticsPosition,
-});
+const buildForm = (preferences: UserPreferences | null) => {
+  preferences = withResetDefaults(preferences);
+  return {
+    launchInBigPicture: preferences?.launchInBigPicture ?? false,
+    bigPictureLaunchToLibraryPage:
+      preferences?.bigPictureLaunchToLibraryPage ??
+      preferences?.launchToLibraryPage ??
+      false,
+    bigPictureSoundsEnabled: preferences?.bigPictureSoundsEnabled ?? true,
+    bigPictureVirtualKeyboardEnabled:
+      preferences?.bigPictureVirtualKeyboardEnabled ?? true,
+    bigPictureDiagnosticsEnabled:
+      preferences?.bigPictureDiagnosticsEnabled ?? false,
+    bigPictureDiagnosticsPosition:
+      (preferences?.bigPictureDiagnosticsPosition ??
+        "bottom-center") as BigPictureDiagnosticsPosition,
+  };
+};
 
 export function SettingsContextBigPicture() {
   const { t } = useTranslation("settings");

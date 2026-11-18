@@ -1,4 +1,3 @@
-import localEdition from "../../../../shared/local-edition.json";
 import { useAppSelector, useUserDetails } from "@renderer/hooks";
 import { useSubscription } from "@renderer/hooks/use-subscription";
 import type { UserAchievement } from "@types";
@@ -32,6 +31,7 @@ import {
   getVisibleSetGroups,
   groupAchievementsBySet,
   isAchievementConcealed,
+  isHydraAchievementPointsEnabled,
   type AchievementSortOption,
   type AchievementStatusFilter,
 } from "@shared";
@@ -74,6 +74,9 @@ export function AchievementList({
   const showHiddenAchievements = useAppSelector(
     (state) =>
       state.userPreferences.value?.showHiddenAchievementsDescription ?? false
+  );
+  const showHydraPoints = useAppSelector((state) =>
+    isHydraAchievementPointsEnabled(state.userPreferences.value)
   );
 
   const [search, setSearch] = useState("");
@@ -373,7 +376,7 @@ export function AchievementList({
               </span>
             )}
 
-            {!localEdition.hideHydraPoints &&
+            {showHydraPoints &&
               hasActiveSubscription &&
               achievement.points != null && (
                 <div
@@ -427,7 +430,7 @@ export function AchievementList({
             <RetroAchievementsConnectBanner className="achievements__toolbar-retro-achievements" />
           )}
 
-          {!localEdition.hideHydraPoints &&
+          {showHydraPoints &&
             (hasActiveSubscription ? (
               <div className="achievements__toolbar-points">
                 <span className="achievements__toolbar-points-label">

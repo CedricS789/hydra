@@ -17,12 +17,21 @@ import {
   type GlobalLeaderboardScope,
   type LeaderboardPageTab,
 } from "./global-leaderboard";
-import { useFeature, useGlobalLeaderboardsFeature } from "@renderer/hooks";
+import {
+  useAppSelector,
+  useFeature,
+  useGlobalLeaderboardsFeature,
+} from "@renderer/hooks";
 import {
   attributeNextLeaderboardRequest,
   leaderboardsCache,
 } from "@renderer/services/leaderboards-cache";
-import { buildLeaderboardBoardPath, isLeaderboardSourceParam } from "@shared";
+import {
+  buildLeaderboardBoardPath,
+  isLeaderboardMetricVisible,
+  isLeaderboardSourceParam,
+  resolveSocialPreferences,
+} from "@shared";
 import { useApiResource, useLeaderboardViewer } from "./leaderboards-api";
 import { BadgesSection } from "./badges-section";
 import { HeaderSelector } from "./header-selector";
@@ -148,8 +157,15 @@ function LeaderboardsPage() {
 
   const { viewerUser, isLoggedIn } = useLeaderboardViewer();
   const { isFeatureEnabled, Feature } = useFeature();
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const social = useMemo(
+    () => resolveSocialPreferences(userPreferences),
+    [userPreferences]
+  );
   const showBadges = isFeatureEnabled(Feature.LeaderboardBadges);
-  const scope = isLoggedIn ? requestedScope : "global";
+  const scope = isLoggedIn && social.showFriends ? requestedScope : "global";
 
   useEffect(() => {
     if (linkedTab) setRequestedTab(linkedTab);
@@ -189,9 +205,16 @@ function LeaderboardsPage() {
     metricsRequest.options,
     normalizeMetricDefinitions
   );
+  const availableMetrics = useMemo(
+    () =>
+      (metricDefinitions.data ?? []).filter((definition) =>
+        isLeaderboardMetricVisible(social, definition.id)
+      ),
+    [metricDefinitions.data, social]
+  );
   const metricIds = useMemo(
-    () => (metricDefinitions.data ?? []).map((definition) => definition.id),
-    [metricDefinitions.data]
+    () => availableMetrics.map((definition) => definition.id),
+    [availableMetrics]
   );
 
   const { results, retry } = useGlobalLeaderboards({
@@ -202,10 +225,6 @@ function LeaderboardsPage() {
     accountId: viewerUser?.id ?? null,
   });
 
-  const availableMetrics = useMemo(
-    () => metricDefinitions.data ?? [],
-    [metricDefinitions.data]
-  );
   const metric =
     availableMetrics.find((definition) => definition.id === requestedMetric) ??
     availableMetrics[0] ??
@@ -302,7 +321,7 @@ function LeaderboardsPage() {
           </div>
 
           <div className="leaderboards__toggles">
-            {isLoggedIn && (
+            {isLoggedIn && social.showFriends && (
               <HeaderSelector
                 label={t("scope_label")}
                 value={scope}

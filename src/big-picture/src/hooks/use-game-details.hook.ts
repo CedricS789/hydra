@@ -25,10 +25,11 @@ import { useUserPreferences } from "./use-user-preferences.hook";
 
 const buildFallbackShopDetails = (
   objectId: string,
-  assets: ShopAssets | null
+  assets: ShopAssets | null,
+  title = objectId
 ): ShopDetailsWithAssets => ({
   objectId,
-  name: assets?.title ?? "",
+  name: assets?.title ?? title,
   steam_appid: 0,
   detailed_description: "",
   about_the_game: "",
@@ -187,20 +188,17 @@ export function useGameDetails(
         const [statsResult, assets, shopDetailsResult] = await Promise.all([
           catalogueShop === "custom"
             ? Promise.resolve(null)
-            : globalThis.window.electron.getGameStats(
-                catalogueObjectId,
-                catalogueShop
-              ),
-          globalThis.window.electron.getGameAssets(
-            catalogueObjectId,
-            catalogueShop,
-            {
+            : globalThis.window.electron
+                .getGameStats(catalogueObjectId, catalogueShop)
+                .catch(() => null),
+          globalThis.window.electron
+            .getGameAssets(catalogueObjectId, catalogueShop, {
               artworkIdentity: {
                 shop: artworkShop,
                 objectId: artworkObjectId,
               },
-            }
-          ),
+            })
+            .catch(() => null),
           shopDetailsPromise,
         ]);
         if (abort.signal.aborted) return;
@@ -211,7 +209,11 @@ export function useGameDetails(
 
         setShopDetails(
           shopDetailsResult ??
-            buildFallbackShopDetails(catalogueObjectId, assets ?? null)
+            buildFallbackShopDetails(
+              catalogueObjectId,
+              assets ?? null,
+              operationalGameRef.current?.title
+            )
         );
         setStats(statsResult);
       } finally {
@@ -290,29 +292,40 @@ export function useGameDetails(
     }
 
     let isCurrentRequest = true;
+    let revision = 0;
+    setAchievements([]);
+    const reload = () => {
+      const currentRevision = ++revision;
+      const request = shouldUseRetroAchievements
+        ? globalThis.window.electron.getRetroAchievementsAchievements(
+            achievementObjectId,
+            achievementShop
+          )
+        : globalThis.window.electron.getUnlockedAchievements(
+            achievementObjectId,
+            achievementShop
+          );
 
-    const request = shouldUseRetroAchievements
-      ? globalThis.window.electron.getRetroAchievementsAchievements(
-          achievementObjectId,
-          achievementShop
-        )
-      : globalThis.window.electron.getUnlockedAchievements(
-          achievementObjectId,
-          achievementShop
-        );
-
-    request
-      .then((result) => {
-        if (!isCurrentRequest) return;
-        setAchievements(result ?? []);
-      })
-      .catch(() => {
-        if (!isCurrentRequest) return;
-        setAchievements([]);
-      });
+      request
+        .then((result) => {
+          if (!isCurrentRequest || currentRevision !== revision) return;
+          setAchievements(result ?? []);
+        })
+        .catch(() => {
+          if (!isCurrentRequest || currentRevision !== revision) return;
+          setAchievements([]);
+        });
+    };
+    reload();
+    const unsubscribeUnlocked =
+      globalThis.window.electron.onAchievementUnlocked?.(reload);
+    const unsubscribeLibrary =
+      globalThis.window.electron.onLibraryBatchComplete(reload);
 
     return () => {
       isCurrentRequest = false;
+      unsubscribeUnlocked?.();
+      unsubscribeLibrary();
     };
   }, [
     game?.objectId,
@@ -354,7 +367,7 @@ export function useGameDetails(
       if (!game.executablePath) return;
 
       NavigationAudioService.getInstance().play("launch");
-      globalThis.window.electron.openGame(
+      await globalThis.window.electron.openGame(
         game.shop,
         game.objectId,
         game.executablePath,
@@ -366,8 +379,15 @@ export function useGameDetails(
 
   const closeGame = useCallback(() => {
     if (!game) return;
-    globalThis.window.electron.closeGame(game.shop, game.objectId);
-  }, [game]);
+    void globalThis.window.electron
+      .closeGame(game.shop, game.objectId)
+      .catch(() => {
+        showErrorToast("Unable to stop game", {
+          message:
+            "The game is still running. Close it from its own menu or try again.",
+        });
+      });
+  }, [game, showErrorToast]);
 
   const syncTargets = JSON.stringify(
     (presentationGame?.members ?? (game ? [game] : []))

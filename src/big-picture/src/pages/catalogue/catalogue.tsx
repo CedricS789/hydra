@@ -6,7 +6,7 @@ import { CATALOGUE_PAGE_REGION_ID } from "./navigation";
 import { CatalogueGrid } from "./grid";
 import { CatalogueHeader } from "./header";
 import { CatalogueFiltersModal } from "./filters-modal";
-import { ManualDownloadModal } from "@renderer/pages/catalogue/manual-download-modal";
+import { ManualDownloadModal } from "../../components/modals";
 import { useCatalogueData } from "./use-catalogue-data";
 import { NavigationAudioService } from "../../services";
 import "./page.scss";
@@ -168,7 +168,7 @@ export default function Catalogue() {
   }, []);
 
   useNavigationScreenActions(
-    isFiltersModalOpen
+    isFiltersModalOpen || isManualDownloadOpen
       ? {}
       : {
           press: {

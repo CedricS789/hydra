@@ -12,22 +12,26 @@ import {
   chooseDownloadOutputPath,
   clampProgress,
   computeFileSize,
+  computeMaxBudgetResets,
   isRetryableDownloadError,
   isRetryableHttpStatus,
-  MAX_BUDGET_RESETS,
   MAX_RESTARTS_FROM_ZERO,
   parseRetryAfterMs,
   PROGRESS_RESET_THRESHOLD_BYTES,
   resolveResumeAction,
+  RollingSpeedTracker,
   shouldResetRetryBudget,
   stallDetected,
   verifyResumePrefixChunk,
 } from "./js-http-downloader-helpers";
 import {
+  DEFAULT_MAX_PARALLEL_RANGES,
   downloadParallelRanges,
   getRangeResumeCapability,
+  getRangeSizeForRequestBudget,
   getRangeTotal,
   getStrongRangeValidator,
+  PARALLEL_RANGE_COUNT,
   PARALLEL_RANGE_SIZE,
   ParallelRangeUnsupportedError,
   ParallelRangeHttpStatusError,
@@ -81,7 +85,19 @@ export interface JsHttpDownloaderOptions {
   expectedSize?: number;
   requireRangeResume?: boolean;
   throttle?: DownloadThrottle;
+  stallTimeoutMs?: number;
+  checkpointIntervalMs?: number;
+  maxRetryAttempts?: number;
   beforeComplete?: (filePath: string) => Promise<void>;
+}
+
+export interface JsHttpDownloaderRuntimeSettings {
+  parallelDownloadsEnabled?: boolean;
+  parallelConnections?: number;
+  rangeSizeBytes?: number | null;
+  stallTimeoutMs?: number;
+  checkpointIntervalMs?: number;
+  maxRetryAttempts?: number;
 }
 
 const MAX_RETRY_ATTEMPTS = 10;
@@ -119,8 +135,7 @@ export class JsHttpDownloader {
   private downloadSpeed = 0;
   private status: "active" | "paused" | "complete" | "error" = "paused";
   private folderName = "";
-  private lastSpeedUpdate = Date.now();
-  private bytesAtLastSpeedUpdate = 0;
+  private readonly speedTracker = new RollingSpeedTracker();
   private isDownloading = false;
 
   private retryCount = 0;
@@ -147,8 +162,98 @@ export class JsHttpDownloader {
   private verifyUnvalidatedResumeOverlap = false;
   private resumeCapability: "unknown" | "supported" | "unsupported" = "unknown";
   private readonly pendingRangeReads = new Map<number, number>();
+  private readonly rangeAbortCallbacks = new Map<number, () => void>();
+  private sourceOptions: JsHttpDownloaderOptions | null = null;
+  private runtimeParallelDownloadsEnabled: boolean | null = null;
+  private runtimeParallelConnections: number | null = null;
+  private runtimeRangeSizeBytes: number | null = null;
+  private runtimeStallTimeoutMs: number | null = null;
+  private runtimeCheckpointIntervalMs: number | null = null;
+  private runtimeMaxRetryAttempts: number | null = null;
   private urlRefreshAttempted = false;
   private activeRun: Promise<void> | null = null;
+
+  applyRuntimeSettings(settings: JsHttpDownloaderRuntimeSettings): void {
+    if (settings.parallelDownloadsEnabled !== undefined) {
+      this.runtimeParallelDownloadsEnabled = settings.parallelDownloadsEnabled;
+    }
+    if (settings.parallelConnections !== undefined) {
+      this.runtimeParallelConnections = settings.parallelConnections;
+    }
+    if (settings.rangeSizeBytes !== undefined) {
+      this.runtimeRangeSizeBytes = settings.rangeSizeBytes;
+    }
+    if (settings.stallTimeoutMs !== undefined) {
+      this.runtimeStallTimeoutMs = settings.stallTimeoutMs;
+    }
+    if (settings.checkpointIntervalMs !== undefined) {
+      this.runtimeCheckpointIntervalMs = settings.checkpointIntervalMs;
+    }
+    if (settings.maxRetryAttempts !== undefined) {
+      this.runtimeMaxRetryAttempts = settings.maxRetryAttempts;
+    }
+  }
+
+  private getEffectiveAllowParallelRanges(): boolean {
+    if (this.currentOptions?.allowParallelRanges === false) return false;
+    if (this.currentOptions?.allowParallelRanges === true) return true;
+    return this.runtimeParallelDownloadsEnabled ?? true;
+  }
+
+  private getEffectiveParallelConnections(): number | undefined {
+    const requested =
+      this.currentOptions?.parallelRangeConnections ??
+      this.runtimeParallelConnections ??
+      undefined;
+    if (requested === undefined) return undefined;
+    return this.runtimeParallelDownloadsEnabled === false &&
+      this.currentOptions?.allowParallelRanges === undefined
+      ? 1
+      : requested;
+  }
+
+  private getEffectiveProbeRangeSize(): number {
+    return (
+      this.currentOptions?.parallelRangeSize ??
+      this.runtimeRangeSizeBytes ??
+      PARALLEL_RANGE_SIZE
+    );
+  }
+
+  private getEffectiveParallelRangeSize(remainingBytes: number): number {
+    return (
+      this.currentOptions?.parallelRangeSize ??
+      this.runtimeRangeSizeBytes ??
+      getRangeSizeForRequestBudget(
+        Math.max(1, remainingBytes),
+        DEFAULT_MAX_PARALLEL_RANGES
+      )
+    );
+  }
+
+  private getEffectiveStallTimeoutMs(): number {
+    return (
+      this.currentOptions?.stallTimeoutMs ??
+      this.runtimeStallTimeoutMs ??
+      STALL_TIMEOUT_MS
+    );
+  }
+
+  private getEffectiveCheckpointIntervalMs(): number | undefined {
+    return (
+      this.currentOptions?.checkpointIntervalMs ??
+      this.runtimeCheckpointIntervalMs ??
+      undefined
+    );
+  }
+
+  private getEffectiveMaxRetryAttempts(): number {
+    return (
+      this.currentOptions?.maxRetryAttempts ??
+      this.runtimeMaxRetryAttempts ??
+      MAX_RETRY_ATTEMPTS
+    );
+  }
 
   setMaxDownloadSpeedBytesPerSecond(limit: number | null): void {
     this.throttle.setLimit(limit);
@@ -162,6 +267,7 @@ export class JsHttpDownloader {
       return this.waitForIdle();
     }
 
+    this.sourceOptions = options;
     this.currentOptions = options;
     this.isPaused = false;
     this.retryCount = 0;
@@ -183,6 +289,7 @@ export class JsHttpDownloader {
     this.verifyUnvalidatedResumeOverlap = false;
     this.resumeCapability = "unknown";
     this.pendingRangeReads.clear();
+    this.rangeAbortCallbacks.clear();
     this.urlRefreshAttempted = false;
     this.resetThrottleWindow();
     if (options.expectedSize === 0) {
@@ -238,7 +345,7 @@ export class JsHttpDownloader {
             startByte > 0 &&
             !this.resourceValidator &&
             !this.savedRangeState &&
-            this.currentOptions.allowParallelRanges !== false;
+            this.getEffectiveAllowParallelRanges();
           const rangeStart = this.getResumeRangeStart(startByte);
           const requestHeaders = this.buildRequestHeaders(headers, rangeStart);
 
@@ -288,17 +395,53 @@ export class JsHttpDownloader {
         return;
       }
 
-      const pendingSince = Math.min(
-        this.pendingReadSince ?? Infinity,
-        ...this.pendingRangeReads.values()
-      );
-      if (stallDetected(pendingSince, Date.now(), STALL_TIMEOUT_MS)) {
-        const blockedSeconds = Math.round((Date.now() - pendingSince) / 1000);
+      const now = Date.now();
+      const stallTimeoutMs = this.getEffectiveStallTimeoutMs();
+
+      if (stallDetected(this.pendingReadSince, now, stallTimeoutMs)) {
+        const blockedSeconds = Math.round(
+          (now - (this.pendingReadSince ?? now)) / 1000
+        );
         logger.log(
           `[JsHttpDownloader] Read blocked for ${blockedSeconds}s with no data, triggering retry`
         );
         this.triggerRetry();
+        return;
       }
+
+      if (this.pendingRangeReads.size === 0) return;
+
+      const stalledOffsets: number[] = [];
+      for (const [offset, since] of this.pendingRangeReads) {
+        if (stallDetected(since, now, stallTimeoutMs)) {
+          stalledOffsets.push(offset);
+        }
+      }
+
+      if (stalledOffsets.length === 0) return;
+
+      const allRangesStalled =
+        stalledOffsets.length === this.pendingRangeReads.size;
+      const canAbortIndividually = stalledOffsets.every((offset) =>
+        this.rangeAbortCallbacks.has(offset)
+      );
+
+      if (canAbortIndividually && !allRangesStalled) {
+        for (const offset of stalledOffsets) {
+          logger.log(
+            `[JsHttpDownloader] Range at offset ${offset} stalled; retrying that range only`
+          );
+          this.rangeAbortCallbacks.get(offset)?.();
+        }
+        return;
+      }
+
+      const oldestPending = Math.min(...this.pendingRangeReads.values());
+      const blockedSeconds = Math.round((now - oldestPending) / 1000);
+      logger.log(
+        `[JsHttpDownloader] All active range reads blocked for ${blockedSeconds}s with no data, triggering retry`
+      );
+      this.triggerRetry();
     }, STALL_CHECK_INTERVAL_MS);
   }
 
@@ -356,8 +499,9 @@ export class JsHttpDownloader {
       return !this.isPaused;
     }
 
-    if (isRetryable && this.retryCount < MAX_RETRY_ATTEMPTS) {
-      return this.retryAfterError(err, wasStallRetry);
+    const maxRetryAttempts = this.getEffectiveMaxRetryAttempts();
+    if (isRetryable && this.retryCount < maxRetryAttempts) {
+      return this.retryAfterError(err, wasStallRetry, maxRetryAttempts);
     }
 
     if (wasStallRetry) {
@@ -407,7 +551,11 @@ export class JsHttpDownloader {
       const freshUrl = await this.currentOptions.refreshUrl();
       if (this.isPaused) return "paused";
       if (freshUrl) {
-        this.currentOptions = { ...this.currentOptions, url: freshUrl };
+        this.currentOptions = {
+          ...this.currentOptions,
+          url: freshUrl,
+          headers: this.sourceOptions?.headers ?? this.currentOptions.headers,
+        };
         logger.log("[JsHttpDownloader] Refreshed download link for retry");
         return "refreshed";
       }
@@ -421,10 +569,12 @@ export class JsHttpDownloader {
 
   private async retryAfterError(
     err: Error,
-    wasStallRetry: boolean
+    wasStallRetry: boolean,
+    maxRetryAttempts: number
   ): Promise<boolean> {
     this.retryCount++;
     this.isReconnecting = true;
+    this.speedTracker.reset();
     this.downloadSpeed = 0;
     if ((await this.refreshUrlOnRetry()) === "paused") return false;
 
@@ -438,7 +588,7 @@ export class JsHttpDownloader {
     else if (causeCode) reason += ` (${causeCode})`;
     logger.log(
       `[JsHttpDownloader] Retryable error (${reason}). ` +
-        `Retry ${this.retryCount}/${MAX_RETRY_ATTEMPTS} in ${delay}ms`
+        `Retry ${this.retryCount}/${maxRetryAttempts} in ${delay}ms`
     );
 
     await this.sleep(delay);
@@ -446,12 +596,13 @@ export class JsHttpDownloader {
   }
 
   private maybeResetRetryBudget(): void {
+    const maxBudgetResets = computeMaxBudgetResets(this.fileSize);
     if (
       shouldResetRetryBudget(
         this.attemptBytesReceived,
         this.budgetResets,
         PROGRESS_RESET_THRESHOLD_BYTES,
-        MAX_BUDGET_RESETS
+        maxBudgetResets
       )
     ) {
       logger.log(
@@ -476,6 +627,9 @@ export class JsHttpDownloader {
     }
 
     this.statusRetryCount++;
+    this.isReconnecting = true;
+    this.speedTracker.reset();
+    this.downloadSpeed = 0;
     const backoff = Math.min(
       INITIAL_RETRY_DELAY_MS * Math.pow(2, this.statusRetryCount - 1),
       MAX_RETRY_DELAY_MS
@@ -646,8 +800,7 @@ export class JsHttpDownloader {
   }
 
   private resetSpeedTracking(): void {
-    this.lastSpeedUpdate = Date.now();
-    this.bytesAtLastSpeedUpdate = this.bytesDownloaded;
+    this.speedTracker.reset();
     this.downloadSpeed = 0;
   }
 
@@ -715,16 +868,17 @@ export class JsHttpDownloader {
     }
     let response: Response;
     let fullRangeResponse = false;
+    const allowParallel = this.getEffectiveAllowParallelRanges();
     if (
       this.savedRangeState ||
       (!this.parallelRangesDisabled &&
-        this.currentOptions?.allowParallelRanges !== false &&
+        allowParallel &&
         !this.verifyUnvalidatedResumeOverlap &&
         !(startByte > 0 && this.currentOptions?.verifyResumePrefix))
     ) {
       const rangeSize = this.parallelRangesDisabled
         ? Number.MAX_SAFE_INTEGER
-        : (this.currentOptions?.parallelRangeSize ?? PARALLEL_RANGE_SIZE);
+        : this.getEffectiveProbeRangeSize();
       const firstGap = this.savedRangeState
         ? missingRanges(this.savedRangeState)[0]
         : null;
@@ -831,6 +985,16 @@ export class JsHttpDownloader {
         logger.log(
           `[JsHttpDownloader] Downloading ${total} bytes with saved byte ranges`
         );
+        const parallelRangeSize = this.parallelRangesDisabled
+          ? Number.MAX_SAFE_INTEGER
+          : this.getEffectiveParallelRangeSize(total - startByte);
+        const parallelConnections = this.parallelRangesDisabled
+          ? 1
+          : (this.getEffectiveParallelConnections() ?? PARALLEL_RANGE_COUNT);
+        const maxRangeRetries = Math.max(
+          2,
+          Math.min(6, Math.floor(this.getEffectiveMaxRetryAttempts() / 2))
+        );
         const signal = this.abortController!.signal;
         let complete: boolean;
         const previousBytes = this.bytesDownloaded;
@@ -842,14 +1006,14 @@ export class JsHttpDownloader {
             filePath: actualFilePath,
             startByte,
             total,
-            rangeSize,
+            rangeSize: parallelRangeSize,
             resourceId: this.currentOptions?.resourceId,
-            connectionCount: this.parallelRangesDisabled
-              ? 1
-              : this.currentOptions?.parallelRangeConnections,
+            connectionCount: parallelConnections,
             maxRanges: this.parallelRangesDisabled
               ? Infinity
               : this.currentOptions?.maxParallelRanges,
+            checkpointIntervalMs: this.getEffectiveCheckpointIntervalMs(),
+            maxRangeRetries,
             signal,
             abort: () => this.abortController?.abort(),
             beforeChunk: (length) => this.applyThrottle(length),
@@ -860,20 +1024,47 @@ export class JsHttpDownloader {
               this.urlRefreshAttempted = false;
               this.attemptBytesReceived += length;
               this.bytesDownloaded += length;
+              this.recordSpeedBytes(length);
               this.isReconnecting = false;
-              this.updateSpeed();
             },
             onReadPending: (offset, pending) => {
               if (pending) this.pendingRangeReads.set(offset, Date.now());
               else this.pendingRangeReads.delete(offset);
             },
+            registerRangeAbort: (offset, abortFn) => {
+              if (abortFn) this.rangeAbortCallbacks.set(offset, abortFn);
+              else this.rangeAbortCallbacks.delete(offset);
+            },
+            refreshUrl: this.currentOptions?.refreshUrl
+              ? async () => {
+                  const fresh = await this.currentOptions!.refreshUrl!();
+                  if (fresh && this.currentOptions) {
+                    this.currentOptions = {
+                      ...this.currentOptions,
+                      url: fresh,
+                      headers:
+                        this.sourceOptions?.headers ??
+                        this.currentOptions.headers,
+                    };
+                  }
+                  return fresh;
+                }
+              : undefined,
+            getHeaders: () =>
+              this.buildRequestHeaders(
+                this.sourceOptions?.headers ??
+                  this.currentOptions?.headers ??
+                  {},
+                0
+              ),
           });
         } catch (error) {
+          const normalized = this.normalizeRangeError(error as Error);
           if (
             !this.isPaused &&
             !this.isReconnectRetry &&
             !(error instanceof ParallelRangeUnsupportedError) &&
-            (this.isStallRetry || isRetryableDownloadError(error))
+            (this.isStallRetry || isRetryableDownloadError(normalized))
           ) {
             this.parallelRangeFailures++;
             if (
@@ -886,9 +1077,10 @@ export class JsHttpDownloader {
           this.savedRangeState = readRangeState(actualFilePath);
           this.attemptBytesReceived = Math.max(0, committed - previousBytes);
           this.resetSpeedTracking();
-          throw error;
+          throw normalized;
         } finally {
           this.pendingRangeReads.clear();
+          this.rangeAbortCallbacks.clear();
         }
         if (complete) {
           this.markComplete();
@@ -1291,12 +1483,12 @@ export class JsHttpDownloader {
       if (plan.newRemainingToSkip === 0) this.finishRecovery();
     };
     const onChunk = (length: number) => {
+      this.urlRefreshAttempted = false;
+      this.bytesDownloaded += length;
+      this.recordSpeedBytes(length);
       if (this.isReconnecting) {
         this.isReconnecting = false;
       }
-      this.urlRefreshAttempted = false;
-      this.bytesDownloaded += length;
-      this.updateSpeed();
     };
     let remainingToSkip = skipBytes;
 
@@ -1392,7 +1584,7 @@ export class JsHttpDownloader {
   setReconnecting(value: boolean): void {
     this.isReconnecting = value;
     if (value) {
-      this.downloadSpeed = 0;
+      this.resetSpeedTracking();
     }
   }
 
@@ -1404,7 +1596,7 @@ export class JsHttpDownloader {
     );
     this.isReconnecting = true;
     this.isReconnectRetry = true;
-    this.downloadSpeed = 0;
+    this.resetSpeedTracking();
     this.pendingReadSince = null;
     if (this.abortController) {
       this.abortController.abort();
@@ -1428,7 +1620,7 @@ export class JsHttpDownloader {
       this.abortController.abort();
     }
     this.status = "paused";
-    this.downloadSpeed = 0;
+    this.resetSpeedTracking();
   }
 
   cancelDownload(deleteFile = true): void {
@@ -1475,6 +1667,14 @@ export class JsHttpDownloader {
       progress = clampProgress(this.bytesDownloaded / this.fileSize);
     }
 
+    if (
+      this.status === "active" &&
+      !this.isRecovering &&
+      !this.isReconnecting
+    ) {
+      this.downloadSpeed = this.speedTracker.compute();
+    }
+
     return {
       folderName: this.folderName,
       fileSize: this.fileSize,
@@ -1494,16 +1694,8 @@ export class JsHttpDownloader {
     };
   }
 
-  private updateSpeed(): void {
-    const now = Date.now();
-    const elapsed = (now - this.lastSpeedUpdate) / 1000;
-
-    if (elapsed >= 1) {
-      const bytesDelta = this.bytesDownloaded - this.bytesAtLastSpeedUpdate;
-      this.downloadSpeed = bytesDelta / elapsed;
-      this.lastSpeedUpdate = now;
-      this.bytesAtLastSpeedUpdate = this.bytesDownloaded;
-    }
+  private recordSpeedBytes(bytesDelta: number): void {
+    this.downloadSpeed = this.speedTracker.record(bytesDelta);
   }
 
   private extractFilename(url: string): string | undefined {
@@ -1532,11 +1724,13 @@ export class JsHttpDownloader {
   }
 
   private reset(): void {
+    this.sourceOptions = null;
     this.currentOptions = null;
     this.outputFilePath = null;
     this.resolvedFilename = null;
     this.bytesDownloaded = 0;
     this.fileSize = 0;
+    this.speedTracker.reset();
     this.downloadSpeed = 0;
     this.status = "paused";
     this.folderName = "";
@@ -1551,6 +1745,7 @@ export class JsHttpDownloader {
     this.attemptBytesReceived = 0;
     this.restartCount = 0;
     this.pendingReadSince = null;
+    this.rangeAbortCallbacks.clear();
     this.isStallRetry = false;
     this.isReconnecting = false;
     this.isReconnectRetry = false;

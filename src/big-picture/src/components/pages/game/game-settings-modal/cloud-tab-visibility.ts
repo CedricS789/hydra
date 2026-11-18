@@ -8,8 +8,10 @@ export const shouldShowLegacyCloudSaveTab = (
   shop: GameShop,
   isSignedIn: boolean,
   hasActiveSubscription: boolean,
-  platform?: string | null
+  platform?: string | null,
+  hideCloudPromotions = false
 ) =>
+  !hideCloudPromotions &&
   shop !== "steam" &&
   getCloudSaveEmulatorProvider(shop, platform) === null &&
   isSignedIn &&
@@ -19,6 +21,15 @@ export const shouldShowCloudSaveV2Tab = (
   shop: GameShop,
   isSignedIn: boolean,
   hasActiveSubscription: boolean,
-  platform?: string | null
+  platform?: string | null,
+  hideCloudPromotions = false
 ) =>
-  isCloudSaveV2Eligible(shop, platform) && isSignedIn && hasActiveSubscription;
+  !hideCloudPromotions &&
+  isCloudSaveV2Eligible(shop, platform) &&
+  isSignedIn &&
+  hasActiveSubscription;
+
+export const shouldShowLocalBackupsTab = (
+  hideCloudPromotions: boolean,
+  isDeleted = false
+) => hideCloudPromotions && !isDeleted;

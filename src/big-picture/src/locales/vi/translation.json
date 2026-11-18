@@ -736,7 +736,13 @@
     "Return to desktop mode": "Trở về chế độ máy tính",
     "Put the system to sleep": "Đưa hệ thống vào chế độ ngủ",
     "Restart your device": "Khởi động lại thiết bị",
-    "Shut down your device": "Tắt thiết bị"
+    "Shut down your device": "Tắt thiết bị",
+    "Quit Hydra": "Thoát Hydra",
+    "Close the application": "Đóng ứng dụng",
+    "Quit Hydra?": "Thoát Hydra?",
+    "Hydra will close. Active downloads and background services will stop.": "Hydra sẽ đóng lại. Các lượt tải xuống đang hoạt động và dịch vụ nền sẽ dừng.",
+    "Could not quit Hydra": "Không thể thoát Hydra",
+    "Please try again or close Hydra from the system tray.": "Vui lòng thử lại hoặc đóng Hydra từ khay hệ thống."
   },
   "format": {
     "playtime_hours_one": "{{count}} giờ",

@@ -1,16 +1,19 @@
 import {
   useSettingsOperationGuard,
   useSettingsConfirmation,
+  useSettingsFormGuard,
 } from "@renderer/context/settings/settings-draft.context";
-import { useSettingsFormGuard } from "@renderer/context/settings/settings-draft.context";
 import { settingsValueEqual } from "../../../../shared/settings-changes";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 
 import { Button, CheckboxField, TextField } from "@renderer/components";
 import { useLudusaviLocalState } from "@renderer/hooks";
 import type { LudusaviGameSettings, LudusaviLocalSettings } from "@types";
 import { SettingsSaveManager } from "./settings-save-manager";
+import { SettingsHydraConfigBackup } from "./settings-hydra-config-backup";
+import { SettingsCollapsibleMenu } from "./settings-collapsible-menu";
 import saveEngine from "../../../../shared/save-engine.json";
 import "./settings-local-edition.scss";
 
@@ -20,13 +23,23 @@ const emptyGameSettings: LudusaviGameSettings = {
   trackingPaths: [] as string[],
 };
 
+const parsePathLines = (value: string) =>
+  value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
 export function SettingsLudusaviAdvanced() {
   const confirm = useSettingsConfirmation();
   const { t } = useTranslation("ludusavi");
+  const [searchParams] = useSearchParams();
+  const requestedGameKey = searchParams.get("game") ?? "";
+  const appliedRequestedGame = useRef<string | null>(null);
+
   const { state, error: stateError, refresh } = useLudusaviLocalState();
   const [settings, setSettings] = useState<LudusaviLocalSettings>();
   const [savedSettings, setSavedSettings] = useState<LudusaviLocalSettings>();
-  const [advancedGameKey, setAdvancedGameKey] = useState("");
+  const [advancedGameKey, setAdvancedGameKey] = useState(requestedGameKey);
   const [savePathsText, setSavePathsText] = useState("");
   const [trackingPathsText, setTrackingPathsText] = useState("");
   const [pathsAcknowledged, setPathsAcknowledged] = useState(false);
@@ -43,6 +56,26 @@ export function SettingsLudusaviAdvanced() {
   const [disableAcknowledged, setDisableAcknowledged] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearNotice, setClearNotice] = useState("");
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(
+    () => ({
+      perGame: Boolean(requestedGameKey),
+      globalPolicy: !requestedGameKey,
+      hydraConfig: false,
+      fullManager: false,
+      history: false,
+    })
+  );
+
+  const toggleSection = (key: string) =>
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  useEffect(() => {
+    if (requestedGameKey) {
+      setOpenSections((prev) =>
+        prev.perGame ? prev : { ...prev, perGame: true }
+      );
+    }
+  }, [requestedGameKey]);
 
   const settingsDirty = Boolean(
     settings && savedSettings && !settingsValueEqual(settings, savedSettings)
@@ -63,21 +96,36 @@ export function SettingsLudusaviAdvanced() {
       setAdvancedGameKey("");
       return;
     }
-    if (!state.games.some((game) => game.key === advancedGameKey)) {
+    if (
+      requestedGameKey &&
+      appliedRequestedGame.current !== requestedGameKey &&
+      state.games.some((game) => game.key === requestedGameKey)
+    ) {
+      setAdvancedGameKey(requestedGameKey);
+      appliedRequestedGame.current = requestedGameKey;
+      return;
+    }
+    if (
+      advancedGameKey &&
+      !state.games.some((game) => game.key === advancedGameKey)
+    ) {
+      setAdvancedGameKey(state.games.length === 1 ? state.games[0].key : "");
+      return;
+    }
+    if (!advancedGameKey && state.games.length === 1) {
       setAdvancedGameKey(state.games[0].key);
     }
-  }, [state?.games, advancedGameKey]);
+  }, [state?.games, advancedGameKey, requestedGameKey]);
 
   const advancedGame = state?.games.find(
     (game) => game.key === advancedGameKey
   );
   const advancedGameSettings =
-    settings?.games[advancedGameKey] ?? emptyGameSettings;
-  const parsePathLines = (value: string) =>
-    value
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
+    (advancedGameKey && settings?.games[advancedGameKey]) || emptyGameSettings;
+  const savedGameSettings =
+    (advancedGameKey && savedSettings?.games[advancedGameKey]) ||
+    emptyGameSettings;
+
   const pathsDirty = Boolean(
     advancedGame &&
       (!settingsValueEqual(
@@ -89,6 +137,14 @@ export function SettingsLudusaviAdvanced() {
           advancedGameSettings.trackingPaths
         ))
   );
+  const perGameSettingsDirty = Boolean(
+    advancedGame &&
+      settings &&
+      savedSettings &&
+      !settingsValueEqual(advancedGameSettings, savedGameSettings)
+  );
+  const gameRuleDirty = pathsDirty || perGameSettingsDirty;
+
   useSettingsFormGuard(
     "backup-advanced",
     settingsDirty || pathsDirty,
@@ -96,7 +152,12 @@ export function SettingsLudusaviAdvanced() {
   );
 
   useEffect(() => {
-    if (!advancedGame || pathsDirty) return;
+    if (!advancedGame) {
+      setSavePathsText("");
+      setTrackingPathsText("");
+      return;
+    }
+    if (pathsDirty) return;
     setSavePathsText(advancedGameSettings.savePaths.join("\n"));
     setTrackingPathsText(advancedGameSettings.trackingPaths.join("\n"));
   }, [
@@ -152,6 +213,7 @@ export function SettingsLudusaviAdvanced() {
     a.title.localeCompare(b.title)
   );
   const gameAutoBackupEnabled = advancedGameSettings.enabled !== false;
+
   const requestDisable = (
     target: "global" | { gameKey: string; title: string }
   ) => {
@@ -169,6 +231,7 @@ export function SettingsLudusaviAdvanced() {
     });
     setNotice("Unsaved change. Use Save backup settings to apply it.");
   };
+
   const confirmDisable = () => {
     if (!pendingDisable || !disableAcknowledged) return;
     if (pendingDisable === "global") update({ enabled: false });
@@ -176,9 +239,56 @@ export function SettingsLudusaviAdvanced() {
     setPendingDisable(null);
     setNotice("Unsaved change. Use Save backup settings to apply it.");
   };
+
   const saveSelectedGameEnabled = (enabled: boolean) =>
     stageGameEnabled(advancedGameKey, enabled);
   const saveGlobalEnabled = (enabled: boolean) => update({ enabled });
+
+  const discardPerGameEdits = () => {
+    if (!advancedGameKey || !savedSettings) return;
+    const nextGames = { ...settings.games };
+    if (Object.hasOwn(savedSettings.games, advancedGameKey)) {
+      nextGames[advancedGameKey] = savedSettings.games[advancedGameKey];
+    } else {
+      delete nextGames[advancedGameKey];
+    }
+    setSettings({ ...settings, games: nextGames });
+    const baselinePaths = savedSettings.games[advancedGameKey];
+    setSavePathsText(baselinePaths?.savePaths.join("\n") ?? "");
+    setTrackingPathsText(baselinePaths?.trackingPaths.join("\n") ?? "");
+    setPathsAcknowledged(false);
+    setPendingUnlink(false);
+    setUnlinkAcknowledged(false);
+    if (pendingDisable && pendingDisable !== "global") {
+      setPendingDisable(null);
+      setDisableAcknowledged(false);
+    }
+    setNotice("");
+  };
+
+  const handleSelectGame = async (nextKey: string) => {
+    if (nextKey === advancedGameKey) return;
+    if (gameRuleDirty) {
+      const accepted = await confirm("discard", [
+        `Discard unsaved per-game backup settings or custom paths for ${advancedGame?.title ?? advancedGameKey}?`,
+      ]);
+      if (!accepted) return;
+      discardPerGameEdits();
+    }
+    setAdvancedGameKey(nextKey);
+    setPathsAcknowledged(false);
+    setPendingUnlink(false);
+    setUnlinkAcknowledged(false);
+    if (pendingDisable && pendingDisable !== "global") {
+      setPendingDisable(null);
+      setDisableAcknowledged(false);
+    }
+    const nextSettings = nextKey ? settings.games[nextKey] : undefined;
+    setSavePathsText(nextSettings?.savePaths.join("\n") ?? "");
+    setTrackingPathsText(nextSettings?.trackingPaths.join("\n") ?? "");
+    setNotice("");
+  };
+
   const saveAdvancedChanges = async () => {
     if (retentionReduced && !retentionAcknowledged)
       throw new Error(t("retention_ack_required"));
@@ -193,14 +303,8 @@ export function SettingsLudusaviAdvanced() {
     if (pathsDirty && advancedGameKey)
       next.games[advancedGameKey] = {
         ...(next.games[advancedGameKey] ?? emptyGameSettings),
-        savePaths: savePathsText
-          .split("\n")
-          .map((line) => line.trim())
-          .filter(Boolean),
-        trackingPaths: trackingPathsText
-          .split("\n")
-          .map((line) => line.trim())
-          .filter(Boolean),
+        savePaths: parsePathLines(savePathsText),
+        trackingPaths: parsePathLines(trackingPathsText),
       };
     const review = [
       "Save backup settings. These control future automatic backups and recovery operations.",
@@ -236,6 +340,7 @@ export function SettingsLudusaviAdvanced() {
     setRetentionAcknowledged(false);
     setNotice("Backup settings saved.");
   };
+
   const requireSavedSettings = async () => {
     if (settingsDirty || pathsDirty)
       throw new Error(
@@ -272,23 +377,319 @@ export function SettingsLudusaviAdvanced() {
         <p className="local-edition__notice">{t("backup_only_notice")}</p>
       </header>
 
-      <details className="local-edition__advanced-menu">
-        <summary>
-          <span>{t("automatic_backup_controls_title")}</span>
-          <small>{t("automatic_backup_controls_description")}</small>
-        </summary>
-        <div className="local-edition__advanced-menu-body">
-          <div className="local-edition__subcard">
-            <div className="local-edition__card-header">
-              <div>
-                <h4 className="local-edition__section-heading">
-                  {t("automatic_backup_controls_title")}
-                </h4>
-                <p className="local-edition__hint">
-                  {t("automatic_backup_controls_description")}
-                </p>
+      <SettingsCollapsibleMenu
+        classPrefix="local-edition__advanced-menu"
+        title={
+          advancedGame
+            ? t("per_game_section_title_selected", {
+                game: advancedGame.title,
+              })
+            : t("per_game_section_title")
+        }
+        description={t("per_game_section_description")}
+        open={Boolean(openSections.perGame)}
+        onToggle={() => toggleSection("perGame")}
+      >
+        <div className="local-edition__subcard local-edition__target-game-banner">
+            <label className="local-edition__label">
+              {t("backup_game_selection")}
+              <select
+                value={advancedGameKey}
+                disabled={
+                  busy ||
+                  Boolean(pendingDisable) ||
+                  pendingUnlink ||
+                  !sortedGames.length
+                }
+                onChange={(event) => void handleSelectGame(event.target.value)}
+              >
+                {sortedGames.length > 1 && (
+                  <option value="">{t("select_game_placeholder")}</option>
+                )}
+                {sortedGames.map((game) => (
+                  <option value={game.key} key={game.key}>
+                    {game.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="local-edition__hint">
+              {t("independent_game_selection")}
+            </p>
+            {advancedGame && (
+              <div className="local-edition__title-with-badge">
+                <span className="local-edition__hint">
+                  {t("selected_game_banner_label")}:
+                </span>
+                <strong>{advancedGame.title}</strong>
+                <span
+                  className={`local-edition__badge ${
+                    settings.enabled && gameAutoBackupEnabled
+                      ? "local-edition__badge--library"
+                      : "local-edition__badge--unmatched"
+                  }`}
+                >
+                  {settings.enabled && gameAutoBackupEnabled
+                    ? t("status_enabled")
+                    : t("status_disabled")}
+                </span>
+                {!advancedGame.executablePath && (
+                  <span className="local-edition__badge local-edition__badge--unmatched">
+                    {t("not_installed_badge")}
+                  </span>
+                )}
               </div>
+            )}
+          </div>
+
+          {!sortedGames.length && (
+            <p className="local-edition__hint">{t("no_games")}</p>
+          )}
+
+          {sortedGames.length > 0 && !advancedGame && (
+            <div className="local-edition__empty-game-prompt" role="status">
+              <p>{t("select_game_empty_prompt")}</p>
             </div>
+          )}
+
+          {advancedGame && (
+            <>
+              <div className="local-edition__subcard">
+                <SettingsSaveManager
+                  mode="versions"
+                  gameKey={advancedGameKey}
+                  gameTitle={advancedGame.title}
+                  destination={settings.destination}
+                  busy={busy || !canSaveAdvanced}
+                  beforeAction={requireSavedSettings}
+                  refresh={refresh}
+                  reloadSettings={async () => {
+                    const latest = await refresh();
+                    setSettings(latest.settings);
+                    setSavedSettings(latest.settings);
+                  }}
+                />
+              </div>
+
+              <div className="local-edition__subcard">
+                <div className="local-edition__card-header">
+                  <div>
+                    <h4 className="local-edition__section-heading">
+                      {t("per_game_rules_title_for_game", {
+                        game: advancedGame.title,
+                      })}
+                    </h4>
+                    <p className="local-edition__hint">
+                      {t("custom_paths_menu_description")}
+                    </p>
+                  </div>
+                </div>
+
+                <CheckboxField
+                  label={t("enable_game")}
+                  checked={gameAutoBackupEnabled}
+                  disabled={busy || Boolean(pendingDisable)}
+                  onChange={(event) => {
+                    if (!event.target.checked) {
+                      requestDisable({
+                        gameKey: advancedGameKey,
+                        title: advancedGame.title,
+                      });
+                    } else {
+                      void saveSelectedGameEnabled(true);
+                    }
+                  }}
+                />
+                {!gameAutoBackupEnabled && (
+                  <p className="local-edition__safety-warning" role="status">
+                    {t("game_automatic_backup_disabled_notice", {
+                      game: advancedGame.title,
+                    })}
+                  </p>
+                )}
+                {pendingDisable && pendingDisable !== "global" && (
+                  <div className="local-edition__safety-warning" role="alert">
+                    <p>
+                      {t("confirm_disable_game_description", {
+                        game: pendingDisable.title,
+                      })}
+                    </p>
+                    <CheckboxField
+                      label={t("confirm_disable_game_acknowledgement", {
+                        game: pendingDisable.title,
+                      })}
+                      checked={disableAcknowledged}
+                      onChange={(event) =>
+                        setDisableAcknowledged(event.target.checked)
+                      }
+                    />
+                    <div className="local-edition__actions">
+                      <Button
+                        disabled={busy || !disableAcknowledged}
+                        onClick={() => void confirmDisable()}
+                      >
+                        {t("confirm_disable_backups")}
+                      </Button>
+                      <Button
+                        theme="outline"
+                        disabled={busy}
+                        onClick={() => setPendingDisable(null)}
+                      >
+                        {t("cancel_clear")}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {advancedGameSettings.manifestTitle && (
+                  <div className="local-edition__row">
+                    <span className="local-edition__hint">
+                      {t("linked_save_title", {
+                        title: advancedGameSettings.manifestTitle,
+                      })}
+                    </span>
+                    <Button
+                      theme="outline"
+                      disabled={busy}
+                      onClick={() => {
+                        setUnlinkAcknowledged(false);
+                        setPendingUnlink(true);
+                      }}
+                    >
+                      {t("unlink_save_title")}
+                    </Button>
+                  </div>
+                )}
+                {pendingUnlink && (
+                  <div className="local-edition__safety-warning" role="alert">
+                    <p>{t("unlink_save_warning")}</p>
+                    <CheckboxField
+                      label={t("unlink_save_acknowledgement")}
+                      checked={unlinkAcknowledged}
+                      onChange={(event) =>
+                        setUnlinkAcknowledged(event.target.checked)
+                      }
+                    />
+                    <div className="local-edition__actions">
+                      <Button
+                        disabled={busy || !unlinkAcknowledged}
+                        onClick={() => {
+                          setPendingUnlink(false);
+                          setUnlinkAcknowledged(false);
+                          const nextGame = { ...advancedGameSettings };
+                          delete nextGame.manifestTitle;
+                          delete nextGame.steamId;
+                          setSettings({
+                            ...settings,
+                            games: {
+                              ...settings.games,
+                              [advancedGameKey]: nextGame,
+                            },
+                          });
+                          setNotice(
+                            "Save matching will change only after Save backup settings."
+                          );
+                        }}
+                      >
+                        {t("unlink_save_title")}
+                      </Button>
+                      <Button
+                        theme="outline"
+                        disabled={busy}
+                        onClick={() => {
+                          setPendingUnlink(false);
+                          setUnlinkAcknowledged(false);
+                        }}
+                      >
+                        {t("cancel_clear")}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <label className="local-edition__label">
+                  {t("save_paths")}
+                  <textarea
+                    rows={3}
+                    value={savePathsText}
+                    disabled={busy}
+                    onChange={(event) => {
+                      setSavePathsText(event.target.value);
+                      setPathsAcknowledged(false);
+                    }}
+                  />
+                </label>
+                <label className="local-edition__label">
+                  {t("tracking_paths")}
+                  <textarea
+                    rows={2}
+                    value={trackingPathsText}
+                    disabled={busy}
+                    onChange={(event) => {
+                      setTrackingPathsText(event.target.value);
+                      setPathsAcknowledged(false);
+                    }}
+                  />
+                </label>
+                <p className="local-edition__safety-warning">
+                  {t("custom_paths_safety_warning")}
+                </p>
+                <CheckboxField
+                  label={t("paths_acknowledgement")}
+                  checked={pathsAcknowledged}
+                  disabled={busy || !pathsDirty}
+                  onChange={(event) =>
+                    setPathsAcknowledged(event.target.checked)
+                  }
+                />
+                {notice && (
+                  <p role="status" className="local-edition__status-banner">
+                    {notice}
+                  </p>
+                )}
+                <div className="local-edition__row">
+                  <Button
+                    disabled={
+                      busy ||
+                      !canSaveAdvanced ||
+                      !gameRuleDirty ||
+                      (pathsDirty && !pathsAcknowledged)
+                    }
+                    onClick={() => action(saveAdvancedChanges, true)}
+                  >
+                    {pathsDirty && !perGameSettingsDirty
+                      ? t("save_custom_paths")
+                      : t("save_game_settings", { game: advancedGame.title })}
+                  </Button>
+                  {gameRuleDirty && (
+                    <Button
+                      theme="outline"
+                      disabled={busy}
+                      onClick={discardPerGameEdits}
+                    >
+                      {t("discard_edits")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+      </SettingsCollapsibleMenu>
+
+      <SettingsCollapsibleMenu
+        classPrefix="local-edition__advanced-menu"
+        title={t("global_policy_section_title")}
+        description={t("global_policy_section_description")}
+        open={Boolean(openSections.globalPolicy)}
+        onToggle={() => toggleSection("globalPolicy")}
+      >
+        <div className="local-edition__subcard">
+            <h4 className="local-edition__section-heading">
+              {t("automatic_backup_controls_title")}
+            </h4>
+            <p className="local-edition__hint">
+              {t("automatic_backup_controls_description")}
+            </p>
             <CheckboxField
               label={t("enable")}
               checked={settings.enabled}
@@ -331,27 +732,12 @@ export function SettingsLudusaviAdvanced() {
               </div>
             )}
           </div>
-        </div>
-      </details>
 
-      <details className="local-edition__advanced-menu">
-        <summary>
-          <span>{t("destination")}</span>
-          <small>{t("destination_warning")}</small>
-        </summary>
-        <div className="local-edition__advanced-menu-body">
           <div className="local-edition__subcard">
-            <div className="local-edition__card-header">
-              <div>
-                <h4 className="local-edition__section-heading">
-                  {t("destination")}
-                </h4>
-                <p className="local-edition__hint">
-                  {t("destination_warning")}
-                </p>
-              </div>
-            </div>
-            <p className="local-edition__hint">{t("save_advanced_hint")}</p>
+            <h4 className="local-edition__section-heading">
+              {t("destination")}
+            </h4>
+            <p className="local-edition__hint">{t("destination_warning")}</p>
             <TextField
               label={t("destination")}
               value={settings.destination}
@@ -385,21 +771,11 @@ export function SettingsLudusaviAdvanced() {
               }
             />
           </div>
-        </div>
-      </details>
 
-      <details className="local-edition__advanced-menu">
-        <summary>
-          <span>{t("retention_section_title")}</span>
-          <small>{t("retention_warning")}</small>
-        </summary>
-        <div className="local-edition__advanced-menu-body">
           <div className="local-edition__subcard">
-            <div className="local-edition__card-header">
-              <h4 className="local-edition__section-heading">
-                {t("retention_section_title")}
-              </h4>
-            </div>
+            <h4 className="local-edition__section-heading">
+              {t("retention_section_title")}
+            </h4>
             <div className="local-edition__grid-3">
               <TextField
                 label={t("retention")}
@@ -480,305 +856,59 @@ export function SettingsLudusaviAdvanced() {
                 </select>
               </label>
             </div>
+            <p className="local-edition__hint">{t("save_advanced_hint")}</p>
           </div>
-        </div>
-      </details>
+      </SettingsCollapsibleMenu>
 
-      <details className="local-edition__advanced-menu">
-        <summary>
-          <span>
-            {t("custom_paths_section_title", {
-              game: advancedGame?.title ?? t("game"),
-            })}
-          </span>
-          <small>{t("custom_paths_menu_description")}</small>
-        </summary>
-        <div className="local-edition__advanced-menu-body">
-          <div className="local-edition__subcard">
-            <div className="local-edition__card-header">
-              <div>
-                <h4 className="local-edition__section-heading">
-                  {t("custom_paths_section_title", {
-                    game: advancedGame?.title ?? t("game"),
-                  })}
-                </h4>
-                <p className="local-edition__hint">
-                  {t("independent_game_selection")}
-                </p>
-              </div>
-            </div>
-            <label className="local-edition__label">
-              {t("advanced_game_selection")}
-              <select
-                value={advancedGameKey}
-                disabled={
-                  busy ||
-                  Boolean(pendingDisable) ||
-                  pendingUnlink ||
-                  !sortedGames.length
-                }
-                onChange={(event) => {
-                  const nextKey = event.target.value;
-                  setAdvancedGameKey(nextKey);
-                  setPathsAcknowledged(false);
-                  setPendingUnlink(false);
-                  setUnlinkAcknowledged(false);
-                  const nextSettings = settings.games[nextKey];
-                  setSavePathsText(nextSettings?.savePaths.join("\n") ?? "");
-                  setTrackingPathsText(
-                    nextSettings?.trackingPaths.join("\n") ?? ""
-                  );
-                }}
-              >
-                {sortedGames.map((game) => (
-                  <option value={game.key} key={game.key}>
-                    {game.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {advancedGame && (
-              <>
-                <CheckboxField
-                  label={t("enable_game")}
-                  checked={gameAutoBackupEnabled}
-                  disabled={busy || Boolean(pendingDisable)}
-                  onChange={(event) => {
-                    if (!event.target.checked) {
-                      requestDisable({
-                        gameKey: advancedGameKey,
-                        title: advancedGame.title,
-                      });
-                    } else {
-                      void saveSelectedGameEnabled(true);
-                    }
-                  }}
-                />
-                {!gameAutoBackupEnabled && (
-                  <p className="local-edition__safety-warning" role="status">
-                    {t("game_automatic_backup_disabled_notice", {
-                      game: advancedGame.title,
-                    })}
-                  </p>
-                )}
-                {pendingDisable && pendingDisable !== "global" && (
-                  <div className="local-edition__safety-warning" role="alert">
-                    <p>
-                      {t("confirm_disable_game_description", {
-                        game: pendingDisable.title,
-                      })}
-                    </p>
-                    <CheckboxField
-                      label={t("confirm_disable_game_acknowledgement", {
-                        game: pendingDisable.title,
-                      })}
-                      checked={disableAcknowledged}
-                      onChange={(event) =>
-                        setDisableAcknowledged(event.target.checked)
-                      }
-                    />
-                    <div className="local-edition__actions">
-                      <Button
-                        disabled={busy || !disableAcknowledged}
-                        onClick={() => void confirmDisable()}
-                      >
-                        {t("confirm_disable_backups")}
-                      </Button>
-                      <Button
-                        theme="outline"
-                        disabled={busy}
-                        onClick={() => setPendingDisable(null)}
-                      >
-                        {t("cancel_clear")}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                {advancedGameSettings.manifestTitle && (
-                  <div className="local-edition__row">
-                    <span className="local-edition__hint">
-                      {t("linked_save_title", {
-                        title: advancedGameSettings.manifestTitle,
-                      })}
-                    </span>
-                    <Button
-                      theme="outline"
-                      disabled={busy}
-                      onClick={() => {
-                        setUnlinkAcknowledged(false);
-                        setPendingUnlink(true);
-                      }}
-                    >
-                      {t("unlink_save_title")}
-                    </Button>
-                  </div>
-                )}
-                {pendingUnlink && (
-                  <div className="local-edition__safety-warning" role="alert">
-                    <p>{t("unlink_save_warning")}</p>
-                    <CheckboxField
-                      label={t("unlink_save_acknowledgement")}
-                      checked={unlinkAcknowledged}
-                      onChange={(event) =>
-                        setUnlinkAcknowledged(event.target.checked)
-                      }
-                    />
-                    <div className="local-edition__actions">
-                      <Button
-                        disabled={busy || !unlinkAcknowledged}
-                        onClick={() => {
-                          setPendingUnlink(false);
-                          setUnlinkAcknowledged(false);
-                          const nextGame = { ...advancedGameSettings };
-                          delete nextGame.manifestTitle;
-                          delete nextGame.steamId;
-                          setSettings({
-                            ...settings,
-                            games: {
-                              ...settings.games,
-                              [advancedGameKey]: nextGame,
-                            },
-                          });
-                          setNotice(
-                            "Save matching will change only after Save backup settings."
-                          );
-                        }}
-                      >
-                        {t("unlink_save_title")}
-                      </Button>
-                      <Button
-                        theme="outline"
-                        disabled={busy}
-                        onClick={() => {
-                          setPendingUnlink(false);
-                          setUnlinkAcknowledged(false);
-                        }}
-                      >
-                        {t("cancel_clear")}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                <label className="local-edition__label">
-                  {t("save_paths")}
-                  <textarea
-                    rows={3}
-                    value={savePathsText}
-                    disabled={busy}
-                    onChange={(event) => {
-                      setSavePathsText(event.target.value);
-                      setPathsAcknowledged(false);
-                    }}
-                  />
-                </label>
-                <label className="local-edition__label">
-                  {t("tracking_paths")}
-                  <textarea
-                    rows={2}
-                    value={trackingPathsText}
-                    disabled={busy}
-                    onChange={(event) => {
-                      setTrackingPathsText(event.target.value);
-                      setPathsAcknowledged(false);
-                    }}
-                  />
-                </label>
-                <p className="local-edition__safety-warning">
-                  {t("custom_paths_safety_warning")}
-                </p>
-                <CheckboxField
-                  label={t("custom_paths_acknowledgement")}
-                  checked={pathsAcknowledged}
-                  disabled={busy || !pathsDirty}
-                  onChange={(event) =>
-                    setPathsAcknowledged(event.target.checked)
-                  }
-                />
-                {notice && (
-                  <p role="status" className="local-edition__status-banner">
-                    {notice}
-                  </p>
-                )}
-                <div className="local-edition__row">
-                  <Button
-                    disabled={busy || !pathsDirty || !pathsAcknowledged}
-                    onClick={() => action(saveAdvancedChanges, true)}
-                  >
-                    {t("save_custom_paths")}
-                  </Button>
-                </div>
-              </>
-            )}
-            {!advancedGame && (
-              <p className="local-edition__hint">{t("no_games")}</p>
-            )}
-          </div>
-        </div>
-      </details>
+      <SettingsCollapsibleMenu
+        classPrefix="local-edition__advanced-menu"
+        title={t("config_backup_title")}
+        description={t("config_backup_description")}
+        open={Boolean(openSections.hydraConfig)}
+        onToggle={() => toggleSection("hydraConfig")}
+      >
+        <SettingsHydraConfigBackup
+          mode="full"
+          busy={busy}
+          onRestored={async () => {
+            const latest = await refresh();
+            setSettings(latest.settings);
+            setSavedSettings(latest.settings);
+          }}
+        />
+      </SettingsCollapsibleMenu>
 
-      <details className="local-edition__advanced-menu">
-        <summary>
-          <span>{t("versions_title")}</span>
-          <small>{t("restore_safety_warning")}</small>
-        </summary>
-        <div className="local-edition__advanced-menu-body">
-          <div className="local-edition__subcard">
-            <div className="local-edition__card-header">
-              <div>
-                <h4 className="local-edition__section-heading">
-                  {t("versions_title")}
-                </h4>
-                <p className="local-edition__safety-warning">
-                  {t("restore_safety_warning")}
-                </p>
-              </div>
-            </div>
-            <SettingsSaveManager
-              mode="versions"
-              gameKey={advancedGameKey}
-              destination={settings.destination}
-              busy={busy || !canSaveAdvanced}
-              beforeAction={requireSavedSettings}
-              refresh={refresh}
-              reloadSettings={async () => {
-                const latest = await refresh();
-                setSettings(latest.settings);
-                setSavedSettings(latest.settings);
-              }}
-            />
-          </div>
-        </div>
-      </details>
+      <SettingsCollapsibleMenu
+        classPrefix="local-edition__advanced-menu"
+        title={t("full_manager_menu_title")}
+        description={t("full_manager_menu_description")}
+        open={Boolean(openSections.fullManager)}
+        onToggle={() => toggleSection("fullManager")}
+      >
+        <SettingsSaveManager
+          mode="advanced"
+          gameKey={advancedGameKey}
+          gameTitle={advancedGame?.title}
+          destination={settings.destination}
+          busy={busy || !canSaveAdvanced}
+          beforeAction={requireSavedSettings}
+          refresh={refresh}
+          reloadSettings={async () => {
+            const latest = await refresh();
+            setSettings(latest.settings);
+            setSavedSettings(latest.settings);
+          }}
+        />
+      </SettingsCollapsibleMenu>
 
-      <details className="local-edition__advanced-menu">
-        <summary>
-          <span>{t("full_manager_menu_title")}</span>
-          <small>{t("full_manager_menu_description")}</small>
-        </summary>
-        <div className="local-edition__advanced-menu-body">
-          <SettingsSaveManager
-            mode="advanced"
-            gameKey={advancedGameKey}
-            destination={settings.destination}
-            busy={busy || !canSaveAdvanced}
-            beforeAction={requireSavedSettings}
-            refresh={refresh}
-            reloadSettings={async () => {
-              const latest = await refresh();
-              setSettings(latest.settings);
-              setSavedSettings(latest.settings);
-            }}
-          />
-        </div>
-      </details>
-
-      <details className="local-edition__advanced-menu">
-        <summary>
-          <span>{t("history")}</span>
-          <small>{t("log_limits")}</small>
-        </summary>
-        <div className="local-edition__advanced-menu-body">
-          <div className="local-edition__subcard">
+      <SettingsCollapsibleMenu
+        classPrefix="local-edition__advanced-menu"
+        title={t("history")}
+        description={t("log_limits")}
+        open={Boolean(openSections.history)}
+        onToggle={() => toggleSection("history")}
+      >
+        <div className="local-edition__subcard">
             <div className="local-edition__card-header">
               <div>
                 <h4 className="local-edition__section-heading">
@@ -872,24 +1002,19 @@ export function SettingsLudusaviAdvanced() {
               </details>
             ))}
           </div>
-        </div>
-      </details>
 
-      <details className="local-edition__advanced-menu">
-        <summary>
-          <span>{t("engine_information")}</span>
-          <small>{t("engine_information_menu_description")}</small>
-        </summary>
-        <div className="local-edition__advanced-menu-body">
-          <details className="local-edition__subdrawer">
-            <summary>{t("engine_information")}</summary>
+          <div className="local-edition__subcard">
+            <h4 className="local-edition__section-heading">
+              {t("engine_information")}
+            </h4>
             <div className="local-edition__engine-information">
-              <p>{t("engine_credit", { version: saveEngine.version })}</p>
-              <p>{t("engine_update_policy")}</p>
+              <p className="local-edition__hint">
+                {t("engine_credit", { version: saveEngine.version })}
+              </p>
+              <p className="local-edition__hint">{t("engine_update_policy")}</p>
             </div>
-          </details>
-        </div>
-      </details>
+          </div>
+      </SettingsCollapsibleMenu>
     </section>
   );
 }

@@ -4,10 +4,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-width: 900px;
-  padding: 20px;
-  border: 1px solid globals.$border-color;
-  border-radius: 8px;
+  width: 100%;
   line-height: 1.5;
 
   h3,
@@ -15,9 +12,43 @@
     margin: 0;
   }
 
+  h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: globals.$muted-color;
+    margin-bottom: 4px;
+  }
+
   &__subtitle {
+    color: globals.$subtle-color;
+    font-size: globals.$hint-font-size;
+    line-height: 1.5;
+    max-width: 72ch;
+  }
+
+  &__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-bottom: 1px solid globals.$border-color;
+    padding-bottom: 12px;
+  }
+
+  &__tab {
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: 1px solid globals.$border-color;
+    background: transparent;
     color: globals.$body-color;
-    font-size: globals.$body-font-size;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+
+    &--active {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.32);
+      color: #fff;
+    }
   }
 
   &__controls {
@@ -93,7 +124,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-size: globals.$body-font-size;
     font-weight: 500;
+    color: globals.$body-color;
   }
 
   &__badges {
@@ -139,7 +172,8 @@
   &__empty {
     padding: 20px;
     text-align: center;
-    color: globals.$body-color;
+    font-size: globals.$hint-font-size;
+    color: globals.$subtle-color;
   }
 
   &__result {

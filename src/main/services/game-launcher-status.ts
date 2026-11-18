@@ -1,8 +1,9 @@
 import type { GameLauncherStatus, GameLauncherStatusPayload } from "@types";
 
 import { WindowManager } from "./window-manager";
+import { logger } from "./logger";
 
-type GameLauncherStatusGroup = "compatibility" | "achievements";
+type GameLauncherStatusGroup = "compatibility" | "achievements" | "launch";
 
 const COMPATIBILITY_STATUSES = new Set<GameLauncherStatus>([
   "preparing_compatibility_layer",
@@ -17,9 +18,14 @@ const latestStatuses = new Map<
 >();
 
 const detectedGames = new Set<string>();
+const requestStartedAt = new Map<string, number>();
 
 const getStatusGroup = (status: GameLauncherStatus): GameLauncherStatusGroup =>
-  COMPATIBILITY_STATUSES.has(status) ? "compatibility" : "achievements";
+  status.startsWith("launch_")
+    ? "launch"
+    : COMPATIBILITY_STATUSES.has(status)
+      ? "compatibility"
+      : "achievements";
 
 export const getGameLauncherStatuses = (gameKey: string) => [
   ...(latestStatuses.get(gameKey)?.values() ?? []),
@@ -28,6 +34,7 @@ export const getGameLauncherStatuses = (gameKey: string) => [
 export const clearGameLauncherStatuses = (gameKey: string) => {
   latestStatuses.delete(gameKey);
   detectedGames.delete(gameKey);
+  requestStartedAt.set(gameKey, performance.now());
 };
 
 export const wasGameLauncherGameDetected = (gameKey: string) =>
@@ -44,9 +51,20 @@ export const sendGameLauncherStatus = (
   detail: string | null = null
 ) => {
   const payload: GameLauncherStatusPayload = { gameKey, status, detail };
+  if (status.startsWith("launch_") || status === "game_started") {
+    logger.info("[Game launch] Stage", {
+      gameKey,
+      status,
+      elapsedMs: Math.round(
+        performance.now() - (requestStartedAt.get(gameKey) ?? performance.now())
+      ),
+    });
+  }
   const statuses = latestStatuses.get(gameKey) ?? new Map();
   statuses.set(getStatusGroup(status), payload);
   latestStatuses.set(gameKey, statuses);
+
+  WindowManager.sendToAppWindows("game-launcher-status", payload);
 
   const gameLauncherWindow = WindowManager.gameLauncherWindow;
 

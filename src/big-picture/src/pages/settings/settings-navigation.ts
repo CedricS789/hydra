@@ -7,6 +7,11 @@ import {
 
 export const DOWNLOAD_DIRECTORIES_DEFAULT_SELECT_ID =
   "download-directories-default-select";
+export const SAVE_BACKUPS_SECTION_REGION_ID = "save-backups-section-region";
+export const SAVE_BACKUPS_PRIMARY_BUTTON_ID = "save-backups-primary-button";
+export const ADVANCED_SECTION_REGION_ID = "advanced-section-region";
+export const ADVANCED_GATE_CHECKBOX_ID = "advanced-gate-checkbox";
+export const ADVANCED_GATE_OPEN_ID = "advanced-gate-open";
 export const LANGUAGE_SECTION_BUTTON_ID = "language-section-button";
 export const BEHAVIOR_SECTION_REGION_ID = "behavior-section-region";
 export const DOWNLOADS_BEHAVIOR_SECTION_REGION_ID =
@@ -35,6 +40,14 @@ export const BIG_PICTURE_STARTUP_SECTION_REGION_ID =
   "big-picture-startup-section-region";
 export const BIG_PICTURE_AUDIO_SECTION_REGION_ID =
   "big-picture-audio-section-region";
+export const BIG_PICTURE_CONTROLLER_SECTION_REGION_ID =
+  "big-picture-controller-section-region";
+export const BIG_PICTURE_WAKE_MODE_SELECT_ID = "big-picture-wake-mode-select";
+export const BIG_PICTURE_HOME_BUTTON_ACTION_SELECT_ID =
+  "big-picture-home-button-action-select";
+export const BIG_PICTURE_GAME_WINDOW_MODE_SELECT_ID =
+  "big-picture-game-window-mode-select";
+export const BIG_PICTURE_LED_COLOR_SELECT_ID = "big-picture-led-color-select";
 export const BIG_PICTURE_DIAGNOSTICS_SECTION_REGION_ID =
   "big-picture-diagnostics-section-region";
 export const BIG_PICTURE_DIAGNOSTICS_POSITION_SELECT_ID =
@@ -165,6 +178,8 @@ export const BIG_PICTURE_ITEM_FOCUS_IDS = {
   launchToLibraryPage: "big-picture-launch-to-library-page",
   enableSounds: "big-picture-enable-sounds",
   enableVirtualKeyboard: "big-picture-enable-virtual-keyboard",
+  enableGamepadWake: "big-picture-enable-gamepad-wake",
+  enableControllerLed: "big-picture-enable-controller-led",
   enableDiagnostics: "big-picture-enable-diagnostics",
 } as const;
 

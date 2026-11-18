@@ -1,4 +1,19 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TriggerAction {
+    Screenshot,
+    BigPictureWake,
+}
+
+impl TriggerAction {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            TriggerAction::Screenshot => "screenshot",
+            TriggerAction::BigPictureWake => "big-picture-wake",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TriggerSource {
     Keyboard,
     Gamepad,
@@ -204,12 +219,15 @@ pub mod gamepad {
     pub const Y: u32 = 0x8000;
     pub const LT: u32 = 0x1_0000;
     pub const RT: u32 = 0x2_0000;
+    pub const HOME: u32 = 0x4_0000;
 
     pub const MIN_COMBO_BUTTONS: u32 = 2;
     pub const MAX_COMBO_BUTTONS: u32 = 4;
 
     #[cfg(any(target_os = "windows", test))]
     const XINPUT_BUTTONS: u32 = 0xF3FF;
+    #[cfg(any(target_os = "windows", test))]
+    const XINPUT_GAMEPAD_GUIDE: u16 = 0x0400;
     #[cfg(any(target_os = "windows", test))]
     const TRIGGER_THRESHOLD: u8 = 30;
 
@@ -235,12 +253,29 @@ pub mod gamepad {
         })
     }
 
+    pub fn wake_button_mask(name: &str) -> Option<u32> {
+        match name {
+            "home" | "guide" => Some(HOME),
+            _ => button_mask(name),
+        }
+    }
+
     pub fn combo_mask<S: AsRef<str>>(names: &[S]) -> Option<u32> {
         let mut mask = 0;
         for name in names {
             mask |= button_mask(name.as_ref())?;
         }
         (MIN_COMBO_BUTTONS..=MAX_COMBO_BUTTONS)
+            .contains(&mask.count_ones())
+            .then_some(mask)
+    }
+
+    pub fn wake_combo_mask<S: AsRef<str>>(names: &[S]) -> Option<u32> {
+        let mut mask = 0;
+        for name in names {
+            mask |= wake_button_mask(name.as_ref())?;
+        }
+        (1..=MAX_COMBO_BUTTONS)
             .contains(&mask.count_ones())
             .then_some(mask)
     }
@@ -253,6 +288,15 @@ pub mod gamepad {
         }
         if right_trigger > TRIGGER_THRESHOLD {
             mask |= RT;
+        }
+        mask
+    }
+
+    #[cfg(any(target_os = "windows", test))]
+    pub fn xinput_all_mask(buttons: u16, left_trigger: u8, right_trigger: u8) -> u32 {
+        let mut mask = xinput_mask(buttons, left_trigger, right_trigger);
+        if buttons & XINPUT_GAMEPAD_GUIDE != 0 {
+            mask |= HOME;
         }
         mask
     }
@@ -295,9 +339,79 @@ impl HotkeyBinding {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum WakeMode {
+    #[default]
+    Press,
+    Hold,
+    DoublePress,
+}
+
+impl WakeMode {
+    pub fn from_str(value: &str) -> Self {
+        match value {
+            "hold" | "home-hold" => Self::Hold,
+            "double" | "home-double" => Self::DoublePress,
+            _ => Self::Press,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ControllerLedMode {
+    #[default]
+    Off,
+    Idle,
+    Active,
+    PausedForGame,
+}
+
+impl ControllerLedMode {
+    pub fn from_str(value: &str) -> Self {
+        match value {
+            "active" => Self::Active,
+            "idle" => Self::Idle,
+            "paused" | "game" => Self::PausedForGame,
+            _ => Self::Off,
+        }
+    }
+}
+
+pub const DEFAULT_CONTROLLER_LED_RGB: [u8; 3] = [28, 154, 246];
+
+pub fn parse_hex_rgb(value: &str) -> Option<[u8; 3]> {
+    let trimmed = value.trim().strip_prefix('#').unwrap_or(value.trim());
+    if trimmed.len() != 6 || !trimmed.is_ascii() {
+        return None;
+    }
+    let r = u8::from_str_radix(&trimmed[0..2], 16).ok()?;
+    let g = u8::from_str_radix(&trimmed[2..4], 16).ok()?;
+    let b = u8::from_str_radix(&trimmed[4..6], 16).ok()?;
+    Some([r, g, b])
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InputBinding {
     pub hotkey: Option<HotkeyBinding>,
     pub gamepad_mask: u32,
+    pub wake_mask: u32,
+    pub wake_mode: WakeMode,
+    pub wake_hold_ms: u64,
+    pub controller_led_mode: ControllerLedMode,
+    pub controller_led_color: [u8; 3],
+}
+
+impl Default for InputBinding {
+    fn default() -> Self {
+        Self {
+            hotkey: None,
+            gamepad_mask: 0,
+            wake_mask: 0,
+            wake_mode: WakeMode::default(),
+            wake_hold_ms: 0,
+            controller_led_mode: ControllerLedMode::default(),
+            controller_led_color: DEFAULT_CONTROLLER_LED_RGB,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -346,6 +460,114 @@ impl ComboMatcher {
     }
 }
 
+#[derive(Default)]
+pub struct WakeMatcher {
+    was_satisfied: bool,
+    hold_started_at: Option<std::time::Instant>,
+    hold_fired: bool,
+    last_press_at: Option<std::time::Instant>,
+    active_mask: u32,
+    active_mode: WakeMode,
+}
+
+const DOUBLE_PRESS_WINDOW_MS: u64 = 450;
+
+impl WakeMatcher {
+    pub fn update(
+        &mut self,
+        buttons: u32,
+        wake_mask: u32,
+        mode: WakeMode,
+        hold_ms: u64,
+        now: std::time::Instant,
+    ) -> bool {
+        if wake_mask != self.active_mask || mode != self.active_mode {
+            self.active_mask = wake_mask;
+            self.active_mode = mode;
+            self.was_satisfied = wake_mask != 0 && buttons & wake_mask == wake_mask;
+            self.hold_started_at = None;
+            self.hold_fired = false;
+            self.last_press_at = None;
+            return false;
+        }
+
+        if wake_mask == 0 {
+            self.was_satisfied = false;
+            self.hold_started_at = None;
+            self.hold_fired = false;
+            self.last_press_at = None;
+            return false;
+        }
+
+        let satisfied = buttons & wake_mask == wake_mask;
+        let rising = satisfied && !self.was_satisfied;
+        self.was_satisfied = satisfied;
+
+        match mode {
+            WakeMode::Press => {
+                self.hold_started_at = None;
+                self.hold_fired = false;
+                rising
+            }
+            WakeMode::Hold => {
+                if !satisfied {
+                    self.hold_started_at = None;
+                    self.hold_fired = false;
+                    return false;
+                }
+                if rising || self.hold_started_at.is_none() {
+                    self.hold_started_at = Some(now);
+                    self.hold_fired = false;
+                    if hold_ms == 0 {
+                        self.hold_fired = true;
+                        return true;
+                    }
+                    return false;
+                }
+                if !self.hold_fired {
+                    if let Some(started) = self.hold_started_at {
+                        if now.saturating_duration_since(started)
+                            >= std::time::Duration::from_millis(hold_ms)
+                        {
+                            self.hold_fired = true;
+                            return true;
+                        }
+                    }
+                }
+                false
+            }
+            WakeMode::DoublePress => {
+                self.hold_started_at = None;
+                self.hold_fired = false;
+                if !rising {
+                    return false;
+                }
+                let window = std::time::Duration::from_millis(DOUBLE_PRESS_WINDOW_MS);
+                if let Some(previous) = self.last_press_at {
+                    if now.saturating_duration_since(previous) <= window {
+                        self.last_press_at = None;
+                        return true;
+                    }
+                }
+                self.last_press_at = Some(now);
+                false
+            }
+        }
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "windows"))]
+    pub fn remaining_hold_ms(&self, hold_ms: u64, now: std::time::Instant) -> Option<i32> {
+        if self.active_mode != WakeMode::Hold || self.hold_fired {
+            return None;
+        }
+        let started = self.hold_started_at?;
+        let target = std::time::Duration::from_millis(hold_ms);
+        let elapsed = now.saturating_duration_since(started);
+        let remaining = target.saturating_sub(elapsed).as_millis();
+        Some(remaining.min(i32::MAX as u128).max(1) as i32)
+    }
+}
+
 #[cfg(any(target_os = "linux", test))]
 pub mod evdev_codes {
     #[cfg(target_os = "linux")]
@@ -379,6 +601,7 @@ pub mod evdev_codes {
     pub const BTN_TR2: u16 = 0x139;
     pub const BTN_SELECT: u16 = 0x13a;
     pub const BTN_START: u16 = 0x13b;
+    pub const BTN_MODE: u16 = 0x13c;
     pub const BTN_THUMBL: u16 = 0x13d;
     pub const BTN_THUMBR: u16 = 0x13e;
     pub const BTN_DPAD_UP: u16 = 0x220;
@@ -522,6 +745,7 @@ impl LinuxGamepadState {
             BTN_TR2 => gamepad::RT,
             BTN_SELECT => gamepad::BACK,
             BTN_START => gamepad::START,
+            BTN_MODE => gamepad::HOME,
             BTN_THUMBL => gamepad::LS,
             BTN_THUMBR => gamepad::RS,
             BTN_DPAD_UP => gamepad::DPAD_UP,
@@ -583,30 +807,76 @@ impl LinuxGamepadState {
 }
 
 #[cfg(target_os = "linux")]
+#[derive(Default)]
+pub struct GamepadEvents {
+    pub screenshot: bool,
+    pub wake: bool,
+}
+
+#[cfg(target_os = "linux")]
 pub struct GamepadTracker {
     state: LinuxGamepadState,
     combo: ComboMatcher,
+    wake: WakeMatcher,
 }
 
 #[cfg(target_os = "linux")]
 impl GamepadTracker {
-    pub fn new(state: LinuxGamepadState, combo_mask: u32) -> Self {
+    pub fn new(state: LinuxGamepadState, binding: &InputBinding) -> Self {
         let mut combo = ComboMatcher::default();
-        combo.update(state.mask(), combo_mask);
-        Self { state, combo }
+        combo.update(state.mask(), binding.gamepad_mask);
+        let mut wake = WakeMatcher::default();
+        wake.update(
+            state.mask(),
+            binding.wake_mask,
+            binding.wake_mode,
+            binding.wake_hold_ms,
+            std::time::Instant::now(),
+        );
+        Self { state, combo, wake }
     }
 
-    pub fn handle(&mut self, event_type: u16, code: u16, value: i32, combo_mask: u32) -> bool {
+    pub fn handle(
+        &mut self,
+        event_type: u16,
+        code: u16,
+        value: i32,
+        binding: &InputBinding,
+    ) -> GamepadEvents {
         use evdev_codes::*;
         match event_type {
             EV_KEY => self.state.apply_key(code, value),
             EV_ABS => self.state.apply_axis(code, value),
             EV_SYN if code == SYN_REPORT => {
-                return self.combo.update(self.state.mask(), combo_mask);
+                let mask = self.state.mask();
+                return GamepadEvents {
+                    screenshot: self.combo.update(mask, binding.gamepad_mask),
+                    wake: self.wake.update(
+                        mask,
+                        binding.wake_mask,
+                        binding.wake_mode,
+                        binding.wake_hold_ms,
+                        std::time::Instant::now(),
+                    ),
+                };
             }
             _ => {}
         }
-        false
+        GamepadEvents::default()
+    }
+
+    pub fn poll_wake(&mut self, binding: &InputBinding, now: std::time::Instant) -> bool {
+        self.wake.update(
+            self.state.mask(),
+            binding.wake_mask,
+            binding.wake_mode,
+            binding.wake_hold_ms,
+            now,
+        )
+    }
+
+    pub fn remaining_hold_ms(&self, hold_ms: u64, now: std::time::Instant) -> Option<i32> {
+        self.wake.remaining_hold_ms(hold_ms, now)
     }
 }
 
@@ -619,7 +889,8 @@ pub fn is_linux_keyboard(supports_key: impl Fn(u16) -> bool) -> bool {
 #[cfg(any(target_os = "linux", test))]
 pub fn is_linux_gamepad(supports_key: impl Fn(u16) -> bool) -> bool {
     use evdev_codes::*;
-    !is_linux_keyboard(&supports_key) && (supports_key(BTN_SOUTH) || supports_key(BTN_START))
+    !is_linux_keyboard(&supports_key)
+        && (supports_key(BTN_SOUTH) || supports_key(BTN_START) || supports_key(BTN_MODE))
 }
 
 #[cfg(any(target_os = "linux", test))]
@@ -1028,5 +1299,72 @@ mod tests {
             find_key("Pause").unwrap().windows
         );
         assert_eq!(normalize_windows_scan_code(0x44), 0x44);
+    }
+
+    #[test]
+    fn wake_mask_and_modes_handle_home_and_hold() {
+        assert_eq!(gamepad::wake_combo_mask(&["home"]), Some(gamepad::HOME));
+        assert_eq!(gamepad::wake_combo_mask(&["guide"]), Some(gamepad::HOME));
+        assert_eq!(
+            gamepad::wake_combo_mask(&["back", "start"]),
+            Some(gamepad::BACK | gamepad::START)
+        );
+        assert_eq!(
+            gamepad::xinput_all_mask(0x0400, 0, 0),
+            gamepad::HOME
+        );
+
+        let mut linux_state = LinuxGamepadState::default();
+        linux_state.apply_key(BTN_MODE, 1);
+        assert_eq!(linux_state.mask(), gamepad::HOME);
+
+        let t0 = std::time::Instant::now();
+        let mut press_matcher = WakeMatcher::default();
+        assert!(!press_matcher.update(0, gamepad::HOME, WakeMode::Press, 0, t0));
+        assert!(press_matcher.update(gamepad::HOME, gamepad::HOME, WakeMode::Press, 0, t0));
+        assert!(!press_matcher.update(gamepad::HOME, gamepad::HOME, WakeMode::Press, 0, t0));
+        assert!(!press_matcher.update(0, gamepad::HOME, WakeMode::Press, 0, t0));
+
+        let mut hold_matcher = WakeMatcher::default();
+        assert!(!hold_matcher.update(0, gamepad::HOME, WakeMode::Hold, 400, t0));
+        assert!(!hold_matcher.update(gamepad::HOME, gamepad::HOME, WakeMode::Hold, 400, t0));
+        assert!(!hold_matcher.update(
+            gamepad::HOME,
+            gamepad::HOME,
+            WakeMode::Hold,
+            400,
+            t0 + std::time::Duration::from_millis(250),
+        ));
+        assert!(hold_matcher.update(
+            gamepad::HOME,
+            gamepad::HOME,
+            WakeMode::Hold,
+            400,
+            t0 + std::time::Duration::from_millis(400),
+        ));
+        assert!(!hold_matcher.update(
+            gamepad::HOME,
+            gamepad::HOME,
+            WakeMode::Hold,
+            400,
+            t0 + std::time::Duration::from_millis(600),
+        ));
+
+        let mut double_matcher = WakeMatcher::default();
+        assert!(!double_matcher.update(0, gamepad::HOME, WakeMode::DoublePress, 0, t0));
+        assert!(!double_matcher.update(gamepad::HOME, gamepad::HOME, WakeMode::DoublePress, 0, t0));
+        assert!(!double_matcher.update(0, gamepad::HOME, WakeMode::DoublePress, 0, t0 + std::time::Duration::from_millis(80)));
+        assert!(double_matcher.update(gamepad::HOME, gamepad::HOME, WakeMode::DoublePress, 0, t0 + std::time::Duration::from_millis(200)));
+        assert!(!double_matcher.update(0, gamepad::HOME, WakeMode::DoublePress, 0, t0 + std::time::Duration::from_millis(250)));
+        assert!(!double_matcher.update(gamepad::HOME, gamepad::HOME, WakeMode::DoublePress, 0, t0 + std::time::Duration::from_millis(320)));
+    }
+
+    #[test]
+    fn parses_hex_rgb_colors() {
+        assert_eq!(parse_hex_rgb("#1c9af6"), Some([28, 154, 246]));
+        assert_eq!(parse_hex_rgb(" 0070D1 "), Some([0, 112, 209]));
+        assert_eq!(parse_hex_rgb("#fff"), None);
+        assert_eq!(parse_hex_rgb("#12345z"), None);
+        assert_eq!(InputBinding::default().controller_led_color, DEFAULT_CONTROLLER_LED_RGB);
     }
 }

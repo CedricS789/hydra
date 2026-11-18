@@ -8,6 +8,7 @@ import { formatBytes } from "@shared";
 import type { CloudSaveSyncProgressPayload } from "@types";
 
 import { CloudSaveStatusIcon } from "./cloud-save-status-icon";
+import { LocalSaveStatusIcon } from "./local-save-status-icon";
 import { getCloudSavePresentation } from "./cloud-save-presentation";
 import { getLocalSavePresentation } from "./local-save-presentation";
 import { useCloudSaveV2 } from "./cloud-save-v2-context";
@@ -185,7 +186,7 @@ function LocalSaveBackupWidget() {
       onClick={handleClick}
       title={tooltip}
     >
-      <CloudSaveStatusIcon icon={presentation.icon} />
+      <LocalSaveStatusIcon icon={presentation.icon} />
       {label}
     </button>
   );

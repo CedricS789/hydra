@@ -5,6 +5,7 @@ import type {
   LudusaviLocalSettings,
 } from "../../types/index";
 import type { SaveApiResponse } from "./ludusavi-local-api";
+import { HYDRA_CONFIG_BACKUP_ENTRY } from "../../shared/hydra-config-backup.js";
 
 export type SaveManifest = Record<
   string,
@@ -20,6 +21,11 @@ export function detectedSaveGames(
 ): DetectedSaveGame[] {
   return Object.entries(data.games ?? {})
     .flatMap(([title, entry]) => {
+      if (
+        title.normalize("NFC").trim().toLowerCase() ===
+        HYDRA_CONFIG_BACKUP_ENTRY.toLowerCase()
+      )
+        return [];
       const paths = Object.entries(entry.files ?? {})
         .filter(([, file]) => !file.ignored && !file.failed && !file.error)
         .map(([file]) => file);

@@ -1,5 +1,8 @@
 import type { LibraryGame, ShopAssets } from "@types";
-import { findLibraryGamePresentation } from "@shared";
+import {
+  findLibraryGamePresentation,
+  resolveDangerZonePreferences,
+} from "@shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEventHandler } from "react";
 import { useNavigate } from "react-router-dom";
@@ -57,6 +60,7 @@ import {
   useGameCollections,
   useLibrary,
   useNavigation,
+  useUserPreferences,
 } from "../../hooks";
 import type { FocusOverrideTarget, FocusOverrides } from "../../services";
 
@@ -285,6 +289,9 @@ export default function Home() {
     return findLibraryGamePresentation(library, target);
   }, [library, menuState.catalogGame]);
 
+  const userPreferences = useUserPreferences();
+  const dangerZone = resolveDangerZonePreferences(userPreferences);
+
   const menuItems = useMemo(() => {
     if (!menuState.visible || !menuState.catalogGame) return [];
 
@@ -300,8 +307,12 @@ export default function Home() {
           onToggleFavorite: toggleFavorite,
           onViewAchievements: handleCatalogViewAchievementsFromMenu,
           onOptions: handleOpenGameSettingsFromMenu,
-          onUninstall: handleRequestRemoveFilesFromMenu,
-          onRemoveFromLibrary: handleRequestRemoveFromLibraryFromMenu,
+          onUninstall: dangerZone.enableDangerZoneRemoveGameFiles
+            ? handleRequestRemoveFilesFromMenu
+            : undefined,
+          onRemoveFromLibrary: dangerZone.enableDangerZoneRemoveFromLibrary
+            ? handleRequestRemoveFromLibraryFromMenu
+            : undefined,
         },
         favoriteLoadingGameId === game.id,
         t
@@ -331,6 +342,8 @@ export default function Home() {
     handleOpenGameSettingsFromMenu,
     handleRequestRemoveFilesFromMenu,
     handleRequestRemoveFromLibraryFromMenu,
+    dangerZone.enableDangerZoneRemoveGameFiles,
+    dangerZone.enableDangerZoneRemoveFromLibrary,
     libraryGameForOpenMenu,
     menuState.catalogGame,
     menuState.visible,

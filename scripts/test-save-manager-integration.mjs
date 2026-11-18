@@ -90,7 +90,8 @@ const modules = {
   "./native-addon":
     'export const NativeAddon={getSystemProcessMap:async()=>({processTree:[{pid:424242,parentPid:1,exe:globalThis.__fullSaveTest.running?globalThis.__fullSaveTest.game.executablePath:"C:/unrelated/system.exe"}]})};',
   "./logger": "export const logger={error(){},warn(){}};",
-  "./window-manager": "export const WindowManager={mainWindow:null};",
+  "./window-manager":
+    "export const WindowManager={mainWindow:null,sendToAppWindows(){}};",
   "./game-running-state":
     "export const getTrackedGamesRunning=()=>globalThis.__fullSaveTest.running?[{}]:[];",
   "./game-record-updater":
@@ -195,6 +196,44 @@ const extracted = await execute(
 );
 assert.equal(extracted.stdout, "version two with new progress");
 await assert.rejects(service.confirmSaveOperation(confirmed.token), /again/);
+
+// Verify in-app pre-restore safety snapshot listing, validation, and undo restore.
+assert.ok(restored.safetySnapshotId);
+assert.ok(restored.safetyBackupName);
+const listedWithSnapshots = await service.listSaveBackupVersions(key);
+const listedSnapshot = listedWithSnapshots.snapshots.find(
+  (item) => item.id === restored.safetySnapshotId
+);
+assert.ok(listedSnapshot);
+assert.equal(listedSnapshot.backup, restored.safetyBackupName);
+assert.equal(listedSnapshot.files, 1);
+assert.match(
+  (
+    await service.validateSaveBackup(
+      key,
+      listedSnapshot.backup,
+      listedSnapshot.id
+    )
+  ).message,
+  /Validation passed/
+);
+const undoPreview = await service.previewSaveRestore(
+  key,
+  listedSnapshot.backup,
+  listedSnapshot.id
+);
+assert.equal(undoPreview.snapshotId, listedSnapshot.id);
+assert.equal(undoPreview.files.length, 1);
+const undone = await service.confirmSaveOperation(undoPreview.token);
+assert.equal(
+  await fs.readFile(progress, "utf8"),
+  "version two with new progress"
+);
+assert.ok(undone.safetySnapshotId);
+assert.notEqual(undone.safetySnapshotId, listedSnapshot.id);
+const reRestorePreview = await service.previewSaveRestore(key, first[0].name);
+await service.confirmSaveOperation(reRestorePreview.token);
+assert.equal(await fs.readFile(progress, "utf8"), "version one");
 
 // Exercise the uncompressed format and reject a corrupted archived version.
 await service.saveLudusaviLocalSettings({

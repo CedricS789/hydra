@@ -5,6 +5,7 @@ import type {
   LibraryGame,
   LibraryGamePresentation,
 } from "@types";
+import { Downloader } from "./constants.js";
 import { getLibraryCollectionIds } from "./library-group-actions.js";
 import { getOfficialStoreMembers } from "./official-store-options.js";
 
@@ -91,7 +92,8 @@ export const selectDownloadLibraryGame = (
 
 export type RemoveFilesTarget =
   | { kind: "hydra"; game: LibraryGame }
-  | { kind: "steam"; game: LibraryGame; appId: string };
+  | { kind: "steam"; game: LibraryGame; appId: string }
+  | { kind: "installed"; game: LibraryGame };
 
 const STEAM_APP_ID_PATTERN = /^[1-9]\d{0,9}$/;
 
@@ -104,7 +106,10 @@ export const isSameRemoveFilesTarget = (
 ): boolean => {
   if (target.kind !== other.kind) return false;
 
-  if (target.kind === "hydra" && other.kind === "hydra") {
+  if (
+    (target.kind === "hydra" && other.kind === "hydra") ||
+    (target.kind === "installed" && other.kind === "installed")
+  ) {
     return (
       target.game.shop === other.game.shop &&
       target.game.objectId === other.game.objectId
@@ -118,10 +123,28 @@ export const isSameRemoveFilesTarget = (
   return false;
 };
 
+const isEligibleInstalledUninstallMember = (
+  member: LibraryGame,
+  steamUninstallAvailable: boolean,
+  isSteamLibraryExecutable: boolean | null
+): boolean => {
+  if (!member.executablePath) return false;
+  if (member.shop === "launchbox") return false;
+  if (member.epicInstallation || member.download?.downloader === Downloader.Epic)
+    return false;
+
+  if (member.shop === "steam" && steamUninstallAvailable) {
+    return isSteamLibraryExecutable === false;
+  }
+
+  return true;
+};
+
 export const getRemoveFilesTarget = (
   game: LibraryGame,
   steamUninstallAvailable: boolean,
-  isSteamLibraryExecutable = false
+  isSteamLibraryExecutable: boolean | null = false,
+  installedUninstallAvailable = false
 ): RemoveFilesTarget | null => {
   const members = getLibraryGameMembers(game);
   const operationalGame = getLibraryOperationalGame(game);
@@ -137,28 +160,81 @@ export const getRemoveFilesTarget = (
     members.find((member) => Boolean(member.download?.downloadPath));
 
   if (hydraMember) {
+    if (
+      installedUninstallAvailable &&
+      isEligibleInstalledUninstallMember(
+        hydraMember,
+        steamUninstallAvailable,
+        isSteamLibraryExecutable
+      )
+    ) {
+      return { kind: "installed", game: hydraMember };
+    }
+
     return { kind: "hydra", game: hydraMember };
   }
 
-  if (members.some((member) => member.download)) return null;
-
-  if (!steamUninstallAvailable) return null;
-
-  const steamMember = getOfficialStoreMembers(members).steam;
-
-  if (
-    !steamMember ||
-    !isSteamLibraryExecutable ||
-    !isValidSteamAppId(steamMember.objectId)
-  ) {
+  if (members.some((member) => member.download)) {
+    if (installedUninstallAvailable) {
+      const installedMember =
+        (isEligibleInstalledUninstallMember(
+          operationalGame,
+          steamUninstallAvailable,
+          isSteamLibraryExecutable
+        )
+          ? operationalGame
+          : undefined) ??
+        members.find((member) =>
+          isEligibleInstalledUninstallMember(
+            member,
+            steamUninstallAvailable,
+            isSteamLibraryExecutable
+          )
+        );
+      if (installedMember) {
+        return { kind: "installed", game: installedMember };
+      }
+    }
     return null;
   }
 
-  return {
-    kind: "steam",
-    game: steamMember,
-    appId: steamMember.objectId,
-  };
+  if (steamUninstallAvailable) {
+    const steamMember = getOfficialStoreMembers(members).steam;
+
+    if (
+      steamMember &&
+      isSteamLibraryExecutable === true &&
+      isValidSteamAppId(steamMember.objectId)
+    ) {
+      return {
+        kind: "steam",
+        game: steamMember,
+        appId: steamMember.objectId,
+      };
+    }
+  }
+
+  if (!installedUninstallAvailable) return null;
+
+  const installedMember =
+    (isEligibleInstalledUninstallMember(
+      operationalGame,
+      steamUninstallAvailable,
+      isSteamLibraryExecutable
+    )
+      ? operationalGame
+      : undefined) ??
+    members.find((member) =>
+      isEligibleInstalledUninstallMember(
+        member,
+        steamUninstallAvailable,
+        isSteamLibraryExecutable
+      )
+    );
+
+  if (!installedMember) return null;
+
+  return { kind: "installed", game: installedMember };
 };
 
 const latestDate = (values: (Date | null)[]): Date | null =>

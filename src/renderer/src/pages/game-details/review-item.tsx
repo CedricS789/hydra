@@ -9,10 +9,16 @@ import type { GameReview } from "@types";
 import {
   getLanguageDisplayName,
   getReviewTranslation,
+  resolveSocialPreferences,
   sanitizeHtml,
 } from "@shared";
 import { Avatar, Button } from "@renderer/components";
-import { useDate, useFormat, useProcessedImage } from "@renderer/hooks";
+import {
+  useAppSelector,
+  useDate,
+  useFormat,
+  useProcessedImage,
+} from "@renderer/hooks";
 import { Feature, readCachedFeatures } from "@renderer/hooks/use-feature";
 import { formatNumber } from "@renderer/helpers";
 import {
@@ -77,6 +83,12 @@ export function ReviewItem({
   const [showOriginal, setShowOriginal] = useState(false);
 
   const isOwnReview = userDetailsId === review.user.id;
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const showReviewerPlaytime =
+    isOwnReview ||
+    resolveSocialPreferences(userPreferences).showOtherPlayersPlaytime;
 
   const bannerImageUrl = useProcessedImage(
     review.user.backgroundImageUrl,
@@ -177,16 +189,17 @@ export function ReviewItem({
                       {review.score}/5
                     </span>
                   </div>
-                  {Boolean(
-                    review.playTimeInSeconds && review.playTimeInSeconds > 0
-                  ) && (
-                    <div className="game-details__review-playtime">
-                      <ClockIcon size={12} />
-                      <span>
-                        {formatPlayTime(review.playTimeInSeconds || 0)}
-                      </span>
-                    </div>
-                  )}
+                  {showReviewerPlaytime &&
+                    Boolean(
+                      review.playTimeInSeconds && review.playTimeInSeconds > 0
+                    ) && (
+                      <div className="game-details__review-playtime">
+                        <ClockIcon size={12} />
+                        <span>
+                          {formatPlayTime(review.playTimeInSeconds || 0)}
+                        </span>
+                      </div>
+                    )}
                   {review.recompilation &&
                     readCachedFeatures().includes(Feature.Recompilations) && (
                       <div className="game-details__review-recompilation">

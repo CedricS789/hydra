@@ -1,4 +1,5 @@
 import { libraryWriteQueue } from "../services/library-sync/library-write-queue";
+import { unexcludeLibraryGames } from "../services/library-exclusions";
 import {
   downloadsSublevel,
   gamesShopAssetsSublevel,
@@ -53,6 +54,7 @@ export const prepareGameEntry = async ({
   objectId,
   shop,
 }: PrepareGameEntryParams): Promise<void> => {
+  await unexcludeLibraryGames([{ shop, objectId }]);
   const game = await gamesSublevel.get(gameKey);
   const gameAssets = await gamesShopAssetsSublevel.get(gameKey);
 

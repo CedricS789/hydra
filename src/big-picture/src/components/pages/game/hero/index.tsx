@@ -1,3 +1,4 @@
+import localEdition from "../../../../../../shared/local-edition.json";
 import {
   ArchiveIcon,
   DownloadSimpleIcon,
@@ -40,7 +41,10 @@ import {
   GAME_HERO_PRIMARY_ACTION_ID,
   GAME_HERO_TOGGLE_FAVORITE_ID,
 } from "../navigation";
-import { BigPictureCloudSaveHeroButton } from "../cloud-save-v2";
+import {
+  BigPictureCloudSaveHeroButton,
+  BigPictureLocalSaveHeroButton,
+} from "../cloud-save-v2";
 import { useHeroBackgroundLayers } from "../../library/hero/use-hero-background-layers";
 import cn from "classnames";
 
@@ -49,6 +53,7 @@ export interface HeroProps {
   game: LibraryGame | null;
   downloadGame?: LibraryGame | null;
   isGameRunning: boolean;
+  isLaunching?: boolean;
   isFavorite: boolean;
   toggleFavorite: () => void;
   onPlay: () => void;
@@ -60,6 +65,7 @@ export interface HeroProps {
   onAddToLibrary: () => void;
   onOpenDownloadOptions: () => void;
   onOpenSettings: () => void;
+  onOpenLocalBackups?: () => void;
   onClose: () => void;
   isAddingToLibrary: boolean;
   canAddToLibrary: boolean;
@@ -95,6 +101,7 @@ export function Hero({
   game,
   downloadGame = game,
   isGameRunning,
+  isLaunching = false,
   isFavorite,
   toggleFavorite,
   onPlay,
@@ -106,6 +113,7 @@ export function Hero({
   onAddToLibrary,
   onOpenDownloadOptions,
   onOpenSettings,
+  onOpenLocalBackups,
   onClose,
   isAddingToLibrary,
   canAddToLibrary,
@@ -153,8 +161,13 @@ export function Hero({
     canAddToLibrary;
   const shouldShowCatalogActions = !game && canAddToLibrary;
   const shouldShowFavoriteButton = Boolean(game);
+  const showLocalSaveButton =
+    localEdition.hideCloudPromotions && Boolean(game && !game.isDeleted);
+  const showHydraCloudSaveButton =
+    !localEdition.hideCloudPromotions &&
+    Boolean(game && isCloudSaveV2Eligible(game.shop, game.platform));
   const shouldShowCloudSaveButton =
-    !!game && isCloudSaveV2Eligible(game.shop, game.platform);
+    showLocalSaveButton || showHydraCloudSaveButton;
   const lastActionRightTarget = useMemo<FocusOverrideTarget>(
     () => sidebarEntryTarget ?? { type: "block" },
     [sidebarEntryTarget]
@@ -358,8 +371,9 @@ export function Hero({
               iconPosition="right"
               icon={<PlayIcon size={24} weight="fill" />}
               onClick={onPlay}
+              loading={isLaunching}
             >
-              Launch Game
+              {isLaunching ? "Starting…" : "Launch Game"}
             </Button>
           ),
           downloadOptionsButton: null,
@@ -527,7 +541,15 @@ export function Hero({
 
           {settingsButton}
 
-          {shouldShowCloudSaveButton && (
+          {showLocalSaveButton && game && (
+            <BigPictureLocalSaveHeroButton
+              game={game}
+              focusNavigationOverrides={cloudSaveNavigationOverrides}
+              onClick={onOpenLocalBackups ?? onOpenSettings}
+            />
+          )}
+
+          {showHydraCloudSaveButton && (
             <BigPictureCloudSaveHeroButton
               focusNavigationOverrides={cloudSaveNavigationOverrides}
             />

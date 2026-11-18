@@ -11,8 +11,12 @@ import { useTranslation } from "react-i18next";
 
 import { Button } from "@renderer/components";
 import { gameDetailsContext } from "@renderer/context";
-import { useFeature } from "@renderer/hooks";
-import { AuthPage } from "@shared";
+import { useAppSelector, useFeature } from "@renderer/hooks";
+import {
+  AuthPage,
+  isLeaderboardMetricVisible,
+  resolveSocialPreferences,
+} from "@shared";
 import { SidebarSection } from "../sidebar-section/sidebar-section";
 import {
   buildMetricsRequest,
@@ -49,6 +53,13 @@ export function LeaderboardSection() {
   const { isFeatureEnabled, Feature } = useFeature();
   const isExtended = isFeatureEnabled(Feature.GameLeaderboardsExtended);
   const formatValue = useLeaderboardValue();
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const social = useMemo(
+    () => resolveSocialPreferences(userPreferences),
+    [userPreferences]
+  );
 
   const {
     period,
@@ -68,13 +79,18 @@ export function LeaderboardSection() {
   const servedMetrics = useMemo(
     () =>
       getServedMetrics(
-        metricDefinitions.data?.map((definition) => definition.id) ?? null
+        metricDefinitions.data?.map((definition) => definition.id) ?? null,
+        (candidate) => isLeaderboardMetricVisible(social, candidate)
       ),
-    [metricDefinitions.data]
+    [metricDefinitions.data, social]
   );
-  const requestedMetric = servedMetrics.includes(selectedMetric)
-    ? selectedMetric
-    : servedMetrics[0];
+  const requestedMetric = isExtended
+    ? servedMetrics.includes(selectedMetric)
+      ? selectedMetric
+      : (servedMetrics[0] ?? null)
+    : social.showLeaderboardMetricPlaytime
+      ? "playtime"
+      : null;
 
   const {
     leaderboard,
@@ -96,6 +112,7 @@ export function LeaderboardSection() {
     scope: selectedScope,
     metric: requestedMetric,
     isExtended,
+    allowFriendsScope: social.showFriends,
   });
 
   const state = getLeaderboardState({
@@ -171,7 +188,7 @@ export function LeaderboardSection() {
             ))}
           </div>
           {/* Holds the footer's space so the section doesn't grow on load. */}
-          {isLoggedIn && (
+          {isLoggedIn && social.showGlobalLeaderboards && (
             <div
               className="leaderboard-section__footer leaderboard-section__footer--placeholder"
               aria-hidden
@@ -295,7 +312,7 @@ export function LeaderboardSection() {
           ))}
         </ol>
 
-        {isLoggedIn && (
+        {isLoggedIn && social.showGlobalLeaderboards && (
           <div className="leaderboard-section__footer">
             <button
               type="button"
@@ -330,7 +347,7 @@ export function LeaderboardSection() {
           period={period}
           scope={scope}
           metric={metric}
-          showScope={isExtended && isLoggedIn}
+          showScope={isExtended && isLoggedIn && social.showFriends}
           metrics={servedMetrics}
           showMetrics={isExtended && servedMetrics.length > 1}
           onPeriodChange={setPeriod}

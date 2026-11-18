@@ -4,18 +4,24 @@ import { useCallback, useContext } from "react";
 import { userProfileContext } from "@renderer/context";
 import { useTranslation } from "react-i18next";
 import { ClockIcon } from "@primer/octicons-react";
-import { useFormat } from "@renderer/hooks";
+import { useFormat, useAppSelector } from "@renderer/hooks";
+import { resolveSocialPreferences } from "@shared";
 import type { UserGame } from "@types";
 import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@renderer/constants";
 import { GameVisibilityBadge } from "@renderer/components/game-visibility-badge/game-visibility-badge";
 import "./recent-games-box.scss";
 
 export function RecentGamesBox() {
-  const { userProfile } = useContext(userProfileContext);
+  const { userProfile, isMe } = useContext(userProfileContext);
 
   const { t } = useTranslation("user_profile");
 
   const { numberFormatter } = useFormat();
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const showPlaytime =
+    isMe || resolveSocialPreferences(userPreferences).showOtherPlayersPlaytime;
 
   const formatPlayTime = useCallback(
     (game: UserGame) => {
@@ -64,8 +70,12 @@ export function RecentGamesBox() {
                     isHiddenFromOthers={game.isHiddenFromOthers}
                     isConcealed={game.isConcealed}
                   />
-                  <ClockIcon />
-                  <small>{formatPlayTime(game)}</small>
+                  {showPlaytime && (
+                    <>
+                      <ClockIcon />
+                      <small>{formatPlayTime(game)}</small>
+                    </>
+                  )}
                 </div>
               </div>
             </Link>

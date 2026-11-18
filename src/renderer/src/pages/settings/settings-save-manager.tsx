@@ -6,11 +6,16 @@ import { useEffect, useRef, useState } from "react";
 import { useSettingsFormGuard } from "@renderer/context/settings/settings-draft.context";
 import { useTranslation } from "react-i18next";
 import { Button, CheckboxField } from "@renderer/components";
-import type { SaveBackupVersion, SaveOperationPreview } from "@types";
+import type {
+  SaveBackupVersion,
+  SaveOperationPreview,
+  SaveSafetySnapshot,
+} from "@types";
 import { saveManagerError } from "../../../../shared/save-manager-errors";
 
 interface Props {
   gameKey: string;
+  gameTitle?: string;
   destination: string;
   busy: boolean;
   beforeAction: () => Promise<unknown>;
@@ -21,6 +26,7 @@ interface Props {
 
 export function SettingsSaveManager({
   gameKey,
+  gameTitle,
   destination,
   busy,
   beforeAction,
@@ -37,6 +43,12 @@ export function SettingsSaveManager({
   const [message, setMessage] = useState("");
   const [versions, setVersions] = useState<SaveBackupVersion[]>([]);
   const [version, setVersion] = useState("");
+  const [snapshots, setSnapshots] = useState<SaveSafetySnapshot[]>([]);
+  const [snapshotId, setSnapshotId] = useState("");
+  const [lastSafetySnapshot, setLastSafetySnapshot] = useState<{
+    id: string;
+    backup: string;
+  } | null>(null);
   const [preview, setPreview] = useState<SaveOperationPreview>();
   const [understood, setUnderstood] = useState(false);
   const [advanced, setAdvanced] = useState<string>();
@@ -69,6 +81,9 @@ export function SettingsSaveManager({
     generation.current++;
     setVersions([]);
     setVersion("");
+    setSnapshots([]);
+    setSnapshotId("");
+    setLastSafetySnapshot(null);
     setPreview(undefined);
     setUnderstood(false);
     setMessage("");
@@ -167,6 +182,37 @@ export function SettingsSaveManager({
     </div>
   );
 
+  const loadVersionsAndSnapshots = async (
+    current: () => boolean,
+    silentEmpty = false
+  ) => {
+    const result = await window.electron.listSaveBackupVersions(gameKey);
+    if (!current()) return;
+    const sorted = [...result.versions].sort((a, b) =>
+      b.when.localeCompare(a.when)
+    );
+    const sortedSnapshots = [...(result.snapshots ?? [])].sort((a, b) =>
+      b.when.localeCompare(a.when)
+    );
+    setVersions(sorted);
+    setVersion((prev) =>
+      sorted.some((item) => item.name === prev) ? prev : (sorted[0]?.name ?? "")
+    );
+    setSnapshots(sortedSnapshots);
+    setSnapshotId((prev) =>
+      sortedSnapshots.some((item) => item.id === prev)
+        ? prev
+        : (sortedSnapshots[0]?.id ?? "")
+    );
+    if (!silentEmpty) {
+      setPreview(undefined);
+      if (!sorted.length && !sortedSnapshots.length)
+        setMessage(t("no_versions"));
+    }
+  };
+
+  const selectedSnapshot = snapshots.find((item) => item.id === snapshotId);
+
   return (
     <>
       {error && !remoteSetupNeeded && (
@@ -175,9 +221,29 @@ export function SettingsSaveManager({
         </p>
       )}
       {message && (
-        <p role="status" className="local-edition__status-banner">
-          {message}
-        </p>
+        <div role="status" className="local-edition__status-banner">
+          <p>{message}</p>
+          {lastSafetySnapshot && gameKey && (
+            <div className="local-edition__row">
+              <Button
+                theme="outline"
+                disabled={disabled}
+                onClick={() =>
+                  action(async (current) => {
+                    const result = await window.electron.previewSaveRestore(
+                      gameKey,
+                      lastSafetySnapshot.backup,
+                      lastSafetySnapshot.id
+                    );
+                    if (current()) showPreview(result);
+                  })
+                }
+              >
+                {t("undo_last_restore")}
+              </Button>
+            </div>
+          )}
+        </div>
       )}
 
       {showVersions && (
@@ -185,7 +251,9 @@ export function SettingsSaveManager({
           <div className="local-edition__card-header">
             <div>
               <h4 className="local-edition__section-heading">
-                {t("versions_title")}
+                {gameTitle
+                  ? t("versions_title_for_game", { game: gameTitle })
+                  : t("versions_title")}
               </h4>
               <p className="local-edition__hint">{t("versions_description")}</p>
             </div>
@@ -195,16 +263,7 @@ export function SettingsSaveManager({
                 disabled={disabled || !gameKey}
                 onClick={() =>
                   action(async (current) => {
-                    const result =
-                      await window.electron.listSaveBackupVersions(gameKey);
-                    if (!current()) return;
-                    const sorted = [...result.versions].sort((a, b) =>
-                      b.when.localeCompare(a.when)
-                    );
-                    setVersions(sorted);
-                    setVersion(sorted[0]?.name ?? "");
-                    setPreview(undefined);
-                    if (!sorted.length) setMessage(t("no_versions"));
+                    await loadVersionsAndSnapshots(current);
                   })
                 }
               >
@@ -212,6 +271,9 @@ export function SettingsSaveManager({
               </Button>
             </div>
           </div>
+          <p className="local-edition__safety-warning">
+            {t("restore_safety_warning")}
+          </p>
 
           {!!versions.length && (
             <div className="local-edition__versions-controls">
@@ -267,6 +329,81 @@ export function SettingsSaveManager({
                   }
                 >
                   {t("validate_version")}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {!!snapshots.length && (
+            <div className="local-edition__versions-controls">
+              <h5 className="local-edition__section-heading">
+                {t("safety_snapshots_title")}
+              </h5>
+              <p className="local-edition__hint">
+                {t("safety_snapshots_description")}
+              </p>
+              <label className="local-edition__label">
+                {t("safety_snapshot")}
+                <select
+                  value={snapshotId}
+                  disabled={disabled}
+                  onChange={(e) => {
+                    setSnapshotId(e.target.value);
+                    setPreview(undefined);
+                    setUnderstood(false);
+                  }}
+                >
+                  {snapshots.map((item) => (
+                    <option value={item.id} key={item.id}>
+                      {new Date(item.when).toLocaleString()} ·{" "}
+                      {t("preview_count", {
+                        files: item.files,
+                        registry: item.hasRegistry ? 1 : 0,
+                      })}
+                      {item.hasRegistry
+                        ? ` · ${t("snapshot_registry_badge")}`
+                        : ""}{" "}
+                      · {item.id.slice(0, 8)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="local-edition__row">
+                <Button
+                  disabled={disabled || !selectedSnapshot}
+                  onClick={() =>
+                    action(async (current) => {
+                      if (!selectedSnapshot) return;
+                      const result = await window.electron.previewSaveRestore(
+                        gameKey,
+                        selectedSnapshot.backup,
+                        selectedSnapshot.id
+                      );
+                      if (current()) showPreview(result);
+                    })
+                  }
+                >
+                  {t("preview_snapshot_restore")}
+                </Button>
+                <Button
+                  theme="outline"
+                  disabled={disabled || !selectedSnapshot}
+                  onClick={() =>
+                    action(async () => {
+                      if (!selectedSnapshot) return;
+                      setMessage(
+                        (
+                          await window.electron.validateSaveBackup(
+                            gameKey,
+                            selectedSnapshot.backup,
+                            selectedSnapshot.id
+                          )
+                        ).message
+                      );
+                    })
+                  }
+                >
+                  {t("validate_snapshot")}
                 </Button>
               </div>
             </div>
@@ -460,7 +597,15 @@ export function SettingsSaveManager({
               </Button>
             </div>
             {gameKey ? (
-              renderTransferButtons()
+              <>
+                {gameTitle && (
+                  <p className="local-edition__hint">
+                    {t("selected_game_banner_label")}:{" "}
+                    <strong>{gameTitle}</strong>
+                  </p>
+                )}
+                {renderTransferButtons()}
+              </>
             ) : (
               <p className="local-edition__hint">{t("remote_card_hint")}</p>
             )}
@@ -477,8 +622,15 @@ export function SettingsSaveManager({
         >
           <h4 className="local-edition__section-heading">
             {t(`operation_${preview.operation}`)} · {preview.title}
+            {preview.snapshotId ? ` · ${t("safety_snapshot")}` : ""}
           </h4>
-          {!!preview.backup && <code>{preview.backup}</code>}
+          {!!preview.backup && (
+            <code>
+              {preview.snapshotId
+                ? `${preview.snapshotId}/${preview.backup}`
+                : preview.backup}
+            </code>
+          )}
           <p className="local-edition__hint">
             {t("preview_count", {
               files: preview.files.length,
@@ -529,20 +681,27 @@ export function SettingsSaveManager({
                 disabled || !understood || Date.now() >= preview.expiresAt
               }
               onClick={() =>
-                action(async () => {
+                action(async (current) => {
                   const token = preview.token;
                   setPreview(undefined);
                   setUnderstood(false);
                   const result =
                     await window.electron.confirmSaveOperation(token);
+                  setLastSafetySnapshot(
+                    result.safetySnapshotId && result.safetyBackupName
+                      ? {
+                          id: result.safetySnapshotId,
+                          backup: result.safetyBackupName,
+                        }
+                      : null
+                  );
                   setMessage(
                     result.message +
                       (result.safetyPath
                         ? ` ${t("safety_location")}: ${result.safetyPath}`
                         : "")
                   );
-                  setVersions([]);
-                  setVersion("");
+                  await loadVersionsAndSnapshots(current, true);
                 })
               }
             >

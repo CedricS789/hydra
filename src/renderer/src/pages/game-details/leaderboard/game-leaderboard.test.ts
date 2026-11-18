@@ -680,3 +680,30 @@ describe("precomputed viewer targets", () => {
     );
   });
 });
+
+describe("getServedMetrics", () => {
+  it("filters served metrics against social metric visibility without falling back to playtime", () => {
+    assert.deepEqual(
+      getServedMetrics(
+        ["playtime", "sessions", "souvenirs", "streak"],
+        (metric) => metric !== "playtime"
+      ),
+      ["sessions", "souvenirs", "streak"]
+    );
+
+    assert.deepEqual(
+      getServedMetrics(["playtime"], (metric) => metric !== "playtime"),
+      []
+    );
+
+    assert.deepEqual(
+      getServedMetrics(null, (metric) => metric !== "playtime"),
+      ["sessions"]
+    );
+
+    assert.deepEqual(
+      getServedMetrics(null, () => false),
+      []
+    );
+  });
+});

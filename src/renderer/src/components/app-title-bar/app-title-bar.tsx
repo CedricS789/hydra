@@ -8,9 +8,12 @@ import {
   VideoIcon,
   XIcon,
 } from "@primer/octicons-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import cn from "classnames";
 
 import { MAIN_WINDOW_TITLE_BAR_HEIGHT } from "@shared";
+import { toggleSidebarHidden } from "@renderer/features";
+import { useAppDispatch, useAppSelector } from "@renderer/hooks";
 
 import { NavigationArrows } from "../navigation-arrows/navigation-arrows";
 import { TitleBarSearch } from "./title-bar-search";
@@ -38,6 +41,10 @@ export function AppTitleBar({
   isWindowMaximized,
 }: Readonly<AppTitleBarProps>) {
   const { t } = useTranslation(["header", "sidebar"]);
+  const dispatch = useAppDispatch();
+  const isSidebarHidden = useAppSelector(
+    (state) => state.window.isSidebarHidden
+  );
 
   const { platform, hasNativeWindowDecorations } = window.electron;
 
@@ -48,12 +55,17 @@ export function AppTitleBar({
     (platform === "linux" && !hasNativeWindowDecorations);
   const hasCustomWindowControls =
     platform === "linux" && !hasNativeWindowDecorations;
+  const shortcutHint = platform === "darwin" ? "⌘B" : "Ctrl+B";
+  const sidebarToggleLabel = isSidebarHidden
+    ? t("show_sidebar")
+    : t("hide_sidebar");
 
   return (
     <header
       className={cn("title-bar", {
         "title-bar--windows": platform === "win32",
         "title-bar--darwin": platform === "darwin",
+        "title-bar--sidebar-hidden": isSidebarHidden,
       })}
       style={titleBarStyle}
     >
@@ -80,6 +92,21 @@ export function AppTitleBar({
           </button>
         )}
       </div>
+
+      <button
+        type="button"
+        className="title-bar__sidebar-toggle"
+        onClick={() => dispatch(toggleSidebarHidden())}
+        aria-label={sidebarToggleLabel}
+        aria-pressed={!isSidebarHidden}
+        title={`${sidebarToggleLabel} (${shortcutHint})`}
+      >
+        {isSidebarHidden ? (
+          <PanelLeftOpen size={15} />
+        ) : (
+          <PanelLeftClose size={15} />
+        )}
+      </button>
 
       <NavigationArrows className="title-bar__navigation" />
 

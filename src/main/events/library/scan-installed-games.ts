@@ -23,6 +23,7 @@ import {
   WindowManager,
 } from "@main/services";
 import { runAutomaticCloudSaveSync } from "@main/services/cloud-save";
+import { isLibraryGameExcluded } from "@main/services/library-exclusions";
 import { clearMissingExecutables } from "@main/services/clear-missing-executables";
 import { trackAchievementBatchGame } from "@main/services/achievements/achievement-batch-games";
 import { resolveSteamLaunchExecutables } from "@main/services/steam-integration/steam-app-info-core";
@@ -802,6 +803,10 @@ export const addGameOutsideLibrary = async (
     logger.info(
       `[ScanInstalledGames] Not adding ${objectId}, no title for ${executablePath}`
     );
+    return null;
+  }
+
+  if (await isLibraryGameExcluded(DISCOVERED_GAMES_SHOP, objectId)) {
     return null;
   }
 

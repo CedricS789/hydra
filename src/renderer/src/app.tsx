@@ -1,4 +1,10 @@
-import { AppTitleBar, GettingStartedGuide, Sidebar, Toast } from "@renderer/components";
+import {
+  AppTitleBar,
+  GettingStartedGuide,
+  InteractiveTutorial,
+  Sidebar,
+  Toast,
+} from "@renderer/components";
 import { AutoUpdateSubHeader } from "@renderer/components/header/auto-update-sub-header";
 import { ScanGamesProvider } from "@renderer/context";
 import {
@@ -35,6 +41,7 @@ import {
   setUserDetails,
   setUserPreferences,
   toggleDraggingDisabled,
+  toggleSidebarHidden,
   updateClassicsScanProgress,
   updateRetroArchScanProgress,
 } from "@renderer/features";
@@ -63,6 +70,7 @@ import {
   removeCustomCss,
 } from "./helpers";
 import { levelDBService } from "./services/leveldb.service";
+import { isSidebarToggleShortcut } from "./components/sidebar/sidebar-visibility";
 
 export interface AppProps {
   children: React.ReactNode;
@@ -217,6 +225,22 @@ export function App() {
 
     return () => unsubscribe();
   }, [updateLibrary]);
+
+  useEffect(() => {
+    const unsubscribe = window.electron.onHydraConfigRestored?.((sections) => {
+      if (sections.includes("library")) {
+        void updateLibrary();
+      }
+      if (sections.includes("preferences")) {
+        void window.electron
+          .getUserPreferences()
+          .then((prefs) => dispatch(setUserPreferences(prefs)))
+          .catch(() => {});
+      }
+    });
+
+    return () => unsubscribe?.();
+  }, [dispatch, updateLibrary]);
 
   useEffect(() => {
     const refreshLibrary = () => {
@@ -771,6 +795,17 @@ export function App() {
     dispatch(closeToast());
   }, [dispatch]);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isSidebarToggleShortcut(event, window.electron.platform)) return;
+      event.preventDefault();
+      dispatch(toggleSidebarHidden());
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [dispatch]);
+
   const [isWindowMaximized, setIsWindowMaximized] = useState(false);
 
   useEffect(() => {
@@ -828,6 +863,8 @@ export function App() {
         visible={showGettingStarted}
         onClose={() => setShowGettingStarted(false)}
       />
+
+      <InteractiveTutorial />
 
       <CloudSubscriptionModal
         visible={isHydraCloudModalVisible}

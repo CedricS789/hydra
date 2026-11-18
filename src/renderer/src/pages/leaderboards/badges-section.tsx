@@ -1,11 +1,17 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import cn from "classnames";
 import Skeleton from "react-loading-skeleton";
 import { useTranslation } from "react-i18next";
 
 import { Button, RankFrameRing } from "@renderer/components";
 import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@renderer/constants";
-import { useCatalogueImage, useDate, useFormat } from "@renderer/hooks";
+import {
+  useAppSelector,
+  useCatalogueImage,
+  useDate,
+  useFormat,
+} from "@renderer/hooks";
+import { isLeaderboardMetricVisible, resolveSocialPreferences } from "@shared";
 import {
   getCatalogueImageDensitySrcSet,
   pickCatalogueImageUrl,
@@ -36,6 +42,13 @@ export function BadgesSection() {
   const { formatDate } = useDate();
   const { numberFormatter } = useFormat();
   const metricText = useMetricText();
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const social = useMemo(
+    () => resolveSocialPreferences(userPreferences),
+    [userPreferences]
+  );
   const globalMetricsRequest = buildMetricsRequest("global");
   const gameMetricsRequest = buildMetricsRequest("game");
   const globalMetrics = useApiResource(
@@ -210,6 +223,18 @@ export function BadgesSection() {
     );
   };
 
+  const visibleBadges = useMemo(
+    () =>
+      (badges.data?.badges ?? []).filter(
+        (badge) =>
+          (!badge.metric || isLeaderboardMetricVisible(social, badge.metric)) &&
+          (badge.scope !== "friends" || social.showFriends)
+      ),
+    [badges.data?.badges, social]
+  );
+
+  if (badges.data && visibleBadges.length === 0) return null;
+
   const renderContent = () => {
     if (badges.isLoading && !badges.data) {
       return (
@@ -225,13 +250,13 @@ export function BadgesSection() {
     }
 
     const list = expanded
-      ? badges.data.badges
-      : badges.data.badges.slice(0, BADGES_PAGE_SIZE);
+      ? visibleBadges
+      : visibleBadges.slice(0, BADGES_PAGE_SIZE);
 
     return (
       <>
         <div className="leaderboards__badges">{list.map(renderBadge)}</div>
-        {!expanded && badges.data.badges.length > BADGES_PAGE_SIZE && (
+        {!expanded && visibleBadges.length > BADGES_PAGE_SIZE && (
           <div className="leaderboards__more">
             <Button theme="outline" onClick={() => setExpanded(true)}>
               {t("show_more")}

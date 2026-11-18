@@ -8,9 +8,11 @@ const COMPATIBILITY_LAUNCHER_STATUSES = new Set<GameLauncherStatus>([
 ]);
 
 export const getLauncherStatusGroup = (status: GameLauncherStatus) =>
-  COMPATIBILITY_LAUNCHER_STATUSES.has(status)
-    ? "compatibility"
-    : "achievements";
+  status.startsWith("launch_")
+    ? "launch"
+    : COMPATIBILITY_LAUNCHER_STATUSES.has(status)
+      ? "compatibility"
+      : "achievements";
 
 export const createLauncherStatusReplay = (gameKey: string) => {
   const liveStatusGroups = new Set<string>();

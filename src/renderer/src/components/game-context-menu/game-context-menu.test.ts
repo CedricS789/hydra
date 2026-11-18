@@ -19,6 +19,7 @@ import {
 } from "../../../../shared/library-catalogue.js";
 import { getOfficialStoreMembers } from "../../../../shared/official-store-options.js";
 import { applyLibraryGroupAction } from "../../../../shared/library-group-actions.js";
+import { resolveDangerZonePreferences } from "../../../../shared/danger-zone-preferences.js";
 import { selectLibraryPresentationIndex } from "../../features/library-presentation.js";
 
 const requireModule = createRequire(import.meta.url);
@@ -111,6 +112,7 @@ async function fixture(
   requestedGame: GameContextMenuGame = steam
 ) {
   let library = initialLibrary;
+  let userPreferences: Record<string, unknown> | null = null;
   let deletingIds = new Set<string>();
   let steamExecutableCheck: boolean | null = false;
   let steamUninstallError = false;
@@ -182,6 +184,12 @@ async function fixture(
   };
   const loadCollections = async () => {};
   const hooks: Record<string, unknown> = {
+    useAppSelector: (select: (state: unknown) => unknown) =>
+      select({
+        userPreferences: { value: userPreferences },
+        library: { downloadLibrary: library },
+        gameRunning: { gameRunning: null },
+      }),
     useLibrary: () => ({ library, downloadLibrary: library, updateLibrary }),
     useDownload: () => ({
       lastPacket: null,
@@ -214,6 +222,7 @@ async function fixture(
     getRemoveFilesTarget,
     isSameRemoveFilesTarget,
     isValidSteamAppId,
+    resolveDangerZonePreferences,
   };
   const presentation = loadModule(
     "src/renderer/src/hooks/use-library-game-presentation.ts",
@@ -256,6 +265,15 @@ async function fixture(
     }
   );
   hooks.useSteamUninstallAction = steamActionModule.useSteamUninstallAction;
+  const gameUninstallModule = loadModule(
+    "src/renderer/src/hooks/use-game-uninstall.ts",
+    {
+      "./use-library": { useLibrary: hooks.useLibrary },
+      "./use-toast": { useToast: hooks.useToast },
+      "react-i18next": translation,
+    }
+  );
+  hooks.useGameUninstall = gameUninstallModule.useGameUninstall;
   const helpers = {
     buildGameDetailsPath: (game: GameContextMenuGame) =>
       `/game/${game.shop}/${game.objectId}`,
@@ -294,6 +312,12 @@ async function fixture(
       onClose: () => void;
     }
   >();
+  let installedConfirmation: {
+    visible: boolean;
+    plan: unknown;
+    onConfirm: (opts: unknown) => void;
+    onClose: () => void;
+  } | null = null;
   const stubComponent = () => null;
   const menuModule = loadModule(`${directory}/game-context-menu.tsx`, {
     "react-i18next": translation,
@@ -333,6 +357,15 @@ async function fixture(
           onConfirm: props.onConfirm,
           onClose: props.onClose,
         });
+        return null;
+      },
+      UninstallGameModal: (props: {
+        visible: boolean;
+        plan: unknown;
+        onConfirm: (opts: unknown) => void;
+        onClose: () => void;
+      }) => {
+        installedConfirmation = props;
         return null;
       },
       CreateCollectionModal: stubComponent,
@@ -413,6 +446,30 @@ async function fixture(
     get steamConfirmation() {
       return confirmationModals.get("steam");
     },
+    get installedConfirmation() {
+      return installedConfirmation;
+    },
+    async enableInstalledUninstallBridge(plan: unknown) {
+      Object.assign(
+        (dom.window as unknown as { electron: Record<string, unknown> }).electron,
+        {
+          inspectGameUninstall: async (...args: unknown[]) => {
+            calls.push(["inspect-uninstall", ...args]);
+            return plan;
+          },
+          uninstallGame: async (...args: unknown[]) => {
+            calls.push(["execute-uninstall", ...args]);
+            return { status: "uninstalled" };
+          },
+        }
+      );
+      await render();
+    },
+    async confirmInstalledUninstall(options: unknown) {
+      assert.ok(installedConfirmation, "installed confirmation must exist");
+      assert.equal(installedConfirmation.visible, true);
+      await React.act(async () => installedConfirmation!.onConfirm(options));
+    },
     async setSteamExecutableCheck(value: boolean | null) {
       steamExecutableCheck = value;
       await render();
@@ -457,6 +514,10 @@ async function fixture(
     },
     async setDeleting(objectIds: string[]) {
       deletingIds = new Set(objectIds);
+      await render();
+    },
+    async setUserPreferences(next: Record<string, unknown> | null) {
+      userPreferences = next;
       await render();
     },
     waitForRefresh(promise: Promise<void>) {
@@ -820,5 +881,74 @@ describe("context menu download identity", () => {
     await state.setSteamExecutableCheck(true);
 
     assert.equal(state.hasItem("remove-files"), false);
+  });
+
+  it("hides remove-library and remove-files when disabled in Danger Zone preferences", async (t) => {
+    const epic = epicWithDownload({ status: "paused" });
+    const state = await fixture(t, [steam, epic]);
+
+    assert.equal(state.hasItem("remove-library"), true);
+    assert.equal(state.hasItem("remove-files"), true);
+
+    await state.setUserPreferences({
+      enableDangerZoneRemoveFromLibrary: false,
+    });
+    assert.equal(state.hasItem("remove-library"), false);
+    assert.equal(state.hasItem("remove-files"), true);
+
+    await state.setUserPreferences({
+      enableDangerZoneRemoveFromLibrary: false,
+      enableDangerZoneRemoveGameFiles: false,
+    });
+    assert.equal(state.hasItem("remove-library"), false);
+    assert.equal(state.hasItem("remove-files"), false);
+
+    await state.setUserPreferences({ enableDangerZone: false });
+    assert.equal(state.hasItem("remove-library"), true);
+    assert.equal(state.hasItem("remove-files"), true);
+  });
+
+  it("inspects and uninstalls non-Steam standalone games when installed uninstall bridge is available", async (t) => {
+    const standalone = {
+      ...steam,
+      executablePath: "C:\\Games\\Standalone\\game.exe",
+    };
+    const state = await fixture(t, [standalone], standalone);
+    await state.setSteamExecutableCheck(false);
+    assert.equal(state.hasItem("remove-files"), false);
+
+    await state.enableInstalledUninstallBridge({
+      shop: "steam",
+      objectId: standalone.objectId,
+      title: standalone.title,
+      executablePath: standalone.executablePath,
+      gameRoot: "C:\\Games\\Standalone",
+      gameRootSizeInBytes: 1024,
+      canDeleteGameRoot: true,
+      gameRootBlock: null,
+      nativeUninstaller: null,
+      downloadFolderPath: null,
+      downloadFolderSizeInBytes: null,
+      hasDownloadFolder: false,
+      hasSourceArchive: false,
+      isolatedWinePrefixPath: null,
+      activityBlock: null,
+    });
+
+    assert.equal(state.hasItem("remove-files"), true);
+    assert.equal(state.item("remove-files").label, "uninstall_game");
+    await state.click("remove-files");
+
+    assert.equal(state.installedConfirmation?.visible, true);
+    await state.confirmInstalledUninstall({ mode: "folder-delete" });
+
+    assert.deepEqual(
+      state.calls.filter(([action]) => action === "inspect-uninstall"),
+      [["inspect-uninstall", "steam", standalone.objectId]]
+    );
+    assert.deepEqual(
+      state.calls.filter(([action]) => action === "execute-uninstall"),
+      [["execute-uninstall", "steam", standalone.objectId, { mode: "folder-delete" }]]
+    );
   });
 });

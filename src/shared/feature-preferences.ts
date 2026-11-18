@@ -7,3 +7,10 @@ export const isClassicsEnabled = (
 export const isTransferGameEnabled = (
   preferences: Pick<UserPreferences, "enableTransferGame"> | null | undefined
 ): boolean => preferences?.enableTransferGame !== false;
+
+export const isHydraAchievementPointsEnabled = (
+  preferences:
+    | Pick<UserPreferences, "showHydraAchievementPoints">
+    | null
+    | undefined
+): boolean => preferences?.showHydraAchievementPoints === true;

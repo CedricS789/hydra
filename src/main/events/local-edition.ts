@@ -32,6 +32,15 @@ import {
   clearLudusaviLocalLogs,
 } from "../services/ludusavi-local";
 import {
+  getHydraConfigBackupState,
+  backupHydraConfig,
+  validateHydraConfigBackup,
+  previewHydraConfigRestore,
+  confirmHydraConfigRestore,
+  previewHydraConfigCloudTransfer,
+  confirmHydraConfigCloudTransfer,
+} from "../services/hydra-config-backup";
+import {
   getLocalReleases,
   getReleaseSourceChanges,
   getReleaseSourceFile,
@@ -40,6 +49,15 @@ import {
   downloadLocalReleaseUpdate,
   installLocalReleaseUpdate,
 } from "../services/local-releases";
+import {
+  clearExcludedLibraryGames,
+  getExcludedLibraryGames,
+  unexcludeLibraryGames,
+} from "../services/library-exclusions";
+import {
+  excludeLibraryGames,
+  restoreExcludedLibraryGames,
+} from "../helpers/exclude-library-games";
 
 registerEvent("getLudusaviLocalState", () => getLudusaviLocalState());
 registerEvent("saveLudusaviLocalSettings", (_event, settings) =>
@@ -51,8 +69,13 @@ registerEvent("saveLudusaviGameSettings", (_event, key, patch) =>
 registerEvent("runLudusaviLocalBackup", (_event, key, preview) =>
   enqueueLudusaviLocalBackup(key, preview)
 );
-registerEvent("runLudusaviLocalBulkBackup", (_event, includeDisabled) =>
-  runLudusaviLocalBulkBackup(includeDisabled)
+registerEvent(
+  "runLudusaviLocalBulkBackup",
+  (_event, includeDisabled, includeHydraConfig) =>
+    runLudusaviLocalBulkBackup(
+      includeDisabled,
+      includeHydraConfig ? () => backupHydraConfig(false) : undefined
+    )
 );
 registerEvent("openLudusaviLocalFolder", (_event, logs) =>
   openLudusaviLocalFolder(logs)
@@ -137,14 +160,14 @@ registerEvent("addDetectedSaveGame", (event, request) =>
 registerEvent("listSaveBackupVersions", (_event, key) =>
   listSaveBackupVersions(key)
 );
-registerEvent("previewSaveRestore", (_event, key, version) =>
-  previewSaveRestore(key, version)
+registerEvent("previewSaveRestore", (_event, key, version, snapshotId) =>
+  previewSaveRestore(key, version, snapshotId)
 );
 registerEvent("confirmSaveOperation", (_event, token) =>
   confirmSaveOperation(token)
 );
-registerEvent("validateSaveBackup", (_event, key, version) =>
-  validateSaveBackup(key, version)
+registerEvent("validateSaveBackup", (_event, key, version, snapshotId) =>
+  validateSaveBackup(key, version, snapshotId)
 );
 registerEvent("previewSaveCloudTransfer", (_event, key, direction) =>
   previewSaveCloudTransfer(key, direction)
@@ -156,6 +179,25 @@ registerEvent("saveSaveAdvancedConfig", (_event, text) =>
 registerEvent("importStandaloneSaveConfig", () => importStandaloneSaveConfig());
 registerEvent("updateSaveManifest", () => updateSaveManifest());
 registerEvent("openFullSaveManager", (_event, key) => openFullSaveManager(key));
+registerEvent("getHydraConfigBackupState", () => getHydraConfigBackupState());
+registerEvent("backupHydraConfig", (_event, preview) =>
+  backupHydraConfig(Boolean(preview))
+);
+registerEvent("validateHydraConfigBackup", (_event, version, snapshotId) =>
+  validateHydraConfigBackup(version, snapshotId)
+);
+registerEvent("previewHydraConfigRestore", (event, version, snapshotId) =>
+  previewHydraConfigRestore(event.sender.id, version, snapshotId)
+);
+registerEvent("confirmHydraConfigRestore", (event, request) =>
+  confirmHydraConfigRestore(event.sender.id, request)
+);
+registerEvent("previewHydraConfigCloudTransfer", (_event, direction) =>
+  previewHydraConfigCloudTransfer(direction)
+);
+registerEvent("confirmHydraConfigCloudTransfer", (_event, token) =>
+  confirmHydraConfigCloudTransfer(token)
+);
 registerEvent("getLocalReleases", (_event, force) => getLocalReleases(force));
 registerEvent("getReleaseSourceChanges", (_event, tag) =>
   getReleaseSourceChanges(tag)
@@ -167,3 +209,18 @@ registerEvent("getLocalUpdateState", () => getLocalUpdateState());
 registerEvent("checkLocalReleaseUpdate", () => checkLocalReleaseUpdate());
 registerEvent("downloadLocalReleaseUpdate", () => downloadLocalReleaseUpdate());
 registerEvent("installLocalReleaseUpdate", () => installLocalReleaseUpdate());
+registerEvent("getExcludedLibraryGames", () => getExcludedLibraryGames());
+registerEvent("excludeLibraryGames", (_event, inputs) =>
+  excludeLibraryGames(inputs)
+);
+registerEvent(
+  "unexcludeLibraryGames",
+  async (_event, targets, options?: { restoreToLibrary?: boolean }) => {
+    if (options?.restoreToLibrary) {
+      return restoreExcludedLibraryGames(targets);
+    }
+    const result = await unexcludeLibraryGames(targets);
+    return { ...result, restoredCount: 0 };
+  }
+);
+registerEvent("clearExcludedLibraryGames", () => clearExcludedLibraryGames());

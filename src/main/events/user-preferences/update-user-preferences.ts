@@ -1,6 +1,7 @@
 import { updateGameRecord } from "@main/services/game-record-updater";
 import { registerEvent } from "../register-event";
 import path from "node:path";
+import { validateCompanionApps } from "../../../shared/companion-apps";
 import { closeSourceBrowsers } from "@main/services/source-browser";
 
 import type { Game, UserPreferences } from "@types";
@@ -11,6 +12,8 @@ import { patchUserProfile } from "../profile/update-profile";
 import {
   DownloadManager,
   DownloadOrchestrator,
+  BigPictureGameWindowService,
+  GamepadWakeService,
   ScreenshotInputService,
   Wine,
   achievementNotificationPresenter,
@@ -22,7 +25,10 @@ import {
 import { setDirectTorrentAccess } from "@main/services/torrent-service";
 import { WindowManager } from "@main/services/window-manager";
 import { applyAutoLaunch } from "./auto-launch";
-import { getDownloadDirectoryPreferences } from "@shared";
+import {
+  getDownloadDirectoryPreferences,
+  HTTP_DOWNLOAD_PREFERENCE_KEYS,
+} from "@shared";
 import {
   restoreDuckStationFileLogging,
   restoreRetroArchAchievementScreenshots,
@@ -181,12 +187,19 @@ const updateScreenshotsPreference = async (
 };
 
 const applyDownloadManagerPreferences = async (
-  preferences: Partial<UserPreferences>
+  preferences: Partial<UserPreferences>,
+  updatedPreferences: UserPreferences
 ) => {
   if (Object.hasOwn(preferences, "maxDownloadSpeedBytesPerSecond")) {
     await DownloadManager.applyDownloadSpeedLimit(
       preferences.maxDownloadSpeedBytesPerSecond ?? null
     );
+  }
+
+  if (
+    HTTP_DOWNLOAD_PREFERENCE_KEYS.some((key) => Object.hasOwn(preferences, key))
+  ) {
+    await DownloadManager.applyHttpDownloadSettings(updatedPreferences);
   }
 
   if (Object.hasOwn(preferences, "torrentNetworkInterface")) {
@@ -196,11 +209,21 @@ const applyDownloadManagerPreferences = async (
   }
 };
 
-const applyUserPreferences = async (
+export const applyUserPreferences = async (
   _event: Electron.IpcMainInvokeEvent,
   preferences: Partial<UserPreferences>,
   directTorrentConfirmation?: string
 ) => {
+  if (
+    Object.hasOwn(preferences, "companionAppsEnabled") &&
+    typeof preferences.companionAppsEnabled !== "boolean"
+  )
+    throw new Error("companion_apps_invalid");
+  if (Object.hasOwn(preferences, "companionApps"))
+    preferences = {
+      ...preferences,
+      companionApps: validateCompanionApps(preferences.companionApps),
+    };
   const userPreferences = await db.get<string, UserPreferences | null>(
     levelKeys.userPreferences,
     { valueEncoding: "json" }
@@ -259,6 +282,8 @@ const applyUserPreferences = async (
 
   Wine.syncUserPreferences(updatedPreferences);
   ScreenshotInputService.syncUserPreferences(updatedPreferences);
+  GamepadWakeService.syncUserPreferences(updatedPreferences);
+  BigPictureGameWindowService.syncUserPreferences(updatedPreferences);
   if (
     Object.keys(preferences).some(
       (key) =>
@@ -287,17 +312,20 @@ const applyUserPreferences = async (
     updatedPreferences
   );
 
-  await applyDownloadManagerPreferences(preferences);
+  await applyDownloadManagerPreferences(preferences, updatedPreferences);
 };
 
 // Serialize read/merge/write so a simultaneous ordinary settings save cannot
 // restore a stale torrent permission after it has been revoked.
 let preferenceUpdates: Promise<unknown> = Promise.resolve();
+export function withUserPreferencesLock<T>(task: () => Promise<T>): Promise<T> {
+  const next = preferenceUpdates.then(task);
+  preferenceUpdates = next.catch(() => {});
+  return next;
+}
 const updateUserPreferences = (
   ...args: Parameters<typeof applyUserPreferences>
 ) => {
-  const next = preferenceUpdates.then(() => applyUserPreferences(...args));
-  preferenceUpdates = next.catch(() => {});
-  return next;
+  return withUserPreferencesLock(() => applyUserPreferences(...args));
 };
 registerEvent("updateUserPreferences", updateUserPreferences);

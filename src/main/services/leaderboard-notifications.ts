@@ -6,7 +6,9 @@ import {
   buildLeaderboardNotificationTarget,
   buildLeaderboardNotificationText,
   GLOBAL_LEADERBOARDS_FEATURE,
+  isLeaderboardMetricVisible,
   parseLeaderboardNotification,
+  resolveSocialPreferences,
   type LeaderboardNotificationInfo,
 } from "@shared";
 import type {
@@ -106,10 +108,18 @@ export const publishLeaderboardNotifications = async (signal: AbortSignal) => {
   ]);
   if (signal.aborted) return;
 
+  const social = resolveSocialPreferences(preferences);
   const shownKeys = new Set(shown);
   const fresh = response.notifications.flatMap((notification) => {
     const info = parseLeaderboardNotification(notification);
     if (!info?.push || shownKeys.has(shownKey(notification))) return [];
+    if (
+      !social.showLeaderboardAlerts ||
+      !isLeaderboardMetricVisible(social, info.metric) ||
+      (info.scope === "friends" && !social.showFriends)
+    ) {
+      return [];
+    }
     if (Date.now() - new Date(notification.createdAt).getTime() > FRESH_MS)
       return [];
     return [{ notification, info }];

@@ -17,6 +17,7 @@ import {
   stopEmulatorSouvenirWatcher,
 } from "./emulator-souvenir-watcher";
 import { WindowManager } from "../window-manager";
+import { BigPictureGameWindowService } from "../big-picture-game-window";
 import {
   hasCloudSaveLaunchGuard,
   runAutomaticCloudSavePostExit,
@@ -247,6 +248,7 @@ export const startEmulatorSession = async ({
     launchedGamePids.set(gameKey, launcherPid);
   }
   setEmulatorGameRunning(gameKey);
+  BigPictureGameWindowService.notifyGameLaunchDetected(gameKey, executablePath);
   void onScreenshotGameStarted(gameKey);
 
   if (game.shop !== "custom") {
@@ -419,6 +421,7 @@ const finalizeEmulatorSession = async (gameKey: string): Promise<void> => {
   if (!session) return;
   emulatorSessions.delete(gameKey);
   deleteEmulatorGameRunning(gameKey);
+  BigPictureGameWindowService.notifyGameClosed(gameKey);
   stopLinuxGameCaptureSession(gameKey);
   onScreenshotGameClosed(gameKey);
   if (session.heartbeat) clearInterval(session.heartbeat);

@@ -1,3 +1,4 @@
+import { withResetDefaults } from "../../../../shared/settings-reset";
 import {
   useSettingsDraft,
   useSettingsFormGuard,
@@ -22,22 +23,25 @@ const formatLimitInputValue = (
     : `${Number(unitValue.toFixed(2))}`;
 };
 
-const buildForm = (preferences: UserPreferences | null) => ({
-  showDownloadSpeedInMegabytes:
-    preferences?.showDownloadSpeedInMegabytes ?? false,
-  extractFilesByDefault: preferences?.extractFilesByDefault ?? true,
-  createStartMenuShortcut: preferences?.createStartMenuShortcut ?? true,
-  maxDownloadSpeedMegabytes:
-    typeof preferences?.maxDownloadSpeedBytesPerSecond === "number" &&
-    preferences.maxDownloadSpeedBytesPerSecond > 0
-      ? formatLimitInputValue(
-          preferences.maxDownloadSpeedBytesPerSecond,
-          preferences.showDownloadSpeedInMegabytes ?? false
-        )
-      : "",
-  deleteArchiveFilesAfterExtractionByDefault:
-    preferences?.deleteArchiveFilesAfterExtractionByDefault ?? true,
-});
+const buildForm = (preferences: UserPreferences | null) => {
+  preferences = withResetDefaults(preferences);
+  return {
+    showDownloadSpeedInMegabytes:
+      preferences?.showDownloadSpeedInMegabytes ?? false,
+    extractFilesByDefault: preferences?.extractFilesByDefault ?? true,
+    createStartMenuShortcut: preferences?.createStartMenuShortcut ?? true,
+    maxDownloadSpeedMegabytes:
+      typeof preferences?.maxDownloadSpeedBytesPerSecond === "number" &&
+      preferences.maxDownloadSpeedBytesPerSecond > 0
+        ? formatLimitInputValue(
+            preferences.maxDownloadSpeedBytesPerSecond,
+            preferences.showDownloadSpeedInMegabytes ?? false
+          )
+        : "",
+    deleteArchiveFilesAfterExtractionByDefault:
+      preferences?.deleteArchiveFilesAfterExtractionByDefault ?? true,
+  };
+};
 
 export function SettingsContextDownloads() {
   const { t } = useTranslation("settings");

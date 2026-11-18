@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { GameRunning } from "@types";
+import { observeLatestSnapshot } from "../helpers/observe-latest-snapshot";
 
 export type BigPictureRunningGame = Pick<
   GameRunning,
@@ -41,11 +42,12 @@ export function initializeBigPictureRunningGamesStore() {
   };
 
   if (typeof electron.getGamesRunning === "function") {
-    electron
-      .getGamesRunning()
-      .then(setRunningGames)
-      .catch(() => {});
+    observeLatestSnapshot(
+      (listener) => electron.onGamesRunning(listener),
+      () => electron.getGamesRunning(),
+      setRunningGames
+    );
+  } else {
+    electron.onGamesRunning(setRunningGames);
   }
-
-  electron.onGamesRunning(setRunningGames);
 }

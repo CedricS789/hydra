@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import cn from "classnames";
 import { PeopleIcon, TrophyIcon } from "@primer/octicons-react";
 import { useTranslation } from "react-i18next";
@@ -6,8 +6,13 @@ import { useNavigate } from "react-router-dom";
 
 import { Button } from "@renderer/components";
 import { buildGameDetailsPath } from "@renderer/helpers";
+import { useAppSelector } from "@renderer/hooks";
 import type { GameShop } from "@types";
-import { buildLeaderboardBoardPath } from "@shared";
+import {
+  buildLeaderboardBoardPath,
+  isLeaderboardMetricVisible,
+  resolveSocialPreferences,
+} from "@shared";
 import type { LeaderboardUser } from "../game-details/leaderboard/game-leaderboard";
 import {
   buildMetricsRequest,
@@ -114,6 +119,13 @@ export function ByGameTab({
   const navigate = useNavigate();
   const metricText = useMetricText();
   const metricColumnLabel = useMetricColumnLabel();
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const social = useMemo(
+    () => resolveSocialPreferences(userPreferences),
+    [userPreferences]
+  );
   const [requestedMetric, setRequestedMetric] = useState<string | null>(
     initialMetric
   );
@@ -123,11 +135,17 @@ export function ByGameTab({
     metricsRequest.options,
     normalizeMetricDefinitions
   );
-  const gameMetrics = metricDefinitions.data ?? [];
+  const gameMetrics = useMemo(
+    () =>
+      (metricDefinitions.data ?? []).filter((definition) =>
+        isLeaderboardMetricVisible(social, definition.id)
+      ),
+    [metricDefinitions.data, social]
+  );
   const hasNoGameMetrics =
     !metricDefinitions.isLoading &&
     !metricDefinitions.hasError &&
-    metricDefinitions.data?.length === 0;
+    gameMetrics.length === 0;
   const metric =
     gameMetrics.find((definition) => definition.id === requestedMetric) ??
     gameMetrics[0] ??

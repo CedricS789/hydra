@@ -7,6 +7,8 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { act } from "react-dom/test-utils";
 import ts from "typescript";
+// @ts-ignore The Node ESM test runner requires the source extension.
+import { resolveManualPlaytimeWarningPreferences } from "../../../../shared/manual-playtime-warning-preferences.ts";
 
 const requireModule = createRequire(import.meta.url);
 
@@ -54,7 +56,10 @@ it("refreshes grouped progress on member changes and preserves known offline tot
         epic: false,
       }),
     },
-    "@shared": { getDisplayedPlayTimeInMilliseconds: () => 0 },
+    "@shared": {
+      getDisplayedPlayTimeInMilliseconds: () => 0,
+      resolveManualPlaytimeWarningPreferences,
+    },
     "@renderer/helpers": {
       CLASSICS_PS_PLATFORM_LABELS: {},
       isGameReadyToPlay: () => false,

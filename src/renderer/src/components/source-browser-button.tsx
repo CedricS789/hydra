@@ -1,26 +1,87 @@
-import { useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { GameRepack } from "@types";
 import type { SourceBrowserRequest } from "../../../types/source-browser.types";
+import { sourceBrowserRequestKey } from "../../../shared/source-browser-policy";
+
+/** Tracks in-flight source browser launches and clears opening state once the window opens. */
+export function useSourceBrowserOpener(onReview: (repack: GameRepack) => void) {
+  const [openingKeys, setOpeningKeys] = useState<Set<string>>(() => new Set());
+  const activeTokensRef = useRef(new Map<string, symbol>());
+  const [error, setError] = useState("");
+  const onReviewRef = useRef(onReview);
+  onReviewRef.current = onReview;
+
+  const removeOpeningKey = useCallback((key: string) => {
+    setOpeningKeys((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    return window.electron.onSourceBrowserOpened?.((openedKey) => {
+      activeTokensRef.current.delete(openedKey);
+      removeOpeningKey(openedKey);
+    });
+  }, [removeOpeningKey]);
+
+  const isOpening = useCallback(
+    (request: SourceBrowserRequest) =>
+      openingKeys.has(sourceBrowserRequestKey(request)),
+    [openingKeys]
+  );
+
+  const open = useCallback(
+    async (request: SourceBrowserRequest) => {
+      const key = sourceBrowserRequestKey(request);
+      if (activeTokensRef.current.has(key)) return;
+      const token = Symbol();
+      activeTokensRef.current.set(key, token);
+      setOpeningKeys((prev) => {
+        if (prev.has(key)) return prev;
+        const next = new Set(prev);
+        next.add(key);
+        return next;
+      });
+      setError("");
+      try {
+        const selection = await window.electron.openSourceBrowser(request);
+        if (selection) onReviewRef.current(selection);
+      } catch (cause) {
+        setError(String(cause));
+      } finally {
+        if (activeTokensRef.current.get(key) === token) {
+          activeTokensRef.current.delete(key);
+          removeOpeningKey(key);
+        }
+      }
+    },
+    [removeOpeningKey]
+  );
+
+  const clearError = useCallback(() => setError(""), []);
+
+  return { isOpening, error, clearError, open };
+}
 
 export function useSourceBrowser(
   request: SourceBrowserRequest,
   onReview: (repack: GameRepack) => void
 ) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const open = async () => {
-    setBusy(true);
-    setError("");
-    try {
-      const selection = await window.electron.openSourceBrowser(request);
-      if (selection) onReview(selection);
-    } catch (error) {
-      setError(String(error));
-    } finally {
-      setBusy(false);
-    }
+  const { isOpening, error, open } = useSourceBrowserOpener(onReview);
+  return {
+    busy: isOpening(request),
+    error,
+    open: () => open(request),
   };
-  return { busy, error, open };
 }
 
 export function SourceBrowserButton({

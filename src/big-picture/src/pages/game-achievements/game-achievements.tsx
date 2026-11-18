@@ -7,6 +7,7 @@ import {
   getVisibleSetGroups,
   groupAchievementsBySet,
   isAchievementConcealed,
+  isHydraAchievementPointsEnabled,
   type AchievementListEntry,
   type AchievementSortOption,
   type AchievementStatusFilter,
@@ -67,6 +68,7 @@ export default function GameAchievements() {
   const userPreferences = useUserPreferences();
   const showHiddenAchievements =
     userPreferences?.showHiddenAchievementsDescription ?? false;
+  const showHydraPoints = isHydraAchievementPointsEnabled(userPreferences);
   const [souvenir, setSouvenir] = useState<UserAchievement | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<AchievementStatusFilter>("all");
@@ -248,6 +250,7 @@ export default function GameAchievements() {
                 ? { earned: earnedPoints, total: totalPoints }
                 : null
             }
+            showPoints={showHydraPoints}
           />
 
           <section className="game-achievements-page__list-section">
@@ -314,7 +317,7 @@ export default function GameAchievements() {
                       revealed={
                         getAchievementKey(achievement) === lastRevealedName
                       }
-                      showPoints={hasActiveSubscription}
+                      showPoints={showHydraPoints && hasActiveSubscription}
                       navigationOrder={item.index}
                       navigationOverrides={navigationOverrides}
                       virtualRow={virtualRow}

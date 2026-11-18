@@ -1,5 +1,6 @@
 import type { FriendGameSession } from "../types";
 import { db, levelKeys } from "@main/level";
+import { resolveSocialPreferences } from "@shared";
 import { publishFriendStartedPlayingGameNotification } from "@main/services/notifications";
 import type { UserPreferences } from "@types";
 import { toFriendGameSessionNotification } from "../friend-game-session-notification";
@@ -23,7 +24,11 @@ export const friendGameSessionEvent = async (
   );
 
   if (signal.aborted) return;
-  if (userPreferences?.friendStartGameNotificationsEnabled === false) return;
+  if (
+    userPreferences?.friendStartGameNotificationsEnabled === false ||
+    !resolveSocialPreferences(userPreferences).showFriends
+  )
+    return;
 
   await publishFriendStartedPlayingGameNotification(notification, signal);
 };

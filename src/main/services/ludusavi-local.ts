@@ -45,6 +45,7 @@ import {
   type TrackedLocalGame,
 } from "./ludusavi-local-tracker";
 import { LudusaviBackupQueue } from "./ludusavi-local-queue";
+import { BACKUP_BEHAVIOR_DEFAULTS } from "../../shared/settings-reset";
 import {
   appendLudusaviBackupLog,
   clearLudusaviBackupLogs,
@@ -83,18 +84,13 @@ const notifyStateChanged = () => {
 };
 
 const defaults = (): LudusaviLocalSettings => ({
-  enabled: true,
+  ...BACKUP_BEHAVIOR_DEFAULTS,
   destination: path.join(
     process.env.OneDriveConsumer || path.join(os.homedir(), "OneDrive"),
     "Games Data",
     "ludusavi-backup"
   ),
-  fullRetention: 10,
-  exitDelaySeconds: 10,
   games: {},
-  differentialRetention: 0,
-  format: "zip",
-  compression: "deflate",
 });
 
 export const getLudusaviLocalSettings =
@@ -105,7 +101,7 @@ export const getLudusaviLocalSettings =
     })),
   });
 
-const validateLudusaviGameSettings = (game: LudusaviGameSettings) => {
+export const validateLudusaviGameSettings = (game: LudusaviGameSettings) => {
   if (
     !game ||
     typeof game.enabled !== "boolean" ||
@@ -128,7 +124,7 @@ const validateLudusaviGameSettings = (game: LudusaviGameSettings) => {
   }
 };
 
-const validateLudusaviSettings = (value: LudusaviLocalSettings) => {
+export const validateLudusaviSettings = (value: LudusaviLocalSettings) => {
   if (
     !value ||
     typeof value.enabled !== "boolean" ||
@@ -162,11 +158,19 @@ export const saveLudusaviLocalSettings = async (
   validateLudusaviSettings(value);
   if (queue.busy) throw new Error(t("ludusavi:clear_busy"));
   return queue.enqueue("settings:save", async () => {
-    await db.put(settingsKey, value, { valueEncoding: "json" });
-    if (!value.enabled) tracker.reset();
-    notifyStateChanged();
+    await persistLudusaviLocalSettings(value);
     return getLudusaviLocalState();
   });
+};
+
+/** The caller must hold the save queue. Shared by ordinary saves and reviewed resets. */
+export const persistLudusaviLocalSettings = async (
+  value: LudusaviLocalSettings
+) => {
+  validateLudusaviSettings(value);
+  await db.put(settingsKey, value, { valueEncoding: "json" });
+  if (!value.enabled) tracker.reset();
+  WindowManager.sendToAppWindows("on-ludusavi-state-changed");
 };
 
 export const saveLudusaviGameSettings = async (
@@ -279,13 +283,20 @@ const trackingGame = (
   ].filter((p): p is string => !!p),
 });
 
-const assertStopped = async (game: Game, settings: LudusaviLocalSettings) => {
-  if (!trackingGame(game, settings).paths.length)
-    throw new Error(t("ludusavi:process_unknown"));
-  const scan = await NativeAddon.getSystemProcessMap();
+const assertStopped = async (
+  game: Game,
+  settings: LudusaviLocalSettings,
+  requirePaths = false,
+  processMap?: SystemProcessMap | null
+) => {
+  const tracked = trackingGame(game, settings);
+  if (!tracked.paths.length) {
+    if (requirePaths) throw new Error(t("ludusavi:process_unknown"));
+    return;
+  }
+  const scan = processMap ?? (await NativeAddon.getSystemProcessMap());
   if (!scan?.processTree?.length)
     throw new Error(t("ludusavi:process_unknown"));
-  const tracked = trackingGame(game, settings);
   // An exact match or another executable below the game's folder postpones
   // the backup, including descendants left behind by a bootstrap process.
   const gameFolders = tracked.paths.map((p) => path.dirname(p).toLowerCase());
@@ -316,6 +327,15 @@ const prepareBaseConfig = async (settings: LudusaviLocalSettings) => {
   const configDir = path.join(folder(), "config");
   await fs.mkdir(configDir, { recursive: true });
   const standalone = path.join(SystemPath.getPath("appData"), "ludusavi");
+  try {
+    await fs.copyFile(
+      path.join(standalone, "manifest.yaml"),
+      path.join(configDir, "manifest.yaml"),
+      1
+    );
+  } catch {
+    /* Keep our own manifest once initialized. */
+  }
   let original: SaveEngineConfig = {};
   try {
     const source = parseSaveEngineConfig(
@@ -362,18 +382,8 @@ const prepareConfig = async (
   settings: LudusaviLocalSettings,
   updateManifest = true
 ) => {
-  const { configDir, binary, config, standalone } =
-    await prepareBaseConfig(settings);
+  const { configDir, binary, config } = await prepareBaseConfig(settings);
   const original = config;
-  try {
-    await fs.copyFile(
-      path.join(standalone, "manifest.yaml"),
-      path.join(configDir, "manifest.yaml"),
-      1
-    );
-  } catch {
-    /* Keep our own manifest once initialized. */
-  }
   const customGames = [...(original.customGames ?? [])];
   const roots = [
     ...(original.roots ?? [
@@ -426,24 +436,32 @@ const prepareConfig = async (
       YAML.stringify({ ...config, roots, customGames })
     );
   await writeConfig();
+  const hasManifest = await fs
+    .stat(path.join(configDir, "manifest.yaml"))
+    .then((s) => s.isFile())
+    .catch(() => false);
   const lookupArgs = [
     "--config",
     configDir,
-    updateManifest ? "--try-manifest-update" : "--no-manifest-update",
+    updateManifest || !hasManifest
+      ? "--try-manifest-update"
+      : "--no-manifest-update",
     "find",
     "--api",
     "--normalized",
   ];
-  if (!linkedTitle && game.shop === "steam" && /^\d+$/.test(game.objectId))
-    lookupArgs.push("--steam-id", game.objectId);
+  if (!linkedTitle && saveSteamId && /^\d+$/.test(saveSteamId))
+    lookupArgs.push("--steam-id", saveSteamId);
   lookupArgs.push("--", linkedTitle ?? game.title);
   let canonical: string;
   try {
-    const result = await exec(binary, lookupArgs, {
+    const lookupOp = exec(binary, lookupArgs, {
       windowsHide: true,
       timeout: 120_000,
       maxBuffer: 4 * 1024 * 1024,
     });
+    lookupOp.child.stdin?.end();
+    const result = await lookupOp;
     canonical = Object.keys(JSON.parse(result.stdout).games ?? {})[0];
   } catch {
     if (!configuredPaths.length)
@@ -584,7 +602,7 @@ const run = async (
     const shouldCheckStopped =
       automatic || trackingGame(game, settings).paths.length > 0;
     if (shouldCheckStopped) {
-      await assertStopped(game, settings);
+      await assertStopped(game, settings, automatic);
     }
     lock = await acquireSaveBackupLock(settings.destination);
     const { binary, configDir, canonical } = await prepareConfig(
@@ -592,14 +610,13 @@ const run = async (
       settings
     );
     if (shouldCheckStopped) {
-      await assertStopped(game, settings);
+      await assertStopped(game, settings, automatic);
     }
     const args = [
       "--config",
       configDir,
       "--no-manifest-update",
       "backup",
-      canonical,
       "--api",
       "--force",
       "--no-cloud-sync",
@@ -615,18 +632,20 @@ const run = async (
       String(settings.differentialRetention ?? 0),
     ];
     if (preview) args.push("--preview");
+    args.push("--", canonical);
     const operation = exec(binary, args, {
       windowsHide: true,
       timeout: 10 * 60_000,
       maxBuffer: 32 * 1024 * 1024,
     });
+    operation.child.stdin?.end();
     if (lock) await lock.child(operation.child.pid);
     const response = await operation;
     const data = JSON.parse(response.stdout) as SaveApiResponse;
     assertSaveApiSuccess(data);
     const scanned = data.games?.[canonical];
+    if (!scanned) throw new Error(t("ludusavi:no_saves"));
     if (
-      !scanned ||
       scanned.decision !== "Processed" ||
       (data.errors && Object.keys(data.errors).length > 0) ||
       Object.values(scanned.files ?? {}).some(
@@ -673,13 +692,14 @@ export const enqueueLudusaviLocalBackup = async (
   return queue.enqueue(JSON.stringify([key, preview]), async () => {
     const game = await gamesSublevel.get(key);
     if (!game || game.isDeleted)
-      throw new Error(t("ludusavi:unrecognized_game"));
+      throw new Error(t("ludusavi:unrecognized_game", { game: key }));
     return run(game, preview, automatic);
   });
 };
 
 export const runLudusaviLocalBulkBackup = async (
-  includeDisabled = false
+  includeDisabled = false,
+  configBackupRunner?: () => Promise<{ message: string }>
 ): Promise<LudusaviBulkBackupProgress> => {
   if (activeBulkRun) return activeBulkRun;
   if (queue.busy) throw new Error(t("ludusavi:clear_busy"));
@@ -779,6 +799,27 @@ export const runLudusaviLocalBulkBackup = async (
       notifyStateChanged();
     }
 
+    let configBackup:
+      | { status: "success" | "failed"; message: string }
+      | undefined;
+    if (configBackupRunner) {
+      bulkProgress = {
+        ...bulkProgress,
+        currentGameKey: null,
+        currentGameTitle: "Hydra configuration",
+      };
+      notifyStateChanged();
+      try {
+        const cfgResult = await configBackupRunner();
+        configBackup = { status: "success", message: cfgResult.message };
+      } catch (error) {
+        configBackup = {
+          status: "failed",
+          message: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }
+
     bulkProgress = {
       ...bulkProgress,
       running: false,
@@ -792,6 +833,7 @@ export const runLudusaviLocalBulkBackup = async (
         failed: bulkProgress.failed,
         skippedGames,
         failures,
+        ...(configBackup ? { configBackup } : {}),
       },
     };
     notifyStateChanged();

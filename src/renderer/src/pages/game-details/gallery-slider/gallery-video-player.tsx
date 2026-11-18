@@ -26,7 +26,12 @@ import { useHlsVideo } from "@shared";
 import type { GalleryMediaItem, GalleryVideoSource } from "./gallery-slider";
 import { HLS_VIDEO_TYPE } from "./gallery-media-sources";
 import { isPointerActivity } from "./gallery-shortcuts";
-import { shouldPauseOnToggle } from "./gallery-playback";
+import {
+  readStoredTrailerMuted,
+  readStoredTrailerVolume,
+  shouldPauseOnToggle,
+  writeTrailerAudioState,
+} from "./gallery-playback";
 import "./gallery-video-player.scss";
 
 const AUTO_QUALITY = -1;
@@ -43,8 +48,6 @@ const RESTORE_SEEK_TOLERANCE_SECONDS = 0.5;
 const BUFFERED_RANGE_LOOKAHEAD_SECONDS = 0.5;
 const STORYBOARD_FRAME_WIDTH = 400;
 const STORYBOARD_SEEK_TIMEOUT_MS = 4000;
-const VOLUME_STORAGE_KEY = "trailerVolume";
-const MUTED_STORAGE_KEY = "trailerMuted";
 
 export const SEEK_STEP_SECONDS = 5;
 
@@ -127,6 +130,7 @@ interface GalleryVideoPlayerProps {
   variant: "inline" | "viewer";
   autoPlay?: boolean;
   loadOnDemand?: boolean;
+  saveMuteStatus?: boolean;
   isFullscreen?: boolean;
   controlsHidden?: boolean;
   className?: string;
@@ -179,23 +183,17 @@ function VolumeIcon({
   return <SpeakerHigh size={size} weight="fill" />;
 }
 
-const readStoredVolume = () => {
-  const stored = localStorage.getItem(VOLUME_STORAGE_KEY);
-  const volume = stored === null ? Number.NaN : Number(stored);
-  return Number.isFinite(volume) ? clamp(volume) : 1;
-};
+const readStoredVolume = () => readStoredTrailerVolume(localStorage);
 
-const readStoredMuted = () => {
-  const stored = localStorage.getItem(MUTED_STORAGE_KEY);
-  return stored === null ? true : stored === "true";
-};
+const readStoredMuted = (saveMuteStatus = true) =>
+  readStoredTrailerMuted(localStorage, saveMuteStatus);
 
 const volumeListeners = new Set<() => void>();
 
-const storeVolume = (volume: number, muted: boolean) => {
-  if (readStoredVolume() === volume && readStoredMuted() === muted) return;
-  localStorage.setItem(VOLUME_STORAGE_KEY, String(volume));
-  localStorage.setItem(MUTED_STORAGE_KEY, String(muted));
+const storeVolume = (volume: number, muted: boolean, saveMuteStatus = true) => {
+  if (!writeTrailerAudioState(localStorage, volume, muted, saveMuteStatus)) {
+    return;
+  }
   volumeListeners.forEach((listener) => listener());
 };
 
@@ -788,6 +786,7 @@ export const GalleryVideoPlayer = forwardRef<
     variant,
     autoPlay = true,
     loadOnDemand = false,
+    saveMuteStatus = true,
     isFullscreen = false,
     controlsHidden: viewerControlsHidden = false,
     className,
@@ -813,6 +812,9 @@ export const GalleryVideoPlayer = forwardRef<
   const controlsStateRef = useRef({ hidden: false, held: false });
   const lastViewerControlsHiddenRef = useRef(false);
   const wasInlineRef = useRef(variant === "inline");
+  const saveMuteStatusRef = useRef(saveMuteStatus);
+  saveMuteStatusRef.current = saveMuteStatus;
+  const userAdjustedAudioRef = useRef(false);
 
   const isHls = item.videoType === HLS_VIDEO_TYPE;
   const sources = useMemo(() => item.sources ?? [], [item.sources]);
@@ -830,7 +832,7 @@ export const GalleryVideoPlayer = forwardRef<
   const [duration, setDuration] = useState(0);
   const [bufferedEnd, setBufferedEnd] = useState(0);
   const [volume, setVolume] = useState(readStoredVolume);
-  const [muted, setMuted] = useState(readStoredMuted);
+  const [muted, setMuted] = useState(() => readStoredMuted(saveMuteStatus));
   const [hoverRatio, setHoverRatio] = useState<number | null>(null);
   const [seekIndicators, setSeekIndicators] = useState<SeekIndicators>({});
   const [seekPresses, setSeekPresses] = useState(0);
@@ -875,17 +877,27 @@ export const GalleryVideoPlayer = forwardRef<
     const video = videoRef.current;
     if (!video) return;
     video.volume = readStoredVolume();
-    video.muted = readStoredMuted();
+    video.muted = readStoredMuted(saveMuteStatusRef.current);
   }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || userAdjustedAudioRef.current) return;
+    const nextMuted = readStoredMuted(saveMuteStatus);
+    if (video.muted !== nextMuted) video.muted = nextMuted;
+    setMuted(nextMuted);
+  }, [saveMuteStatus]);
 
   useEffect(() => {
     const syncVolume = () => {
       const video = videoRef.current;
       if (!video) return;
       const storedVolume = readStoredVolume();
-      const storedMuted = readStoredMuted();
       if (video.volume !== storedVolume) video.volume = storedVolume;
-      if (video.muted !== storedMuted) video.muted = storedMuted;
+      if (saveMuteStatusRef.current) {
+        const storedMuted = readStoredMuted(true);
+        if (video.muted !== storedMuted) video.muted = storedMuted;
+      }
     };
 
     volumeListeners.add(syncVolume);
@@ -1052,6 +1064,7 @@ export const GalleryVideoPlayer = forwardRef<
     const video = videoRef.current;
     if (!video) return;
 
+    userAdjustedAudioRef.current = true;
     const base = video.muted ? 0 : video.volume;
     const next = clamp(Math.round((base + delta) * 100) / 100);
     video.volume = next;
@@ -1061,6 +1074,7 @@ export const GalleryVideoPlayer = forwardRef<
   const setVolumeRatio = useCallback((ratio: number) => {
     const video = videoRef.current;
     if (!video) return;
+    userAdjustedAudioRef.current = true;
     video.volume = ratio;
     video.muted = ratio === 0;
   }, []);
@@ -1069,6 +1083,7 @@ export const GalleryVideoPlayer = forwardRef<
     const video = videoRef.current;
     if (!video) return;
 
+    userAdjustedAudioRef.current = true;
     if (video.muted || video.volume === 0) {
       if (video.volume === 0) video.volume = DEFAULT_UNMUTE_VOLUME;
       video.muted = false;
@@ -1572,7 +1587,7 @@ export const GalleryVideoPlayer = forwardRef<
           const video = e.currentTarget;
           setVolume(video.volume);
           setMuted(video.muted);
-          storeVolume(video.volume, video.muted);
+          storeVolume(video.volume, video.muted, saveMuteStatusRef.current);
         }}
       >
         <track kind="captions" />

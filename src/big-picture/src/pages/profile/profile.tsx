@@ -1,5 +1,5 @@
-import localEdition from "../../../../shared/local-edition.json";
 import "./profile.scss";
+import { observeLatestSnapshot } from "../../helpers/observe-latest-snapshot";
 
 import {
   ArrowsClockwiseIcon,
@@ -139,7 +139,9 @@ import {
   getDisplayedPlayTimeInMilliseconds,
   groupLibraryGames,
   getGameCatalogueIdentity,
+  isHydraAchievementPointsEnabled,
   resolveScreenshotPreferences,
+  resolveSocialPreferences,
 } from "@shared";
 
 const SOUVENIR_REPORT_RESPONSE_STATUSES = [201, 400, 404, 429];
@@ -933,11 +935,15 @@ function ProfileHeroActions({
 interface ProfileStatsProps {
   userStats: UserStats | null;
   favoriteGame: ProfileFavoriteGame | null;
+  hidePlaytime?: boolean;
+  showHydraPoints?: boolean;
 }
 
 function ProfileStats({
   userStats,
   favoriteGame,
+  hidePlaytime = false,
+  showHydraPoints = false,
 }: Readonly<ProfileStatsProps>) {
   const { t } = useTranslation(["game_details", "big_picture"]);
   const favoriteGameImageUrl = getFavoriteGameImage(favoriteGame);
@@ -947,48 +953,52 @@ function ProfileStats({
   return (
     <section className="profile-page__stats-section">
       <div className="profile-page__stats-grid">
-        <article className="profile-page__stat-card profile-page__stat-card--hours">
-          <div className="profile-page__stat-main profile-page__stat-main--hours">
-            <div className="profile-page__stat-value">
-              <ClockIcon size={36} />
-              <span>
-                {formatHours(userStats?.totalPlayTimeInSeconds.value, t)}
-              </span>
-            </div>
+        {!hidePlaytime && (
+          <article className="profile-page__stat-card profile-page__stat-card--hours">
+            <div className="profile-page__stat-main profile-page__stat-main--hours">
+              <div className="profile-page__stat-value">
+                <ClockIcon size={36} />
+                <span>
+                  {formatHours(userStats?.totalPlayTimeInSeconds.value, t)}
+                </span>
+              </div>
 
-            <div
-              className="profile-page__weekly-bars"
-              aria-label="Weekly playtime data unavailable"
-            >
-              <div className="profile-page__weekly-bars-track">
-                {WEEKLY_BAR_PLACEHOLDER.map(({ day, height }) => (
-                  <span
-                    key={day}
-                    className="profile-page__weekly-bar"
-                    style={
-                      {
-                        "--profile-weekly-bar-height": `${Math.round(height * 100)}%`,
-                      } as CSSProperties
-                    }
-                  />
-                ))}
-              </div>
-              <div className="profile-page__weekly-labels">
-                {WEEKLY_BAR_PLACEHOLDER.map(({ day, label }) => (
-                  <span key={day}>{label}</span>
-                ))}
+              <div
+                className="profile-page__weekly-bars"
+                aria-label="Weekly playtime data unavailable"
+              >
+                <div className="profile-page__weekly-bars-track">
+                  {WEEKLY_BAR_PLACEHOLDER.map(({ day, height }) => (
+                    <span
+                      key={day}
+                      className="profile-page__weekly-bar"
+                      style={
+                        {
+                          "--profile-weekly-bar-height": `${Math.round(height * 100)}%`,
+                        } as CSSProperties
+                      }
+                    />
+                  ))}
+                </div>
+                <div className="profile-page__weekly-labels">
+                  {WEEKLY_BAR_PLACEHOLDER.map(({ day, label }) => (
+                    <span key={day}>{label}</span>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="profile-page__stat-label">Hours Played</div>
-        </article>
+            <div className="profile-page__stat-label">Hours Played</div>
+          </article>
+        )}
 
         <ProfileStatPair
           leftIcon={<GameControllerIcon size={36} />}
           leftValue={formatCompactNumber(userStats?.libraryCount)}
           leftLabel="Games Played"
           rightIcon={<ClockIcon size={36} />}
-          rightValue={formatAveragePlaytime(userStats, t)}
+          rightValue={
+            hidePlaytime ? "Hidden" : formatAveragePlaytime(userStats, t)
+          }
           rightLabel="Avg. Playtime"
         />
 
@@ -1010,13 +1020,15 @@ function ProfileStats({
           <div className="profile-page__favorite-game-panel">
             <div className="profile-page__favorite-game-copy">
               <h2>{favoriteGame?.title ?? "--"}</h2>
-              <p>
-                {favoriteGame
-                  ? t("play_time", {
-                      amount: formatHours(favoriteGamePlaytimeInSeconds, t),
-                    })
-                  : "--"}
-              </p>
+              {!hidePlaytime && (
+                <p>
+                  {favoriteGame
+                    ? t("play_time", {
+                        amount: formatHours(favoriteGamePlaytimeInSeconds, t),
+                      })
+                    : "--"}
+                </p>
+              )}
             </div>
             <div className="profile-page__stat-label">Favorite Game</div>
           </div>
@@ -1038,7 +1050,7 @@ function ProfileStats({
             userStats?.achievementsPointsEarnedSum?.value
           )}
           rightLabel="Earned Points"
-          showRight={!localEdition.hideHydraPoints}
+          showRight={showHydraPoints}
         />
       </div>
     </section>
@@ -1099,6 +1111,7 @@ function ProfileStatPair({
 interface ProfileActivityProps {
   games: ProfileActivityGame[];
   preferCustomArtwork: boolean;
+  hidePlaytime?: boolean;
   upFocusId: string | null;
   downFocusId: string | null;
   onActivate: (game: ProfileActivityGame) => void;
@@ -1107,6 +1120,7 @@ interface ProfileActivityProps {
 function ProfileActivity({
   games,
   preferCustomArtwork,
+  hidePlaytime = false,
   upFocusId,
   downFocusId,
   onActivate,
@@ -1132,6 +1146,7 @@ function ProfileActivity({
                 key={`${game.title}-${game.lastTimePlayed ?? "recent"}`}
                 game={game}
                 preferCustomArtwork={preferCustomArtwork}
+                hidePlaytime={hidePlaytime}
                 upFocusId={
                   previousGame
                     ? getProfileActivityFocusId(previousGame)
@@ -1155,6 +1170,7 @@ function ProfileActivity({
 interface ProfileActivityItemProps {
   game: ProfileActivityGame;
   preferCustomArtwork: boolean;
+  hidePlaytime?: boolean;
   upFocusId: string | null;
   downFocusId: string | null;
   onActivate: (game: ProfileActivityGame) => void;
@@ -1163,6 +1179,7 @@ interface ProfileActivityItemProps {
 function ProfileActivityItem({
   game,
   preferCustomArtwork,
+  hidePlaytime = false,
   upFocusId,
   downFocusId,
   onActivate,
@@ -1204,13 +1221,15 @@ function ProfileActivityItem({
           <p>{getActivityLastPlayedLabel(game, language, t)}</p>
         </div>
 
-        <span className="profile-page__activity-playtime">
-          {t("play_time", {
-            amount: formatPlayTime(
-              getActivityPlaytimeInMilliseconds(game) / 1000
-            ),
-          })}
-        </span>
+        {!hidePlaytime && (
+          <span className="profile-page__activity-playtime">
+            {t("play_time", {
+              amount: formatPlayTime(
+                getActivityPlaytimeInMilliseconds(game) / 1000
+              ),
+            })}
+          </span>
+        )}
       </button>
     </FocusItem>
   );
@@ -1477,6 +1496,8 @@ interface LockedAchievementsProps {
 function LockedAchievements({
   isOwnProfile,
 }: Readonly<LockedAchievementsProps>) {
+  const showHydraPoints = isHydraAchievementPointsEnabled(useUserPreferences());
+
   return (
     <div className="profile-page__achievements-lock-frame">
       <div
@@ -1529,7 +1550,7 @@ function LockedAchievements({
                 </div>
 
                 <div className="profile-page__achievement-meta">
-                  {!localEdition.hideHydraPoints && (
+                  {showHydraPoints && (
                     <strong>+{achievement.points} pts.</strong>
                   )}
                   <span>{achievement.earnedLabel}</span>
@@ -2870,13 +2891,12 @@ function ProfileContent({ userId }: Readonly<ProfileContentProps>) {
       return;
     }
 
-    void globalThis.window.electron
-      .getAchievementSouvenirSyncStatus()
-      .then(setSouvenirSyncStatus);
-    const unsubscribeStatus =
-      globalThis.window.electron.onAchievementSouvenirSyncStatus(
-        setSouvenirSyncStatus
-      );
+    const unsubscribeStatus = observeLatestSnapshot(
+      (listener) =>
+        globalThis.window.electron.onAchievementSouvenirSyncStatus(listener),
+      () => globalThis.window.electron.getAchievementSouvenirSyncStatus(),
+      setSouvenirSyncStatus
+    );
     const unsubscribeCompleted =
       globalThis.window.electron.onAchievementSouvenirSyncCompleted(
         refreshSouvenirs
@@ -3318,55 +3338,74 @@ function ProfileContent({ userId }: Readonly<ProfileContentProps>) {
 
         {profileUser ? (
           <div className="profile-page__sections">
-            <ProfileStats userStats={userStats} favoriteGame={favoriteGame} />
+            {(() => {
+              const social = resolveSocialPreferences(userPreferences);
+              const hideOtherPlaytime =
+                !isOwnProfileTarget && !social.showOtherPlayersPlaytime;
+              return (
+                <>
+                  <ProfileStats
+                    userStats={userStats}
+                    favoriteGame={favoriteGame}
+                    hidePlaytime={hideOtherPlaytime}
+                    showHydraPoints={isHydraAchievementPointsEnabled(
+                      userPreferences
+                    )}
+                  />
 
-            <ProfileSouvenirs
-              souvenirs={souvenirs}
-              total={souvenirsTotal}
-              hiddenReason={souvenirsHiddenReason}
-              isLoading={isLoadingSouvenirs}
-              isOwnProfile={isOwnProfileTarget}
-              hasActiveSubscription={targetHasActiveSubscription}
-              canLike={Boolean(userDetails)}
-              disableNsfwAlert={disableNsfwAlert}
-              updatingLikeKeys={updatingLikeKeys}
-              hasMore={hasMoreSouvenirs}
-              isLoadingMore={isLoadingMoreSouvenirs}
-              syncStatus={souvenirSyncStatus}
-              isRetryingSync={isRetryingSouvenirSync}
-              isLoadingSyncDetails={isLoadingSouvenirSyncDetails}
-              upFocusId={souvenirUpFocusId}
-              downFocusId={souvenirDownFocusId}
-              onActivate={requestOpenSouvenir}
-              onLike={(souvenir) => void handleSouvenirLike(souvenir)}
-              onLoadMore={() => void loadMoreSouvenirs()}
-              onRetrySync={() => void handleRetrySouvenirSync()}
-              onOpenCleanup={() => void handleOpenSouvenirSyncCleanup()}
-            />
+                  <ProfileSouvenirs
+                    souvenirs={souvenirs}
+                    total={souvenirsTotal}
+                    hiddenReason={souvenirsHiddenReason}
+                    isLoading={isLoadingSouvenirs}
+                    isOwnProfile={isOwnProfileTarget}
+                    hasActiveSubscription={targetHasActiveSubscription}
+                    canLike={Boolean(userDetails)}
+                    disableNsfwAlert={disableNsfwAlert}
+                    updatingLikeKeys={updatingLikeKeys}
+                    hasMore={hasMoreSouvenirs}
+                    isLoadingMore={isLoadingMoreSouvenirs}
+                    syncStatus={souvenirSyncStatus}
+                    isRetryingSync={isRetryingSouvenirSync}
+                    isLoadingSyncDetails={isLoadingSouvenirSyncDetails}
+                    upFocusId={souvenirUpFocusId}
+                    downFocusId={souvenirDownFocusId}
+                    onActivate={requestOpenSouvenir}
+                    onLike={(souvenir) => void handleSouvenirLike(souvenir)}
+                    onLoadMore={() => void loadMoreSouvenirs()}
+                    onRetrySync={() => void handleRetrySouvenirSync()}
+                    onOpenCleanup={() => void handleOpenSouvenirSyncCleanup()}
+                  />
 
-            <ProfileScreenshots
-              state={profileScreenshots}
-              isOwnProfile={isOwnProfileTarget}
-              hotkey={resolveScreenshotPreferences(userPreferences).hotkey}
-              upFocusId={screenshotsUpFocusId}
-              downFocusId={screenshotsDownFocusId}
-              onActivate={openScreenshot}
-            />
+                  <ProfileScreenshots
+                    state={profileScreenshots}
+                    isOwnProfile={isOwnProfileTarget}
+                    hotkey={
+                      resolveScreenshotPreferences(userPreferences).hotkey
+                    }
+                    upFocusId={screenshotsUpFocusId}
+                    downFocusId={screenshotsDownFocusId}
+                    onActivate={openScreenshot}
+                  />
 
-            <ProfileActivity
-              games={recentActivityGames}
-              preferCustomArtwork={targetHasActiveSubscription}
-              upFocusId={activityUpFocusId}
-              downFocusId={activityDownFocusId}
-              onActivate={(game) =>
-                navigate(
-                  getBigPictureGameDetailsPath({
-                    ...game,
-                    ...getGameCatalogueIdentity(game),
-                  })
-                )
-              }
-            />
+                  <ProfileActivity
+                    games={recentActivityGames}
+                    preferCustomArtwork={targetHasActiveSubscription}
+                    hidePlaytime={hideOtherPlaytime}
+                    upFocusId={activityUpFocusId}
+                    downFocusId={activityDownFocusId}
+                    onActivate={(game) =>
+                      navigate(
+                        getBigPictureGameDetailsPath({
+                          ...game,
+                          ...getGameCatalogueIdentity(game),
+                        })
+                      )
+                    }
+                  />
+                </>
+              );
+            })()}
 
             <ProfileLibrary
               games={libraryCarouselGames}
@@ -3403,19 +3442,21 @@ function ProfileContent({ userId }: Readonly<ProfileContentProps>) {
                   }
                 />
 
-                <ProfileFriends
-                  friends={friends}
-                  totalFriends={totalFriends}
-                  firstFocusId={firstFriendFocusId}
-                  lastFocusId={lastFriendFocusId}
-                  socialUpFocusId={socialUpFocusId}
-                  firstAchievementFocusId={firstAchievementFocusId}
-                  showViewAll={showFriendsViewAll}
-                  onOpenFriend={(friendId) =>
-                    navigate(`${getBasePath()}/profile/${friendId}`)
-                  }
-                  onViewAll={showAllFriends}
-                />
+                {resolveSocialPreferences(userPreferences).showFriends && (
+                  <ProfileFriends
+                    friends={friends}
+                    totalFriends={totalFriends}
+                    firstFocusId={firstFriendFocusId}
+                    lastFocusId={lastFriendFocusId}
+                    socialUpFocusId={socialUpFocusId}
+                    firstAchievementFocusId={firstAchievementFocusId}
+                    showViewAll={showFriendsViewAll}
+                    onOpenFriend={(friendId) =>
+                      navigate(`${getBasePath()}/profile/${friendId}`)
+                    }
+                    onViewAll={showAllFriends}
+                  />
+                )}
               </section>
             </HorizontalFocusGroup>
           </div>

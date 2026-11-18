@@ -207,7 +207,7 @@ export class GamepadService {
 
     this.gamepads.set(gamepad.index, gamepad);
 
-    if (!this.isPolling) {
+    if (this.inputEnabled && !this.isPolling) {
       this.startPolling();
     }
 
@@ -237,8 +237,8 @@ export class GamepadService {
     this.notifyStateChange();
   };
 
-  private pollGamepads() {
-    const gamepads = globalThis.navigator.getGamepads();
+  private pollGamepadSnapshot() {
+    const gamepads = globalThis.navigator?.getGamepads?.() ?? [];
 
     for (const gamepad of gamepads) {
       if (!gamepad) continue;
@@ -246,6 +246,12 @@ export class GamepadService {
       this.gamepads.set(gamepad.index, gamepad);
       this.updateGamepadState(gamepad.index, gamepad);
     }
+  }
+
+  private pollGamepads() {
+    if (!this.isPolling || !this.inputEnabled) return;
+
+    this.pollGamepadSnapshot();
 
     this.animationFrameId = globalThis.requestAnimationFrame(() =>
       this.pollGamepads()
@@ -253,7 +259,7 @@ export class GamepadService {
   }
 
   private startPolling() {
-    if (this.isPolling) return;
+    if (this.isPolling || !this.inputEnabled) return;
 
     this.isPolling = true;
     this.pollGamepads();
@@ -1216,11 +1222,20 @@ export class GamepadService {
   public setInputEnabled(enabled: boolean): void {
     if (this.inputEnabled === enabled) return;
 
-    this.inputEnabled = enabled;
-
     if (!enabled) {
-      this.clearAllTimers();
+      this.inputEnabled = false;
+      this.stopPolling();
       this.recentAcceptedInputs = [];
+      return;
+    }
+
+    // Sync held buttons/sticks before enabling callbacks so returning focus
+    // from a game does not emit spurious presses for already-held inputs.
+    this.pollGamepadSnapshot();
+    this.inputEnabled = true;
+
+    if (this.gamepads.size > 0 && !this.isPolling) {
+      this.startPolling();
     }
   }
 

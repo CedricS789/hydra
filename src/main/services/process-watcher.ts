@@ -6,6 +6,7 @@ import {
   scheduleEpicGameExitSync,
 } from "./epic";
 import { WindowManager } from "./window-manager";
+import { BigPictureGameWindowService } from "./big-picture-game-window";
 import { updateGameExecutablePath } from "@main/helpers/update-executable-path";
 import { createGame, trackGamePlaytime } from "./library-sync";
 import type { Game, UserPreferences } from "@types";
@@ -535,10 +536,10 @@ async function onOpenGame(game: Game, matchedPath: string) {
   void onScreenshotGameStarted(gameKey);
 
   // On Linux, keep the launcher visible briefly and let it auto-close itself.
+  BigPictureGameWindowService.notifyGameLaunchDetected(gameKey, matchedPath);
+  markGameLauncherGameDetected(gameKey);
   if (process.platform !== "linux") {
     WindowManager.closeGameLauncherWindow();
-  } else {
-    markGameLauncherGameDetected(gameKey);
   }
 
   // Hide Hydra to tray on game startup if enabled
@@ -725,6 +726,7 @@ const onCloseGame = (game: Game, options: { isShutdown?: boolean } = {}) => {
   if (!gamePlaytime) return;
   deleteGamePlaytime(gameKey);
   launchedGamePids.delete(gameKey);
+  BigPictureGameWindowService.notifyGameClosed(gameKey);
   stopLinuxGameCaptureSession(gameKey);
   PowerSaveBlockerManager.markGameClosed(gameKey);
   abortAchievementMetadataExport(gameKey);

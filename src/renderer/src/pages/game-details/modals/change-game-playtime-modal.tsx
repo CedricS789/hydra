@@ -1,5 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Button, Modal, TextField } from "@renderer/components";
+import { useAppSelector } from "@renderer/hooks";
+import { resolveManualPlaytimeWarningPreferences } from "@shared";
 import type { Game } from "@types";
 import { useState, useEffect, useId } from "react";
 import { Tooltip } from "react-tooltip";
@@ -27,6 +29,11 @@ export function ChangeGamePlaytimeModal({
   onError,
 }: Readonly<ChangeGamePlaytimeModalProps>) {
   const { t } = useTranslation("game_details");
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const { showManualPlaytimeWarningIcon, showManualPlaytimeWarningText } =
+    resolveManualPlaytimeWarningPreferences(userPreferences);
   const [hours, setHours] = useState("");
   const [minutes, setMinutes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -134,9 +141,9 @@ export function ChangeGamePlaytimeModal({
       })}
     >
       <div className="change-game-playtime-modal__content">
-        {!game.hasManuallyUpdatedPlaytime && (
+        {!game.hasManuallyUpdatedPlaytime && showManualPlaytimeWarningText && (
           <div className="change-game-playtime-modal__warning">
-            <AlertIcon size={16} />
+            {showManualPlaytimeWarningIcon && <AlertIcon size={16} />}
             <span>{t("manual_playtime_warning")}</span>
           </div>
         )}

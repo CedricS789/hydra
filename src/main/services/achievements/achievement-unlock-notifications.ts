@@ -4,6 +4,7 @@ import type {
   SteamAchievement,
   UserPreferences,
 } from "@types";
+import { isHydraAchievementPointsEnabled } from "@shared";
 import { WindowManager } from "../window-manager";
 import { publishNewAchievementNotification } from "../notifications";
 import { achievementsLogger } from "../logger";
@@ -28,12 +29,13 @@ export interface AchievementUnlockNotificationOptions {
 
 export const buildAchievementNotificationInfo = (
   achievements: SteamAchievement[],
-  completesGame: boolean
+  completesGame: boolean,
+  options: { showPoints?: boolean } = {}
 ): AchievementNotificationInfo[] =>
   achievements.map((achievement, index) => ({
     title: achievement.displayName,
     description: achievement.description,
-    points: achievement.points,
+    points: options.showPoints ? achievement.points : undefined,
     isHidden: achievement.hidden,
     isRare: achievement.points ? isRareAchievement(achievement.points) : false,
     isPlatinum: completesGame && index === achievements.length - 1,
@@ -57,7 +59,8 @@ export const publishAchievementUnlockNotifications = ({
 
   const achievementsInfo = buildAchievementNotificationInfo(
     achievements,
-    completesGame
+    completesGame,
+    { showPoints: isHydraAchievementPointsEnabled(userPreferences) }
   );
 
   achievementsLogger.log(

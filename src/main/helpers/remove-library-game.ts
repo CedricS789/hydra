@@ -6,7 +6,8 @@ import {
   levelKeys,
 } from "@main/level";
 import { updateGameExecutablePath } from "@main/helpers/update-executable-path";
-import type { GameShop, Game } from "@types";
+import type { GameShop, Game, LibraryExclusionReason } from "@types";
+import { excludeLibraryGamesOnly } from "@main/services/library-exclusions";
 import {
   isClassicsGameForEmulator,
   type ClassicsEmulatorTarget,
@@ -88,7 +89,16 @@ const deleteAssetFiles = async (
   );
 };
 
-export const removeLibraryGame = async (shop: GameShop, objectId: string) => {
+export interface RemoveLibraryGameOptions {
+  skipExclude?: boolean;
+  exclusionReason?: LibraryExclusionReason;
+}
+
+export const removeLibraryGame = async (
+  shop: GameShop,
+  objectId: string,
+  options?: RemoveLibraryGameOptions
+) => {
   const gameKey = levelKeys.game(shop, objectId);
   const game = await gamesSublevel.get(gameKey);
 
@@ -97,6 +107,20 @@ export const removeLibraryGame = async (shop: GameShop, objectId: string) => {
   const assetPathsToDelete = collectAssetPathsToDelete(game);
 
   await updateGameAsDeleted(game, gameKey);
+
+  if (!options?.skipExclude) {
+    await excludeLibraryGamesOnly([
+      {
+        shop,
+        objectId,
+        title: game.title,
+        source: game.source ?? null,
+        iconUrl: game.iconUrl ?? null,
+        libraryImageUrl: game.libraryHeroImageUrl ?? null,
+        reason: options?.exclusionReason ?? "removed",
+      },
+    ]);
+  }
   void groupedSouvenirWorker.trigger().catch((error) => {
     logger.warn(
       "Failed to stop souvenir synchronization for a removed game",

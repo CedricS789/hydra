@@ -1,6 +1,10 @@
 import { UserGame } from "@types";
 import HydraIcon from "@renderer/assets/icons/hydra.svg?react";
-import { useFormat } from "@renderer/hooks";
+import { useAppSelector, useFormat } from "@renderer/hooks";
+import {
+  resolveManualPlaytimeWarningPreferences,
+  resolveSocialPreferences,
+} from "@shared";
 import { useNavigate } from "react-router-dom";
 import { memo, useCallback, useState } from "react";
 import {
@@ -37,6 +41,19 @@ export const UserLibraryGameCard = memo(function UserLibraryGameCard({
   const { t } = useTranslation("user_profile");
   const { numberFormatter } = useFormat();
   const navigate = useNavigate();
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const showPlaytime =
+    isMe || resolveSocialPreferences(userPreferences).showOtherPlayersPlaytime;
+  const { showManualPlaytimeWarningIcon, showManualPlaytimeWarningText } =
+    resolveManualPlaytimeWarningPreferences(userPreferences);
+  const showManualPlaytimeIcon = Boolean(
+    game.hasManuallyUpdatedPlaytime && showManualPlaytimeWarningIcon
+  );
+  const showManualPlaytimeTooltip = Boolean(
+    game.hasManuallyUpdatedPlaytime && showManualPlaytimeWarningText
+  );
 
   const coverImageUrl = game.customLibraryImageUrl ?? game.coverImageUrl;
 
@@ -140,35 +157,37 @@ export const UserLibraryGameCard = memo(function UserLibraryGameCard({
                 isHiddenFromOthers={game.isHiddenFromOthers}
                 isConcealed={game.isConcealed}
               />
-              <div
-                className="user-library-game__playtime"
-                data-tooltip-place="top"
-                data-tooltip-content={
-                  game.hasManuallyUpdatedPlaytime
-                    ? t("manual_playtime_tooltip")
-                    : undefined
-                }
-                data-tooltip-id={
-                  game.hasManuallyUpdatedPlaytime
-                    ? USER_LIBRARY_GAME_TOOLTIP_ID
-                    : undefined
-                }
-              >
-                {game.hasManuallyUpdatedPlaytime ? (
-                  <AlertFillIcon
-                    size={11}
-                    className="user-library-game__manual-playtime"
-                  />
-                ) : (
-                  <ClockIcon size={11} />
-                )}
-                <span className="user-library-game__playtime-long">
-                  {formatPlayTime(game.playTimeInSeconds)}
-                </span>
-                <span className="user-library-game__playtime-short">
-                  {formatPlayTime(game.playTimeInSeconds, true)}
-                </span>
-              </div>
+              {showPlaytime && (
+                <div
+                  className="user-library-game__playtime"
+                  data-tooltip-place="top"
+                  data-tooltip-content={
+                    showManualPlaytimeTooltip
+                      ? t("manual_playtime_tooltip")
+                      : undefined
+                  }
+                  data-tooltip-id={
+                    showManualPlaytimeTooltip
+                      ? USER_LIBRARY_GAME_TOOLTIP_ID
+                      : undefined
+                  }
+                >
+                  {showManualPlaytimeIcon ? (
+                    <AlertFillIcon
+                      size={11}
+                      className="user-library-game__manual-playtime"
+                    />
+                  ) : (
+                    <ClockIcon size={11} />
+                  )}
+                  <span className="user-library-game__playtime-long">
+                    {formatPlayTime(game.playTimeInSeconds)}
+                  </span>
+                  <span className="user-library-game__playtime-short">
+                    {formatPlayTime(game.playTimeInSeconds, true)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

@@ -22,6 +22,9 @@ import {
   SSEClient,
   emulators,
   ScreenshotInputService,
+  BigPictureGameWindowService,
+  GamepadWakeService,
+  NativeInputCoordinator,
 } from "@main/services";
 import resources from "@locales";
 import { TorrentService } from "./services/torrent-service";
@@ -486,6 +489,9 @@ app.on("before-quit", async (e) => {
     DownloadOrchestrator.cancelPendingDebridPreparations();
     PowerSaveBlockerManager.reset();
     ScreenshotInputService.shutdown();
+    GamepadWakeService.shutdown();
+    BigPictureGameWindowService.shutdown();
+    NativeInputCoordinator.shutdown();
     try {
       await DownloadManager.pauseDownload();
     } catch (error) {
@@ -505,6 +511,7 @@ app.on("before-quit", async (e) => {
       }
     }
     achievementNotificationPresenter.shutdown();
+    WindowManager.allowQuitUnload();
     canAppBeClosed = true;
     app.quit();
   }

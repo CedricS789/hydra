@@ -53,10 +53,18 @@ export interface ScreenshotInputNativeConfig {
   shift: boolean;
   gamepadEnabled: boolean;
   gamepadButtons: string[];
+  keyboardEnabled?: boolean;
+  wakeEnabled?: boolean;
+  wakeMode?: string;
+  wakeButtons?: string[];
+  wakeHoldMs?: number;
+  controllerLedMode?: string;
+  controllerLedColor?: string;
 }
 
 export interface ScreenshotInputNativeEvent {
   kind: string;
+  action: string;
   source: string;
   backend: string;
 }
@@ -105,6 +113,26 @@ type NativeForegroundWindowResponse = {
   window_handle?: string;
   processId?: number;
   process_id?: number;
+};
+
+export interface NativeWindowCandidate {
+  windowHandle: string;
+  processId: number;
+  area: number;
+  isMinimized: boolean;
+  isToolWindow: boolean;
+}
+
+type NativeWindowCandidateResponse = {
+  windowHandle?: string;
+  window_handle?: string;
+  processId?: number;
+  process_id?: number;
+  area?: number;
+  isMinimized?: boolean;
+  is_minimized?: boolean;
+  isToolWindow?: boolean;
+  is_tool_window?: boolean;
 };
 
 export type InPlaceExtractionOptions = {
@@ -163,6 +191,14 @@ type HydraNativeModule = {
     config: ScreenshotInputNativeConfig
   ) => ScreenshotInputNativeStatus;
   getWindowsForegroundWindow?: () => NativeForegroundWindowResponse | null;
+  allowWindowsSetForegroundWindow?: (processId?: number) => boolean;
+  findWindowsByProcessIds?: (
+    processIds: number[]
+  ) => NativeWindowCandidateResponse[];
+  focusWindowsWindow?: (
+    windowHandle: string,
+    lowerWindowHandle?: string
+  ) => boolean;
   getLinuxWindowClientPid?: (windowId: string) => number | null;
   getKdeFocusedProcessId?: () => number | null;
   startKdeFocusWatch?: () => void;
@@ -569,6 +605,73 @@ export class NativeAddon {
     } catch (error) {
       logger.error("Failed to identify the Windows foreground window", error);
       return undefined;
+    }
+  }
+
+  public static allowWindowsSetForegroundWindow(processId?: number): boolean {
+    if (process.platform !== "win32") return false;
+
+    try {
+      return this.load().allowWindowsSetForegroundWindow?.(processId) ?? false;
+    } catch (error) {
+      logger.error("Failed to allow Windows foreground transition", error);
+      return false;
+    }
+  }
+
+  public static findWindowsByProcessIds(
+    processIds: number[]
+  ): NativeWindowCandidate[] {
+    if (process.platform !== "win32" || processIds.length === 0) return [];
+
+    try {
+      const findWindows = this.load().findWindowsByProcessIds;
+      if (!findWindows) return [];
+
+      return findWindows(processIds)
+        .map((candidate) => {
+          const windowHandle =
+            candidate.windowHandle ?? candidate.window_handle;
+          const processId = candidate.processId ?? candidate.process_id;
+          if (!windowHandle || !processId) return null;
+
+          return {
+            windowHandle,
+            processId,
+            area: candidate.area ?? 0,
+            isMinimized: Boolean(
+              candidate.isMinimized ?? candidate.is_minimized
+            ),
+            isToolWindow: Boolean(
+              candidate.isToolWindow ?? candidate.is_tool_window
+            ),
+          };
+        })
+        .filter(
+          (candidate): candidate is NativeWindowCandidate => candidate !== null
+        );
+    } catch (error) {
+      logger.error("Failed to enumerate Windows process windows", error);
+      return [];
+    }
+  }
+
+  public static focusWindowsWindow(
+    windowHandle: string,
+    lowerWindowHandle?: string | null
+  ): boolean {
+    if (process.platform !== "win32" || !windowHandle) return false;
+
+    try {
+      return (
+        this.load().focusWindowsWindow?.(
+          windowHandle,
+          lowerWindowHandle ?? undefined
+        ) ?? false
+      );
+    } catch (error) {
+      logger.error("Failed to focus Windows game window", error);
+      return false;
     }
   }
 

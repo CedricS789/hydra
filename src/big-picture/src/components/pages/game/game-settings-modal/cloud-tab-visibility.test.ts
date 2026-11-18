@@ -4,8 +4,11 @@ import { describe, it } from "node:test";
 // @ts-ignore The Node ESM test runner requires the source extension.
 import * as visibilityModule from "./cloud-tab-visibility.ts";
 
-const { shouldShowCloudSaveV2Tab, shouldShowLegacyCloudSaveTab } =
-  visibilityModule;
+const {
+  shouldShowCloudSaveV2Tab,
+  shouldShowLegacyCloudSaveTab,
+  shouldShowLocalBackupsTab,
+} = visibilityModule;
 
 describe("Big Picture cloud save V2 tab visibility", () => {
   it("shows the V2 tab for subscribed Steam users", () => {
@@ -103,5 +106,19 @@ describe("Big Picture legacy cloud save tab visibility", () => {
   it("keeps the tab hidden without an account or subscription", () => {
     assert.equal(shouldShowLegacyCloudSaveTab("launchbox", false, true), false);
     assert.equal(shouldShowLegacyCloudSaveTab("launchbox", true, false), false);
+  });
+
+  it("hides Hydra Cloud tabs and enables local backups in local edition", () => {
+    assert.equal(
+      shouldShowCloudSaveV2Tab("steam", true, true, null, true),
+      false
+    );
+    assert.equal(
+      shouldShowLegacyCloudSaveTab("launchbox", true, true, null, true),
+      false
+    );
+    assert.equal(shouldShowLocalBackupsTab(true, false), true);
+    assert.equal(shouldShowLocalBackupsTab(true, true), false);
+    assert.equal(shouldShowLocalBackupsTab(false, false), false);
   });
 });

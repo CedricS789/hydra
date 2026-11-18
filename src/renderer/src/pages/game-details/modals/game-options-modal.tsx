@@ -9,7 +9,11 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Modal, SteamUninstallModal } from "@renderer/components";
+import {
+  Modal,
+  SteamUninstallModal,
+  UninstallGameModal,
+} from "@renderer/components";
 import {
   formatBytes,
   GAMEMODE_SITE_URL,
@@ -20,9 +24,11 @@ import {
   isSameRemoveFilesTarget,
   applyLibraryGroupAction,
   isLibraryGameDownloading,
+  isDangerZoneTabVisible,
   isTransferGameEnabled,
   getOfficialStoreMembers,
   MANGOHUD_SITE_URL,
+  resolveDangerZonePreferences,
   type RemoveFilesTarget,
 } from "@shared";
 
@@ -39,7 +45,9 @@ import { DeleteGameModal } from "@renderer/pages/downloads/delete-game-modal";
 import {
   useAppSelector,
   useDownload,
+  useFeature,
   useGameCollections,
+  useGameUninstall,
   useIsNonSteamExecutable,
   useLibrary,
   useLibraryGamePresentation,
@@ -292,29 +300,76 @@ export function GameOptionsModal({
   const globalAutoRunMangohud = userPreferences?.autoRunMangohud === true;
   const hasAchievements =
     (achievements?.filter((a) => a.unlocked).length ?? 0) > 0;
-  const hydraRemoveFilesTarget = useMemo(
-    () => getRemoveFilesTarget(presentation ?? game, false),
+  const installedUninstallAvailable =
+    typeof globalThis.window?.electron?.inspectGameUninstall === "function" &&
+    typeof globalThis.window?.electron?.uninstallGame === "function";
+  const steamUninstallAvailable =
+    typeof globalThis.window?.electron?.uninstallGameOnSteam === "function";
+  const baseHydraTarget = useMemo(
+    () => getRemoveFilesTarget(presentation ?? game, false, false, false),
     [presentation, game]
   );
+  const hasDownloadPath = baseHydraTarget !== null;
   const {
     steamUninstallTarget,
+    isSteamLibraryExecutable,
     isUninstalling: steamUninstalling,
     handleSteamUninstall,
   } = useSteamUninstallAction(
     presentation ?? game,
-    visible && !hydraRemoveFilesTarget,
+    visible && !hasDownloadPath,
     {
       onSuccess: () => setPendingRemoveFilesTarget(null),
       onTargetChanged: () => setPendingRemoveFilesTarget(null),
     }
   );
-  const removeFilesTarget = hydraRemoveFilesTarget ?? steamUninstallTarget;
+  const removeFilesTarget = useMemo(
+    () =>
+      getRemoveFilesTarget(
+        presentation ?? game,
+        steamUninstallAvailable,
+        hasDownloadPath ? false : isSteamLibraryExecutable,
+        installedUninstallAvailable
+      ) ?? steamUninstallTarget,
+    [
+      presentation,
+      game,
+      steamUninstallAvailable,
+      hasDownloadPath,
+      isSteamLibraryExecutable,
+      installedUninstallAvailable,
+      steamUninstallTarget,
+    ]
+  );
+  const {
+    plan: uninstallPlan,
+    isInspecting: isInspectingUninstall,
+    isUninstalling: isInstalledUninstalling,
+    inspectError: inspectUninstallError,
+    executeUninstall,
+  } = useGameUninstall(
+    pendingRemoveFilesTarget?.kind === "installed"
+      ? pendingRemoveFilesTarget.game
+      : null,
+    visible && pendingRemoveFilesTarget?.kind === "installed",
+    {
+      onSuccess: () => {
+        setPendingRemoveFilesTarget(null);
+        updateGame();
+      },
+    }
+  );
   const removeFilesDeleting =
-    removeFilesTarget?.kind === "hydra" &&
+    (removeFilesTarget?.kind === "hydra" ||
+      removeFilesTarget?.kind === "installed") &&
     isGameDeleting(removeFilesTarget.game.objectId);
-  const deleting = isGameDeleting(game.objectId) || removeFilesDeleting;
+  const deleting =
+    isGameDeleting(game.objectId) ||
+    removeFilesDeleting ||
+    isInstalledUninstalling;
   const isGameDownloading =
-    removeFilesTarget?.kind === "hydra" &&
+    (removeFilesTarget?.kind === "hydra" ||
+      removeFilesTarget?.kind === "installed") &&
     isLibraryGameDownloading(removeFilesTarget.game);
 
   const isNonSteamExecutable = useIsNonSteamExecutable(game);
@@ -983,6 +1038,17 @@ export function GameOptionsModal({
   const showLocalBackupsSettings =
     localEdition.hideCloudPromotions && !game.isDeleted;
   const transferGameEnabled = isTransferGameEnabled(userPreferences);
+  const { isFeatureEnabled, Feature } = useFeature();
+  const screenshotsFeatureEnabled = isFeatureEnabled(Feature.Screenshots);
+  const dangerZonePreferences = useMemo(
+    () => resolveDangerZonePreferences(userPreferences),
+    [userPreferences]
+  );
+  const showDangerZoneSettings = isDangerZoneTabVisible(userPreferences, {
+    isCustomGame: game.shop === "custom",
+    screenshotsFeatureEnabled,
+    includePlaytimeActions: true,
+  });
   const shouldShowWinePrefixConfiguration =
     globalThis.window.electron.platform === "linux";
   const defaultHydraWinePrefixPath =
@@ -1076,11 +1142,15 @@ export function GameOptionsModal({
             },
           ]
         : []),
-      {
-        id: "danger_zone" as const,
-        label: t("settings_category_danger_zone"),
-        icon: <AlertIcon size={16} />,
-      },
+      ...(showDangerZoneSettings
+        ? [
+            {
+              id: "danger_zone" as const,
+              label: t("settings_category_danger_zone"),
+              icon: <AlertIcon size={16} />,
+            },
+          ]
+        : []),
     ],
     [
       cloudSaveAccessAction,
@@ -1091,6 +1161,7 @@ export function GameOptionsModal({
       showLegacyCloudSaveSettings,
       showEpicCloudSettings,
       showDownloadSettings,
+      showDangerZoneSettings,
       shouldShowWinePrefixConfiguration,
       t,
       tLudusavi,
@@ -1115,6 +1186,7 @@ export function GameOptionsModal({
       showLegacyCloudSaveSettings,
       showEpicCloudSettings,
       showDownloadSettings,
+      showDangerZoneSettings,
     });
 
     setSelectedCategory(availableCategory);
@@ -1133,6 +1205,7 @@ export function GameOptionsModal({
     cloudSaveAccessAction,
     initialCategory,
     showDownloadSettings,
+    showDangerZoneSettings,
     showLocalBackupsSettings,
     showCloudSaveV2Settings,
     showLegacyCloudSaveSettings,
@@ -1152,6 +1225,7 @@ export function GameOptionsModal({
         showLegacyCloudSaveSettings,
         showEpicCloudSettings,
         showDownloadSettings,
+        showDangerZoneSettings,
       })
     );
   }, [
@@ -1161,6 +1235,7 @@ export function GameOptionsModal({
     showLegacyCloudSaveSettings,
     showEpicCloudSettings,
     showDownloadSettings,
+    showDangerZoneSettings,
     visible,
   ]);
 
@@ -1348,13 +1423,19 @@ export function GameOptionsModal({
   return (
     <>
       <DeleteGameModal
-        visible={pendingRemoveFilesTarget?.kind === "hydra"}
+        visible={
+          pendingRemoveFilesTarget?.kind === "hydra" &&
+          dangerZonePreferences.enableDangerZoneRemoveGameFiles
+        }
         onClose={() => setPendingRemoveFilesTarget(null)}
         target={pendingRemoveFilesTarget?.game}
         deleteGame={handleDeleteGame}
       />
       <SteamUninstallModal
-        visible={pendingRemoveFilesTarget?.kind === "steam"}
+        visible={
+          pendingRemoveFilesTarget?.kind === "steam" &&
+          dangerZonePreferences.enableDangerZoneRemoveGameFiles
+        }
         gameTitle={pendingRemoveFilesTarget?.game.title ?? game.title}
         loading={steamUninstalling}
         onConfirm={() => {
@@ -1365,27 +1446,62 @@ export function GameOptionsModal({
           if (!steamUninstalling) setPendingRemoveFilesTarget(null);
         }}
       />
+      <UninstallGameModal
+        visible={
+          pendingRemoveFilesTarget?.kind === "installed" &&
+          dangerZonePreferences.enableDangerZoneRemoveGameFiles
+        }
+        gameTitle={pendingRemoveFilesTarget?.game.title ?? game.title}
+        plan={uninstallPlan}
+        inspecting={isInspectingUninstall}
+        inspectError={inspectUninstallError}
+        loading={isInstalledUninstalling}
+        onClose={() => {
+          if (!isInstalledUninstalling) setPendingRemoveFilesTarget(null);
+        }}
+        onConfirm={(options) => {
+          void (async () => {
+            await executeUninstall(options);
+            if (options.removeFromLibrary) {
+              onClose();
+              if (game.shop === "custom" && onNavigateHome) onNavigateHome();
+            }
+          })();
+        }}
+      />
       <RemoveGameFromLibraryModal
-        visible={showRemoveGameModal}
+        visible={
+          showRemoveGameModal &&
+          dangerZonePreferences.enableDangerZoneRemoveFromLibrary
+        }
         onClose={() => setShowRemoveGameModal(false)}
         removeGameFromLibrary={handleRemoveGameFromLibrary}
         game={game}
       />
       <ResetAchievementsModal
-        visible={showResetAchievementsModal}
+        visible={
+          showResetAchievementsModal &&
+          dangerZonePreferences.enableDangerZoneResetAchievements
+        }
         onClose={() => setShowResetAchievementsModal(false)}
         resetAchievements={handleResetAchievements}
         game={game}
       />
       <ChangeGamePlaytimeModal
-        visible={showChangePlaytimeModal}
+        visible={
+          showChangePlaytimeModal &&
+          dangerZonePreferences.enableDangerZoneChangePlaytime
+        }
         onClose={() => setShowChangePlaytimeModal(false)}
         changePlaytime={handleChangePlaytime}
         game={game}
         playtimePreview={presentation}
       />
       <ResetPlaytimeModal
-        visible={showResetPlaytimeModal}
+        visible={
+          showResetPlaytimeModal &&
+          dangerZonePreferences.enableDangerZoneResetPlaytime
+        }
         onClose={() => setShowResetPlaytimeModal(false)}
         resetPlaytime={handleResetPlaytime}
         game={game}
@@ -1460,7 +1576,9 @@ export function GameOptionsModal({
                   }
                   onOpenGlobalSettings={() => {
                     onClose();
-                    navigate("/settings?tab=advanced");
+                    navigate(
+                      `/settings?tab=advanced&game=${encodeURIComponent(`${game.shop}:${game.objectId}`)}`
+                    );
                   }}
                 />
               )}
@@ -1541,9 +1659,10 @@ export function GameOptionsModal({
                 onOpenDownloadFolder={handleOpenDownloadFolder}
               />
             )}
-            {selectedCategory === "danger_zone" && (
+            {selectedCategory === "danger_zone" && showDangerZoneSettings && (
               <DangerZoneSection
                 game={game}
+                dangerZone={dangerZonePreferences}
                 deleting={deleting}
                 isDeletingAchievements={isDeletingAchievements}
                 hasAchievements={hasAchievements}

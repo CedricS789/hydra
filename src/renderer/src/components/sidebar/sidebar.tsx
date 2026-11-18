@@ -90,6 +90,9 @@ export function Sidebar() {
   const userPreferences = useAppSelector(
     (state) => state.userPreferences.value
   );
+  const isSidebarHidden = useAppSelector(
+    (state) => state.window.isSidebarHidden
+  );
   const classicsEnabled = isClassicsEnabled(userPreferences);
   const { library, updateLibrary } = useLibrary();
   const isLibraryLoading = useAppSelector(selectIsLibraryLoading);
@@ -422,12 +425,23 @@ export function Sidebar() {
     );
   }, [sidebarWidth]);
 
+  useEffect(() => {
+    if (isSidebarHidden) {
+      setIsResizing(false);
+    }
+
+    if (sidebarRef.current) {
+      sidebarRef.current.inert = isSidebarHidden;
+    }
+  }, [isSidebarHidden]);
+
   const cursorPos = useRef({ x: 0 });
   const sidebarInitialWidth = useRef(0);
 
   const handleMouseDown: React.MouseEventHandler<HTMLButtonElement> = (
     event
   ) => {
+    if (isSidebarHidden) return;
     setIsResizing(true);
     cursorPos.current.x = event.screenX;
     sidebarInitialWidth.current =
@@ -506,16 +520,20 @@ export function Sidebar() {
     [location.pathname, navigate]
   );
 
+  const displayedWidth = isSidebarHidden ? 0 : sidebarWidth;
+
   return (
     <aside
       ref={sidebarRef}
+      aria-hidden={isSidebarHidden}
       className={cn("sidebar", {
         "sidebar--resizing": isResizing,
+        "sidebar--hidden": isSidebarHidden,
       })}
       style={{
-        width: sidebarWidth,
-        minWidth: sidebarWidth,
-        maxWidth: sidebarWidth,
+        width: displayedWidth,
+        minWidth: displayedWidth,
+        maxWidth: displayedWidth,
       }}
     >
       <div className="sidebar__container">
@@ -642,11 +660,13 @@ export function Sidebar() {
         </div>
       </div>
 
-      <button
-        type="button"
-        className="sidebar__handle"
-        onMouseDown={handleMouseDown}
-      />
+      {!isSidebarHidden && (
+        <button
+          type="button"
+          className="sidebar__handle"
+          onMouseDown={handleMouseDown}
+        />
+      )}
 
       <ConfirmationModal
         visible={showDeckyConfirmModal}

@@ -1,3 +1,4 @@
+import localEdition from "../../../../../../shared/local-edition.json";
 import type { LibraryGame } from "@types";
 import {
   ClockIcon,
@@ -28,8 +29,10 @@ import {
   LIBRARY_HERO_ACTIONS_REGION_ID,
   LIBRARY_HERO_FAVORITE_BUTTON_ID,
   LIBRARY_HERO_LAUNCH_BUTTON_ID,
+  LIBRARY_HERO_LOCAL_SAVE_BUTTON_ID,
   LIBRARY_HERO_OPEN_SETTINGS_BUTTON_ID,
 } from "../navigation";
+import { BigPictureLocalSaveHeroButton } from "../../game/cloud-save-v2";
 import { getHeroPlaytimeLabel, isLibraryGamePlayable } from "../library-data";
 import { getDisplayedPlayTimeInMilliseconds } from "@shared";
 import { useHeroBackgroundLayers } from "./use-hero-background-layers";
@@ -40,6 +43,7 @@ interface LibraryHeroProps {
   lastPlayedGames: LibraryGame[];
   onPrimaryAction?: (game: LibraryGame) => void;
   onOpenSettings?: (game: LibraryGame) => void;
+  onOpenLocalBackups?: (game: LibraryGame) => void;
   onToggleFavorite?: (game: LibraryGame) => Promise<void> | void;
   favoriteLoadingGameId?: string | null;
 }
@@ -63,6 +67,7 @@ export function LibraryHero({
   lastPlayedGames,
   onPrimaryAction,
   onOpenSettings,
+  onOpenLocalBackups,
   onToggleFavorite,
   favoriteLoadingGameId = null,
 }: Readonly<LibraryHeroProps>) {
@@ -120,6 +125,10 @@ export function LibraryHero({
     onPrimaryAction?.(featuredGame);
   };
 
+  const showLocalSaveButton =
+    localEdition.hideCloudPromotions &&
+    Boolean(featuredGame && !featuredGame.isDeleted);
+
   const heroActionsNavigationOverrides: FocusOverrides = {
     down: {
       type: "item",
@@ -137,11 +146,26 @@ export function LibraryHero({
   };
   const settingsNavigationOverrides: FocusOverrides = {
     left: { type: "item", itemId: LIBRARY_HERO_LAUNCH_BUTTON_ID },
+    right: {
+      type: "item",
+      itemId: showLocalSaveButton
+        ? LIBRARY_HERO_LOCAL_SAVE_BUTTON_ID
+        : LIBRARY_HERO_FAVORITE_BUTTON_ID,
+    },
+    down: { type: "item", itemId: LIBRARY_FILTERS_SEARCH_INPUT_ID },
+  };
+  const localSaveNavigationOverrides: FocusOverrides = {
+    left: { type: "item", itemId: LIBRARY_HERO_OPEN_SETTINGS_BUTTON_ID },
     right: { type: "item", itemId: LIBRARY_HERO_FAVORITE_BUTTON_ID },
     down: { type: "item", itemId: LIBRARY_FILTERS_SEARCH_INPUT_ID },
   };
   const favoriteNavigationOverrides: FocusOverrides = {
-    left: { type: "item", itemId: LIBRARY_HERO_OPEN_SETTINGS_BUTTON_ID },
+    left: {
+      type: "item",
+      itemId: showLocalSaveButton
+        ? LIBRARY_HERO_LOCAL_SAVE_BUTTON_ID
+        : LIBRARY_HERO_OPEN_SETTINGS_BUTTON_ID,
+    },
     right: { type: "block" },
     down: { type: "item", itemId: LIBRARY_FILTERS_SEARCH_INPUT_ID },
   };
@@ -244,6 +268,21 @@ export function LibraryHero({
               >
                 {t("options")}
               </Button>
+
+              {showLocalSaveButton && featuredGame && (
+                <BigPictureLocalSaveHeroButton
+                  game={featuredGame}
+                  focusId={LIBRARY_HERO_LOCAL_SAVE_BUTTON_ID}
+                  focusNavigationOverrides={localSaveNavigationOverrides}
+                  onClick={() => {
+                    if (onOpenLocalBackups) {
+                      onOpenLocalBackups(featuredGame);
+                    } else {
+                      onOpenSettings?.(featuredGame);
+                    }
+                  }}
+                />
+              )}
 
               <Button
                 variant="secondary"

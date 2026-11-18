@@ -5,9 +5,13 @@ import { Star, ThumbsUp, ThumbsDown, TrashIcon, Languages } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import type { GameShop } from "@types";
-import { getReviewTranslationLanguage, sanitizeHtml } from "@shared";
+import {
+  getReviewTranslationLanguage,
+  resolveSocialPreferences,
+  sanitizeHtml,
+} from "@shared";
 import { Button } from "@renderer/components";
-import { useDate } from "@renderer/hooks";
+import { useAppSelector, useDate } from "@renderer/hooks";
 import { buildGameDetailsPath, resolveImageSource } from "@renderer/helpers";
 import "./profile-content.scss";
 
@@ -92,6 +96,12 @@ export function ProfileReviewItem({
   const { t } = useTranslation("user_profile");
   const { t: tGameDetails, i18n } = useTranslation("game_details");
   const [showOriginal, setShowOriginal] = useState(false);
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const showReviewerPlaytime =
+    isOwnReview ||
+    resolveSocialPreferences(userPreferences).showOtherPlayersPlaytime;
 
   const getBaseLanguage = (lang: string | null) => lang?.split("-")[0] || "";
 
@@ -167,17 +177,18 @@ export function ProfileReviewItem({
                 {review.score}/5
               </span>
             </div>
-            {Boolean(
-              review.playTimeInSeconds && review.playTimeInSeconds > 0
-            ) && (
-              <div className="user-reviews__review-playtime">
-                <ClockIcon size={12} />
-                <span>
-                  {tGameDetails("review_played_for")}{" "}
-                  {formatPlayTime(review.playTimeInSeconds || 0)}
-                </span>
-              </div>
-            )}
+            {showReviewerPlaytime &&
+              Boolean(
+                review.playTimeInSeconds && review.playTimeInSeconds > 0
+              ) && (
+                <div className="user-reviews__review-playtime">
+                  <ClockIcon size={12} />
+                  <span>
+                    {tGameDetails("review_played_for")}{" "}
+                    {formatPlayTime(review.playTimeInSeconds || 0)}
+                  </span>
+                </div>
+              )}
           </div>
         </div>
       </div>

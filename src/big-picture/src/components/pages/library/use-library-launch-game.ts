@@ -5,6 +5,11 @@ import { getClassicsLaunchErrorCode } from "@renderer/helpers";
 import { IS_DESKTOP } from "../../../constants";
 import { NavigationAudioService } from "../../../services";
 import { useBigPictureToast } from "../../../hooks";
+import {
+  runBigPictureLaunch,
+  useLaunchRequestsStore,
+} from "../../../stores/launch-requests.store";
+import { getGameLaunchFailureMessage } from "../../../helpers/game-launch-feedback";
 
 const CLASSICS_LAUNCH_ERROR_TOASTS: Record<
   string,
@@ -45,6 +50,7 @@ export function useLibraryLaunchGame(
     async (entry: LibraryGame) => {
       const game = getLibraryOperationalGame(entry);
       if (!IS_DESKTOP) return;
+      if (useLaunchRequestsStore.getState().pending.has(game.id)) return;
 
       if (game.shop === "launchbox") {
         if ((game.discs?.length ?? 0) === 0) {
@@ -54,10 +60,12 @@ export function useLibraryLaunchGame(
 
         NavigationAudioService.getInstance().play("launch");
         try {
-          await globalThis.window.electron.openClassicsGame(
-            game.shop,
-            game.objectId,
-            game.selectedDiscPath ?? undefined
+          await runBigPictureLaunch(game.id, () =>
+            globalThis.window.electron.openClassicsGame(
+              game.shop,
+              game.objectId,
+              game.selectedDiscPath ?? undefined
+            )
           );
           globalThis.window.dispatchEvent(new Event("library-update"));
         } catch (error) {
@@ -79,12 +87,21 @@ export function useLibraryLaunchGame(
       }
 
       NavigationAudioService.getInstance().play("launch");
-      await globalThis.window.electron.openGame(
-        game.shop,
-        game.objectId,
-        game.executablePath,
-        game.launchOptions
-      );
+      const executablePath = game.executablePath;
+      try {
+        await runBigPictureLaunch(game.id, () =>
+          globalThis.window.electron.openGame(
+            game.shop,
+            game.objectId,
+            executablePath,
+            game.launchOptions
+          )
+        );
+      } catch (error) {
+        showErrorToast("Unable to launch game", {
+          message: getGameLaunchFailureMessage(error),
+        });
+      }
     },
     [onMissingExecutable, showErrorToast]
   );

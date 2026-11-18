@@ -331,3 +331,75 @@ export function clampProgress(progress: number): number {
   if (!Number.isFinite(progress)) return 0;
   return Math.max(0, Math.min(progress, 1));
 }
+
+export function computeMaxBudgetResets(fileSize: number): number {
+  if (!Number.isFinite(fileSize) || fileSize <= 0) return MAX_BUDGET_RESETS;
+  const scaled = Math.ceil(fileSize / (256 * 1024 * 1024));
+  return Math.max(MAX_BUDGET_RESETS, Math.min(500, scaled));
+}
+
+interface SpeedSample {
+  time: number;
+  bytes: number;
+}
+
+const DEFAULT_SPEED_WINDOW_MS = 2500;
+const MIN_SPEED_SPAN_MS = 200;
+const SPEED_BUCKET_MS = 50;
+
+export class RollingSpeedTracker {
+  private readonly samples: SpeedSample[] = [];
+  private transferStartedAt: number | null = null;
+  private currentSpeed = 0;
+  private readonly windowMs: number;
+
+  constructor(windowMs = DEFAULT_SPEED_WINDOW_MS) {
+    this.windowMs = windowMs;
+  }
+
+  reset(): void {
+    this.samples.length = 0;
+    this.transferStartedAt = null;
+    this.currentSpeed = 0;
+  }
+
+  record(bytesDelta: number, now = Date.now()): number {
+    if (bytesDelta > 0) {
+      if (this.transferStartedAt === null) {
+        this.transferStartedAt = now;
+      }
+      const last = this.samples.at(-1);
+      if (last && now - last.time <= SPEED_BUCKET_MS) {
+        last.bytes += bytesDelta;
+      } else {
+        this.samples.push({ time: now, bytes: bytesDelta });
+      }
+    }
+    return this.compute(now);
+  }
+
+  compute(now = Date.now()): number {
+    const cutoff = now - this.windowMs;
+    while (this.samples.length > 0 && this.samples[0].time < cutoff) {
+      this.samples.shift();
+    }
+    if (this.samples.length === 0 || this.transferStartedAt === null) {
+      this.currentSpeed = 0;
+      return 0;
+    }
+    let totalBytes = 0;
+    for (const sample of this.samples) {
+      totalBytes += sample.bytes;
+    }
+    const elapsedMs = Math.max(
+      MIN_SPEED_SPAN_MS,
+      Math.min(this.windowMs, now - this.transferStartedAt)
+    );
+    this.currentSpeed = totalBytes / (elapsedMs / 1000);
+    return this.currentSpeed;
+  }
+
+  getSpeed(): number {
+    return this.currentSpeed;
+  }
+}

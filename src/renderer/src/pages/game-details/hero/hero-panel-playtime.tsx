@@ -10,7 +10,10 @@ import {
 import { Link } from "@renderer/components";
 import { gameDetailsContext } from "@renderer/context";
 import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@renderer/constants";
-import { getDisplayedPlayTimeInMilliseconds } from "@shared";
+import {
+  getDisplayedPlayTimeInMilliseconds,
+  resolveManualPlaytimeWarningPreferences,
+} from "@shared";
 import { AlertFillIcon } from "@primer/octicons-react";
 import { Tooltip } from "react-tooltip";
 import "./hero-panel-playtime.scss";
@@ -29,6 +32,11 @@ export function HeroPanelPlaytime() {
   const { progress, lastPacket } = useDownload();
   const { formatDistance } = useDate();
   const extraction = useAppSelector((state) => state.download.extraction);
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const { showManualPlaytimeWarningIcon, showManualPlaytimeWarningText } =
+    resolveManualPlaytimeWarningPreferences(userPreferences);
 
   const isExtracting = extraction?.visibleId === game?.id;
 
@@ -128,23 +136,26 @@ export function HeroPanelPlaytime() {
     );
   }
 
+  const showManualPlaytimeIcon = Boolean(
+    game.hasManuallyUpdatedPlaytime && showManualPlaytimeWarningIcon
+  );
+  const showManualPlaytimeTooltip = Boolean(
+    game.hasManuallyUpdatedPlaytime && showManualPlaytimeWarningText
+  );
+
   return (
     <>
       <p
         className="hero-panel-playtime__play-time"
         data-tooltip-place="right"
         data-tooltip-content={
-          game.hasManuallyUpdatedPlaytime
-            ? t("manual_playtime_tooltip")
-            : undefined
+          showManualPlaytimeTooltip ? t("manual_playtime_tooltip") : undefined
         }
         data-tooltip-id={
-          game.hasManuallyUpdatedPlaytime
-            ? "manual-playtime-warning"
-            : undefined
+          showManualPlaytimeTooltip ? "manual-playtime-warning" : undefined
         }
       >
-        {game.hasManuallyUpdatedPlaytime && (
+        {showManualPlaytimeIcon && (
           <AlertFillIcon
             size={16}
             className="hero-panel-playtime__manual-warning"
@@ -165,7 +176,7 @@ export function HeroPanelPlaytime() {
         </p>
       )}
 
-      {game.hasManuallyUpdatedPlaytime && (
+      {showManualPlaytimeTooltip && (
         <Tooltip
           id="manual-playtime-warning"
           style={{

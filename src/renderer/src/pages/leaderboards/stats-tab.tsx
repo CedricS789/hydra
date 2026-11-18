@@ -13,7 +13,8 @@ import { useTranslation } from "react-i18next";
 
 import { Avatar, Button } from "@renderer/components";
 import { LEADERBOARD_HEADER_BANNER_IMAGE_SIZE } from "@renderer/constants";
-import { useFormat, useProcessedImage } from "@renderer/hooks";
+import { useAppSelector, useFormat, useProcessedImage } from "@renderer/hooks";
+import { resolveSocialPreferences } from "@shared";
 import type { LeaderboardUser } from "../game-details/leaderboard/game-leaderboard";
 import {
   buildHeatmap,
@@ -122,6 +123,13 @@ export function StatsTab({
   const { t, i18n } = useTranslation("leaderboards");
   const { numberFormatter } = useFormat();
   const metricText = useMetricText();
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
+  );
+  const social = useMemo(
+    () => resolveSocialPreferences(userPreferences),
+    [userPreferences]
+  );
   const viewerId = viewerUser?.id ?? null;
   const isWeek = period === "week";
   const banner = useProcessedImage(
@@ -136,7 +144,7 @@ export function StatsTab({
     ACTIVITY_FALLBACK
   );
   const friends = useApiResource(
-    "/users/me/friends/streaks",
+    social.showFriends ? "/users/me/friends/streaks" : null,
     { params: {}, needsAuth: true },
     normalizeFriendStreaks
   );
@@ -579,12 +587,14 @@ export function StatsTab({
           )}
         </section>
 
-        <section className="leaderboards__panel">
-          {!hasNoFriendStreaks && (
-            <h2 className="leaderboards__heading-3">{t("friends_streak")}</h2>
-          )}
-          {renderFriends()}
-        </section>
+        {social.showFriends && (
+          <section className="leaderboards__panel">
+            {!hasNoFriendStreaks && (
+              <h2 className="leaderboards__heading-3">{t("friends_streak")}</h2>
+            )}
+            {renderFriends()}
+          </section>
+        )}
       </div>
 
       <section

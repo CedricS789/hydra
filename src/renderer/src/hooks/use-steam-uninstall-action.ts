@@ -106,6 +106,7 @@ export function useSteamUninstallAction(
 
   return {
     steamUninstallTarget,
+    isSteamLibraryExecutable,
     isSteamProbePending,
     isUninstalling,
     handleSteamUninstall,

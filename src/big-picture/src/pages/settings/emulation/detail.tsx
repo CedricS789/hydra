@@ -393,7 +393,11 @@ export function EmulationDetail({
       <RomFoldersSectionBP
         folders={config.romFolders}
         isBusy={isBusy}
-        addUpTargetId={EMULATION_DETAIL_EXECUTABLE_BUTTON_ID}
+        addUpTargetId={
+          saveLocation && config.executablePath
+            ? EMULATION_DETAIL_SAVE_LOCATION_BROWSE_BUTTON_ID
+            : EMULATION_DETAIL_EXECUTABLE_BUTTON_ID
+        }
         rowsDownTargetId={romSectionDownTargetId}
         onAddFolder={() => {
           void handleAddFolder();

@@ -12,6 +12,7 @@ import type {
   SeedingStatus,
   UserPreferences,
   ScreenshotInputStatus,
+  BigPictureGamepadWakeStatus,
   StartGameDownloadPayload,
   RealDebridUser,
   PremiumizeUser,
@@ -190,6 +191,9 @@ declare global {
     openSourceBrowser: (
       request: import("../../types/source-browser.types").SourceBrowserRequest
     ) => Promise<import("@types").GameRepack | null>;
+    onSourceBrowserOpened?: (
+      callback: (requestKey: string) => void
+    ) => () => void;
     getSourceWebsiteProfiles: () => Promise<
       Record<
         string,
@@ -214,7 +218,8 @@ declare global {
       preview: boolean
     ) => Promise<import("@types").LudusaviLocalResult | undefined>;
     runLudusaviLocalBulkBackup: (
-      includeDisabled?: boolean
+      includeDisabled?: boolean,
+      includeHydraConfig?: boolean
     ) => Promise<import("@types").LudusaviBulkBackupProgress>;
     onLudusaviStateChanged: (cb: () => void) => () => void;
     openLudusaviLocalFolder: (logs?: boolean) => Promise<string>;
@@ -235,17 +240,20 @@ declare global {
     listSaveBackupVersions: (key: string) => Promise<{
       title: string;
       versions: import("@types").SaveBackupVersion[];
+      snapshots: import("@types").SaveSafetySnapshot[];
     }>;
     previewSaveRestore: (
       key: string,
-      version: string
+      version: string,
+      snapshotId?: string
     ) => Promise<import("@types").SaveOperationPreview>;
     confirmSaveOperation: (
       token: string
     ) => Promise<import("@types").SaveOperationResult>;
     validateSaveBackup: (
       key: string,
-      version: string
+      version: string,
+      snapshotId?: string
     ) => Promise<import("@types").SaveOperationResult>;
     previewSaveCloudTransfer: (
       key: string,
@@ -256,6 +264,42 @@ declare global {
     importStandaloneSaveConfig: () => Promise<void>;
     updateSaveManifest: () => Promise<void>;
     openFullSaveManager: (key?: string) => Promise<void>;
+    getHydraConfigBackupState: () => Promise<
+      import("../../shared/hydra-config-backup").HydraConfigBackupState
+    >;
+    backupHydraConfig: (
+      preview?: boolean
+    ) => Promise<
+      import("../../shared/hydra-config-backup").HydraConfigBackupResult
+    >;
+    validateHydraConfigBackup: (
+      version: string,
+      snapshotId?: string
+    ) => Promise<import("@types").SaveOperationResult>;
+    previewHydraConfigRestore: (
+      version: string,
+      snapshotId?: string
+    ) => Promise<
+      import("../../shared/hydra-config-backup").HydraConfigRestorePreview
+    >;
+    confirmHydraConfigRestore: (
+      request: import("../../shared/hydra-config-backup").HydraConfigRestoreRequest
+    ) => Promise<
+      import("../../shared/hydra-config-backup").HydraConfigRestoreResult
+    >;
+    previewHydraConfigCloudTransfer: (
+      direction: "upload" | "download"
+    ) => Promise<
+      import("../../shared/hydra-config-backup").HydraConfigCloudPreview
+    >;
+    confirmHydraConfigCloudTransfer: (
+      token: string
+    ) => Promise<import("@types").SaveOperationResult>;
+    onHydraConfigRestored: (
+      cb: (
+        sections: import("../../shared/hydra-config-backup").HydraConfigSectionId[]
+      ) => void
+    ) => () => void;
     getLocalReleases: (
       force?: boolean
     ) => Promise<import("@types").LocalReleaseState>;
@@ -706,12 +750,43 @@ declare global {
       targets: import("@shared").BulkLibraryRemovalTarget[],
       confirmation?: string
     ) => Promise<import("@shared").BulkLibraryRemovalResult>;
+    getExcludedLibraryGames: () => Promise<
+      import("@types").ExcludedLibraryGame[]
+    >;
+    excludeLibraryGames: (
+      inputs: import("@types").ExcludedLibraryGameInput[]
+    ) => Promise<{
+      entries: import("@types").ExcludedLibraryGame[];
+      addedCount: number;
+      removedFromLibraryCount: number;
+    }>;
+    unexcludeLibraryGames: (
+      targets: { shop: GameShop; objectId: string }[],
+      options?: { restoreToLibrary?: boolean }
+    ) => Promise<{
+      entries: import("@types").ExcludedLibraryGame[];
+      removedCount: number;
+      restoredCount: number;
+    }>;
+    clearExcludedLibraryGames: () => Promise<{ removedCount: number }>;
+    onExcludedLibraryGamesUpdated: (
+      cb: (entries: import("@types").ExcludedLibraryGame[]) => void
+    ) => () => Electron.IpcRenderer;
     removeGame: (shop: GameShop, objectId: string) => Promise<void>;
     deleteGameFolder: (
       shop: GameShop,
       objectId: string,
       options?: { deleteSourceArchive?: boolean; keepEpicUpdateFiles?: boolean }
     ) => Promise<unknown>;
+    inspectGameUninstall: (
+      shop: GameShop,
+      objectId: string
+    ) => Promise<import("@types").GameUninstallPlan>;
+    uninstallGame: (
+      shop: GameShop,
+      objectId: string,
+      options: import("@types").ExecuteGameUninstallOptions
+    ) => Promise<import("@types").ExecuteGameUninstallResult>;
     hasSourceArchive: (shop: GameShop, objectId: string) => Promise<boolean>;
     recheckInstalledExecutable: (
       shop: GameShop,
@@ -815,6 +890,19 @@ declare global {
     authenticateAllDebrid: (apiToken: string) => Promise<AllDebridUser>;
     authenticateTorBox: (apiToken: string) => Promise<TorBoxUser>;
     getUserPreferences: () => Promise<UserPreferences | null>;
+    getSettingsResetStatus: (
+      target: import("../../shared/settings-reset").SettingsResetTarget
+    ) => Promise<import("../../shared/settings-reset").SettingsResetStatus>;
+    previewSettingsReset: (
+      target: import("../../shared/settings-reset").SettingsResetTarget,
+      restoring: boolean
+    ) => Promise<import("../../shared/settings-reset").SettingsResetPreview>;
+    applySettingsReset: (
+      token: string,
+      acknowledged: boolean,
+      phrase: string,
+      torrentConfirmation?: string
+    ) => Promise<import("../../shared/settings-reset").SettingsResetStatus>;
     updateUserPreferences: (
       preferences: Partial<UserPreferences>,
       directTorrentConfirmation?: string
@@ -1726,7 +1814,14 @@ declare global {
 
     /* Big Picture Window */
     openBigPictureWindow: () => Promise<void>;
+    exitBigPictureToDesktop: () => Promise<void>;
+    getBigPictureGamepadWakeStatus: () => Promise<BigPictureGamepadWakeStatus>;
+    onBigPictureGamepadWakeStatusChange: (
+      cb: (status: BigPictureGamepadWakeStatus) => void
+    ) => () => void;
+    openWindowsGameBarSettings: () => Promise<boolean>;
     executeSystemPowerAction: (action: SystemPowerAction) => Promise<void>;
+    quitApp: () => Promise<void>;
 
     /* Friends Window */
     openFriendsWindow: () => Promise<void>;

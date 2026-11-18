@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { db, gamesSublevel, levelKeys } from "@main/level";
-import { emulators, logger } from "@main/services";
+import { BigPictureGameWindowService, emulators, logger } from "@main/services";
 import type {
   EmulatorBinary,
   EmulatorConfig,
@@ -16,6 +16,7 @@ import { isGamemodeAvailable } from "./is-gamemode-available";
 import { isMangohudAvailable } from "./is-mangohud-available";
 import { resolveLaunchCommand } from "./resolve-launch-command";
 import { spawnDetachedEmulator } from "./spawn-detached-emulator";
+import { startCompanionAppsBeforeGame } from "@main/services/companion-apps";
 import {
   findFlatpakCommand,
   resolveFlatpakEmulatorLaunch,
@@ -289,11 +290,24 @@ export const launchClassicsGame = async (
       system === "ps4" ? await emulators.listShadps4ProcessIds() : [];
     if (holdsGameHelpers) await holdGameHelpersBeforeLaunch();
 
+    await startCompanionAppsBeforeGame();
+
+    BigPictureGameWindowService?.notifyGameLaunchDispatching?.({
+      gameKey,
+      executablePaths: [executableTarget],
+    });
+
     const processRef = await spawnDetachedEmulator(
       resolvedLaunchCommand,
       workingDirectory,
       () => new EmulatorNotConfiguredError(system)
     );
+    if (processRef.pid) {
+      BigPictureGameWindowService?.notifyGameLaunchProcessSpawned?.(
+        gameKey,
+        processRef.pid
+      );
+    }
 
     if (game) {
       await emulators.startEmulatorSession({
@@ -312,6 +326,7 @@ export const launchClassicsGame = async (
     processRef.unref();
   } catch (error) {
     if (!sessionStarted) {
+      BigPictureGameWindowService?.notifyGameLaunchEnded?.(gameKey, false);
       await cleanupEmulatorSouvenirSession(souvenirSession);
       if (holdsGameHelpers) releaseGameHelpersIfIdle();
     }

@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import cn from "classnames";
-import { ClockIcon, PeopleIcon, StarIcon } from "@primer/octicons-react";
+import {
+  ClockIcon,
+  PeopleIcon,
+  StarIcon,
+  TrophyIcon,
+} from "@primer/octicons-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -185,6 +190,15 @@ export function RankingTab({
   const reportContext = getReportContext(metric, period, scope);
 
   const renderBoard = () => {
+    if (!metric && !isMetricsLoading && !hasMetricsError) {
+      return (
+        <BlockMessage
+          icon={<TrophyIcon size={32} />}
+          title="No leaderboard categories visible"
+          description="Enable at least one category under Settings -> Advanced -> Social & community visibility."
+        />
+      );
+    }
     if (state === "loading") return <BoardSkeleton />;
     if (state === "error") return <BlockError onRetry={onRetry} />;
 

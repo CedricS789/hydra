@@ -126,3 +126,29 @@ test("title matching is exact, skips deleted games, and path previews are bounde
   assert.equal(result[0].files, 100);
   assert.equal(result[0].filePaths.length, 50);
 });
+
+test("reserved Hydra config backup entry is excluded from game discovery", () => {
+  const result = detectedSaveGames(
+    {
+      games: {
+        "Hydra Ludusavi Config": {
+          decision: "Processed",
+          backups: [{ name: "backup-1.zip", when: "2026-01-01", locked: false }],
+          files: { "C:/hydra/manifest.json": { bytes: 120 } },
+        },
+        "Real Game": {
+          decision: "Processed",
+          backups: [{ name: "backup-2.zip", when: "2026-01-01", locked: false }],
+        },
+      },
+    },
+    {},
+    "backups",
+    [],
+    settings
+  );
+  assert.deepEqual(
+    result.map((item) => item.title),
+    ["Real Game"]
+  );
+});

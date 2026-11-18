@@ -2,9 +2,9 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
-  PlusCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  GlobeIcon,
 } from "@primer/octicons-react";
 import { Tooltip } from "react-tooltip";
 
@@ -406,9 +406,19 @@ export function RepacksModal({
               onClose();
               navigate("/settings?tab=advanced");
             }}
-            renderButton={({ id, label, ...props }) => (
-              <Button key={id} type="button" theme="outline" {...props}>
-                {label}
+            renderButton={({ id, label, hostname, ...props }) => (
+              <Button
+                key={id}
+                type="button"
+                theme="outline"
+                className="source-website-search__button"
+                title={hostname && hostname !== label ? hostname : undefined}
+                {...props}
+              >
+                {id !== "configure-websites" && (
+                  <GlobeIcon size={14} aria-hidden="true" />
+                )}
+                <span>{label}</span>
               </Button>
             )}
           />
@@ -460,6 +470,10 @@ export function RepacksModal({
               <div className="repacks-modal__separator" />
             )}
 
+          {sourceBrowsingEnabled && filteredRepacks.length > 0 && (
+            <div className="repacks-modal__section-label">Hydra feeds</div>
+          )}
+
           {filteredRepacks.length === 0
             ? !showSteamOption &&
               !showEpicOption && (
@@ -468,19 +482,15 @@ export function RepacksModal({
                     <div className="repacks-modal__no-results-text">
                       {t("no_repacks_found")}
                     </div>
-                    <div className="repacks-modal__no-results-button">
-                      <Button
-                        type="button"
-                        theme="primary"
-                        onClick={() => {
-                          onClose();
-                          navigate("/settings?tab=download_sources");
-                        }}
-                      >
-                        <PlusCircleIcon />
-                        {t("add_download_source", { ns: "settings" })}
-                      </Button>
-                    </div>
+                    {sourceBrowsingEnabled && (
+                      <p className="repacks-modal__no-results-hint">
+                        Pick a site under <strong>Search on</strong> above. If a
+                        site uses ad-heavy link protectors or captchas, click{" "}
+                        <strong>Open in browser</strong> inside that window,
+                        copy the hoster or magnet link, and paste it back into
+                        Hydra.
+                      </p>
+                    )}
                   </div>
                 </div>
               )

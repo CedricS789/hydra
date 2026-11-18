@@ -182,6 +182,7 @@ export default function GameLauncher() {
     const statusReplay = createLauncherStatusReplay(`${shop}:${objectId}`);
 
     const applyStatus = ({ status, detail }: GameLauncherStatusPayload) => {
+      if (status.startsWith("launch_")) return;
       if (status === "preparing_compatibility_layer") {
         setCompatibilityLayerStatus("preparing");
         setCompatibilityLayerDetail(detail);

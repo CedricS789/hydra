@@ -11,7 +11,9 @@ import {
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
+  allowsDirectTorrent,
   Downloader,
+  getDownloadersForUri,
   getDownloadDirectoryTitle,
   resolveDownloadDirectories,
   findLibraryGamePresentation,
@@ -73,6 +75,7 @@ import {
 import {
   CheckCircle,
   DownloadSimpleIcon,
+  GlobeHemisphereWestIcon,
   MagnifyingGlassIcon,
   SortAscendingIcon,
   StarIcon,
@@ -1360,17 +1363,33 @@ function DownloadGameSourceList({
             }}
           >
             <SourceWebsiteSearch
-              enabled={
-                sourceBrowserPreferences?.enableSourceBrowser !== false
-              }
+              enabled={sourceBrowserPreferences?.enableSourceBrowser !== false}
               shop={game.shop}
               objectId={game.objectId}
               gameTitle={game.title}
               onReview={onSelectOption}
               onSettings={handleOpenWebsiteSettings}
-              renderButton={({ id, label, ...props }) => (
-                <Button key={id} focusId={`website-${id}`} {...props}>
-                  {label}
+              renderGroup={(children, headingId) => (
+                <HorizontalFocusGroup
+                  className="source-website-search__list"
+                  role="group"
+                  aria-labelledby={headingId}
+                >
+                  {children}
+                </HorizontalFocusGroup>
+              )}
+              renderButton={({ id, label, hostname, ...props }) => (
+                <Button
+                  key={id}
+                  focusId={`website-${id}`}
+                  className="source-website-search__button"
+                  title={hostname && hostname !== label ? hostname : undefined}
+                  {...props}
+                >
+                  {id !== "configure-websites" && (
+                    <GlobeHemisphereWestIcon size={16} aria-hidden="true" />
+                  )}
+                  <span>{label}</span>
                 </Button>
               )}
             />
@@ -1386,9 +1405,13 @@ function DownloadGameSourceList({
                 className="download-game-modal__source-list-empty-state"
                 icon={<MagnifyingGlassIcon size={32} weight="bold" />}
                 title={t("No download options")}
-                description={t(
-                  "Open Settings to review your download sources and look for more options."
-                )}
+                description={
+                  sourceBrowserPreferences?.enableSourceBrowser !== false
+                    ? "Pick a site under Search on above. If a site uses link protectors or captchas, click Open in browser inside that window and paste the hoster or magnet link back in Hydra."
+                    : t(
+                        "Open Settings to review your download sources and look for more options."
+                      )
+                }
                 actions={
                   <Button
                     focusId={DOWNLOAD_GAME_EMPTY_STATE_SETTINGS_BUTTON_ID}
@@ -1451,6 +1474,14 @@ function DownloadGameSourceList({
               showDownloadOptions &&
               sortedDownloadOptions.length > 0 && (
                 <div className="download-game-modal__source-list__separator" />
+              )}
+
+            {sourceBrowserPreferences?.enableSourceBrowser !== false &&
+              showDownloadOptions &&
+              sortedDownloadOptions.length > 0 && (
+                <div className="download-game-modal__source-list__section-label">
+                  Hydra feeds
+                </div>
               )}
 
             {showDownloadOptions &&
@@ -1821,7 +1852,12 @@ function DownloadGameOptions({
             />
           ) : (
             <p className="download-game-modal__downloader-empty">
-              No download methods are available for your current setup.
+              {!allowsDirectTorrent(userPreferences) &&
+              option.uris.some((uri) =>
+                getDownloadersForUri(uri).includes(Downloader.Torrent)
+              )
+                ? "Direct peer-to-peer torrents are disabled by default for safety. Connect a Debrid provider or enable Direct P2P Torrents in Settings → Advanced."
+                : "No download methods are available for your current setup."}
             </p>
           )}
         </div>

@@ -1,4 +1,3 @@
-import localEdition from "../../../../shared/local-edition.json";
 import type { ComparedAchievements, UserAchievement } from "@types";
 import "./achievements.scss";
 import {
@@ -37,6 +36,7 @@ import {
   getVisibleSetGroups,
   groupAchievementsBySet,
   isAchievementConcealed,
+  isHydraAchievementPointsEnabled,
   matchesAchievementComparisonFilter,
   type AchievementComparisonFilter,
   type AchievementSortOption,
@@ -107,6 +107,9 @@ export function ComparedAchievementList({
   const showHiddenAchievements = useAppSelector(
     (state) =>
       state.userPreferences.value?.showHiddenAchievementsDescription ?? false
+  );
+  const showHydraPoints = useAppSelector((state) =>
+    isHydraAchievementPointsEnabled(state.userPreferences.value)
   );
 
   const [search, setSearch] = useState("");
@@ -257,7 +260,7 @@ export function ComparedAchievementList({
 
   const hasCommunityStats = rows.some(
     (row) =>
-      (!localEdition.hideHydraPoints && row.points != null) ||
+      (showHydraPoints && row.points != null) ||
       row.globalUnlockPercentage != null
   );
 
@@ -377,7 +380,7 @@ export function ComparedAchievementList({
                 </span>
               )}
 
-              {!localEdition.hideHydraPoints && achievement.points != null && (
+              {showHydraPoints && achievement.points != null && (
                 <div
                   className="achievements__item-points"
                   title={t("achievement_earn_points", {
@@ -464,7 +467,7 @@ export function ComparedAchievementList({
           </div>
         </div>
 
-        {!localEdition.hideHydraPoints && (
+        {showHydraPoints && (
           <div
             className="achievements__compare-grid achievements__compare-grid--points"
             style={gridStyle}

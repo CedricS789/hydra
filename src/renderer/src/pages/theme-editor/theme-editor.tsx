@@ -16,6 +16,7 @@ import { injectCustomCss, getAchievementSoundVolume } from "@renderer/helpers";
 import { AchievementNotificationItem } from "@renderer/components/achievements/notification/achievement-notification";
 import {
   generateAchievementCustomNotificationTest,
+  isHydraAchievementPointsEnabled,
   MONACO_VS_URL,
 } from "@shared";
 import { CollapsedMenu } from "@renderer/components/collapsed-menu/collapsed-menu";
@@ -52,6 +53,30 @@ export default function ThemeEditor() {
     useState<AchievementCustomNotificationPosition>("top-left");
 
   const [shadowRootRef, setShadowRootRef] = useState<HTMLElement | null>(null);
+  const [showHydraPoints, setShowHydraPoints] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    window.electron
+      .getUserPreferences()
+      .then((preferences) => {
+        if (active) {
+          setShowHydraPoints(isHydraAchievementPointsEnabled(preferences));
+        }
+      })
+      .catch(() => {});
+
+    const unsubscribe = window.electron.onUserPreferencesUpdated(
+      (preferences) => {
+        setShowHydraPoints(isHydraAchievementPointsEnabled(preferences));
+      }
+    );
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
 
   const achievementPreview = useMemo(() => {
     return {
@@ -59,10 +84,17 @@ export default function ThemeEditor() {
         isRare: notificationVariation === "rare",
         isHidden: notificationVariation === "hidden",
         isPlatinum: notificationVariation === "platinum",
+        showPoints: showHydraPoints,
       }),
       position: notificationAlignment,
     };
-  }, [t, i18n.language, notificationVariation, notificationAlignment]);
+  }, [
+    t,
+    i18n.language,
+    notificationVariation,
+    notificationAlignment,
+    showHydraPoints,
+  ]);
 
   useEffect(() => {
     window.document.title = "Hydra - Theme Editor";

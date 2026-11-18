@@ -71,7 +71,9 @@ import {
   useGameDetails,
   useHeaderTitle,
   useNavigationScreenActions,
+  useUserPreferences,
 } from "../../hooks";
+import { resolveSocialPreferences } from "@shared";
 import {
   BIG_PICTURE_SIDEBAR_ITEM_IDS,
   BIG_PICTURE_SIDEBAR_REGION_ID,
@@ -99,6 +101,11 @@ import {
 import { NavigationService, type FocusOverrideTarget } from "../../services";
 import { useNavigationStore } from "../../stores";
 import { useBigPictureDownloadsStore } from "../../stores/downloads.store";
+import {
+  runBigPictureLaunch,
+  useLaunchRequestsStore,
+} from "../../stores/launch-requests.store";
+import { getGameLaunchFailureMessage } from "../../helpers/game-launch-feedback";
 import { extractGenreNames } from "./game-metadata";
 import "./game.scss";
 import { EpicCloudSaves } from "../../components/pages/game/epic-cloud-saves";
@@ -532,6 +539,9 @@ export default function Game() {
   const [isDiscSelectionModalOpen, setIsDiscSelectionModalOpen] =
     useState(false);
   const [isGameSettingsModalOpen, setIsGameSettingsModalOpen] = useState(false);
+  const [gameSettingsInitialTab, setGameSettingsInitialTab] = useState<
+    "launch" | "local_backups"
+  >("launch");
   const [pendingClassicsLaunch, setPendingClassicsLaunch] = useState<{
     discPath?: string;
   } | null>(null);
@@ -614,7 +624,12 @@ export default function Game() {
     updateGame,
     refreshGameDetails,
   } = useGameDetails(objectId!, shop!);
+  const userPreferences = useUserPreferences();
+  const social = resolveSocialPreferences(userPreferences);
   const members = presentationGame?.members ?? (game ? [game] : []);
+  const isLaunching = useLaunchRequestsStore((state) =>
+    members.some((member) => state.pending.has(member.id))
+  );
   const installedMembers = getInstalledStoreMembers(members);
   const epicMember = getOfficialStoreMembers(members).epic;
   const [showStoreSelection, setShowStoreSelection] = useState(false);
@@ -727,6 +742,8 @@ export default function Game() {
       skipUpdateCheck = false
     ) => {
       if (!member.executablePath) return;
+      if (useLaunchRequestsStore.getState().pending.has(member.id)) return;
+      const executablePath = member.executablePath;
       setShowStoreSelection(false);
       setLocalSaveRetry(null);
       setEpicSaveConflict(null);
@@ -734,12 +751,14 @@ export default function Game() {
       setCanRetryLocalSaves(false);
       const generation = launchGeneration.current;
       try {
-        await window.electron.openGame(
-          member.shop,
-          member.objectId,
-          member.executablePath,
-          member.launchOptions,
-          getEpicLaunchOptions(localOnce, offline, skipUpdateCheck)
+        await runBigPictureLaunch(member.id, () =>
+          window.electron.openGame(
+            member.shop,
+            member.objectId,
+            executablePath,
+            member.launchOptions,
+            getEpicLaunchOptions(localOnce, offline, skipUpdateCheck)
+          )
         );
       } catch (error) {
         if (generation !== launchGeneration.current) return;
@@ -1177,7 +1196,7 @@ export default function Game() {
       if (!game) return;
 
       try {
-        await openGame(discPath, force);
+        await runBigPictureLaunch(game.id, () => openGame(discPath, force));
         await updateGame();
         globalThis.window.dispatchEvent(new Event("library-update"));
       } catch (error) {
@@ -1219,6 +1238,7 @@ export default function Game() {
 
   const handlePlayGame = useCallback(async () => {
     if (!game) return;
+    if (useLaunchRequestsStore.getState().pending.has(game.id)) return;
 
     if (game.shop !== "launchbox") {
       if (
@@ -1232,7 +1252,13 @@ export default function Game() {
         playEpicMember(game);
         return;
       }
-      await openGame();
+      try {
+        await runBigPictureLaunch(game.id, () => openGame());
+      } catch (error) {
+        showErrorToast("Unable to launch game", {
+          message: getGameLaunchFailureMessage(error),
+        });
+      }
       return;
     }
 
@@ -1258,6 +1284,7 @@ export default function Game() {
     launchClassicsWithErrorHandling,
     openGame,
     playEpicMember,
+    showErrorToast,
   ]);
 
   const handleDiscSelectionConfirm = useCallback(
@@ -1866,13 +1893,17 @@ export default function Game() {
             game ? hasCloudSaveExecutableSelection(game) : false
           }
           isGameRunning={isGameRunning}
-          onSelectExecutable={() => setIsGameSettingsModalOpen(true)}
+          onSelectExecutable={() => {
+            setGameSettingsInitialTab("launch");
+            setIsGameSettingsModalOpen(true);
+          }}
         >
           <Hero
             shopDetails={shopDetails}
             game={presentationGame ?? game}
             downloadGame={downloadGame}
             isGameRunning={isGameRunning}
+            isLaunching={isLaunching}
             isFavorite={presentationGame?.favorite ?? game?.favorite ?? false}
             toggleFavorite={toggleFavorite}
             onPlay={handlePlayGame}
@@ -1883,7 +1914,14 @@ export default function Game() {
             onSelectExecutable={handleSelectExecutable}
             onAddToLibrary={handleAddToLibrary}
             onOpenDownloadOptions={handleOpenDownloadModal}
-            onOpenSettings={() => setIsGameSettingsModalOpen(true)}
+            onOpenSettings={() => {
+              setGameSettingsInitialTab("launch");
+              setIsGameSettingsModalOpen(true);
+            }}
+            onOpenLocalBackups={() => {
+              setGameSettingsInitialTab("local_backups");
+              setIsGameSettingsModalOpen(true);
+            }}
             onClose={closeGame}
             isAddingToLibrary={isAddingToLibrary}
             canAddToLibrary={canAddToLibrary}
@@ -1895,6 +1933,7 @@ export default function Game() {
               visible={isGameSettingsModalOpen}
               game={game}
               removeFilesGame={presentationGame ?? game}
+              initialTab={gameSettingsInitialTab}
               launchSettings={launchSettings}
               customizationSettings={customizationSettings}
               cloudSettings={cloudSettings}
@@ -2018,7 +2057,7 @@ export default function Game() {
                 </>
               ) : null}
 
-              {!isCustomGame && (
+              {!isCustomGame && social.showCommunityReviews && (
                 <>
                   <Divider />
 
@@ -2049,22 +2088,24 @@ export default function Game() {
                         <Typography>Game Stats</Typography>
                       </div>
 
-                      <div className="game-page__stats-row">
-                        <Typography className="game-page__stats-label">
-                          Rating
-                        </Typography>
-                        <div className="game-page__stats-rating-value">
-                          <StarIcon
-                            size={16}
-                            weight="fill"
-                            aria-hidden="true"
-                            className="game-page__stats-rating-icon"
-                          />
-                          <Typography className="game-page__stats-value">
-                            {formatNumber(stats?.averageScore ?? 0)}
+                      {social.showCommunityStarRatings && (
+                        <div className="game-page__stats-row">
+                          <Typography className="game-page__stats-label">
+                            Rating
                           </Typography>
+                          <div className="game-page__stats-rating-value">
+                            <StarIcon
+                              size={16}
+                              weight="fill"
+                              aria-hidden="true"
+                              className="game-page__stats-rating-icon"
+                            />
+                            <Typography className="game-page__stats-value">
+                              {formatNumber(stats?.averageScore ?? 0)}
+                            </Typography>
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       <div className="game-page__stats-row">
                         <Typography className="game-page__stats-label">
@@ -2075,14 +2116,16 @@ export default function Game() {
                         </Typography>
                       </div>
 
-                      <div className="game-page__stats-row">
-                        <Typography className="game-page__stats-label">
-                          Playing now
-                        </Typography>
-                        <Typography className="game-page__stats-value">
-                          {formatNumber(stats?.playerCount ?? 0)}
-                        </Typography>
-                      </div>
+                      {social.showActivePlayerCounts && (
+                        <div className="game-page__stats-row">
+                          <Typography className="game-page__stats-label">
+                            Playing now
+                          </Typography>
+                          <Typography className="game-page__stats-value">
+                            {formatNumber(stats?.playerCount ?? 0)}
+                          </Typography>
+                        </div>
+                      )}
                     </section>
                   </FocusItem>
                 )}

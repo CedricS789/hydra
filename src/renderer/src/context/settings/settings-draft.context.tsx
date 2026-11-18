@@ -33,6 +33,9 @@ type DraftContext = {
   markOperation: (id: string, running: boolean) => void;
   footer: ReactNode;
   revision: number;
+  hasUnsavedChanges: boolean;
+  hasRunningOperation: boolean;
+  reloadSavedPreferences: () => Promise<void>;
   profilePatch: UpdateProfileRequest;
   stageProfile: (
     values: UpdateProfileRequest,
@@ -120,6 +123,7 @@ export function SettingsDraftProvider({
   ) => Promise<boolean>;
 }) {
   const [saved, setSaved] = useState<UserPreferences | null>(null);
+  const savedRef = useRef<UserPreferences | null>(null);
   const [patch, setPatch] = useState<Partial<UserPreferences>>({});
   const patchRef = useRef(patch);
   const [profilePatch, setProfilePatch] = useState<UpdateProfileRequest>({});
@@ -134,6 +138,7 @@ export function SettingsDraftProvider({
   const [revision, setRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
+  const confirmingRef = useRef(false);
   const [operations, setOperations] = useState<string[]>([]);
   const operationsRef = useRef<string[]>([]);
   const operationRunning = operations.length > 0;
@@ -239,12 +244,16 @@ export function SettingsDraftProvider({
     let receivedUpdate = false;
     const off = window.electron.onUserPreferencesUpdated((preferences) => {
       receivedUpdate = true;
+      savedRef.current = preferences;
       if (alive.current) setSaved(preferences);
     });
     void window.electron
       .getUserPreferences()
       .then((preferences) => {
-        if (alive.current && !receivedUpdate) setSaved(preferences);
+        if (alive.current && !receivedUpdate) {
+          savedRef.current = preferences;
+          setSaved(preferences);
+        }
       })
       .catch((e) => {
         if (alive.current) setError(String(e));
@@ -252,6 +261,10 @@ export function SettingsDraftProvider({
     return () => {
       alive.current = false;
       off();
+      if (confirmationRef.current) {
+        confirmationRef.current.resolve(false);
+        confirmationRef.current = null;
+      }
     };
   }, []);
 
@@ -269,32 +282,30 @@ export function SettingsDraftProvider({
       Object.keys(profileRef.current).length > 0;
   }, []);
 
-  const stage = useCallback(
-    async (values: Partial<UserPreferences>) => {
-      if (busyRef.current) return;
-      const currentSaved =
-        saved ?? (await window.electron.getUserPreferences());
-      setError("");
-      setMessage("");
-      const current = patchRef.current;
-      const next = { ...current };
-      for (const [key, value] of Object.entries(values)) {
-        if (!Object.hasOwn(current, key))
-          baseline.current[key] = currentSaved?.[key];
-        if (settingsValueEqual(baseline.current[key], value)) {
-          delete next[key];
-          delete baseline.current[key];
-        } else next[key] = value;
-      }
-      patchRef.current = next;
-      dirtyRef.current =
-        Object.keys(next).length > 0 ||
-        Object.keys(profileRef.current).length > 0 ||
-        Object.keys(formsRef.current).length > 0;
-      setPatch(next);
-    },
-    [saved]
-  );
+  const stage = useCallback(async (values: Partial<UserPreferences>) => {
+    if (busyRef.current) return;
+    const currentSaved =
+      savedRef.current ?? (await window.electron.getUserPreferences());
+    savedRef.current = currentSaved;
+    setError("");
+    setMessage("");
+    const current = patchRef.current;
+    const next = { ...current };
+    for (const [key, value] of Object.entries(values)) {
+      if (!Object.hasOwn(current, key))
+        baseline.current[key] = currentSaved?.[key];
+      if (settingsValueEqual(baseline.current[key], value)) {
+        delete next[key];
+        delete baseline.current[key];
+      } else next[key] = value;
+    }
+    patchRef.current = next;
+    dirtyRef.current =
+      Object.keys(next).length > 0 ||
+      Object.keys(profileRef.current).length > 0 ||
+      Object.keys(formsRef.current).length > 0;
+    setPatch(next);
+  }, []);
 
   const stageProfile = useCallback(
     async (
@@ -365,7 +376,7 @@ export function SettingsDraftProvider({
 
   const guardNavigation = useCallback(
     async (action: () => void) => {
-      if (busyRef.current) return;
+      if (busyRef.current || confirmingRef.current) return;
       if (operationsRef.current.length) {
         setError(
           "Wait for the current settings operation to finish before leaving or discarding edits."
@@ -376,8 +387,7 @@ export function SettingsDraftProvider({
         action();
         return;
       }
-      busyRef.current = true;
-      setBusy(true);
+      confirmingRef.current = true;
       try {
         if (await confirm("discard", descriptions)) {
           reset();
@@ -386,23 +396,25 @@ export function SettingsDraftProvider({
       } catch (e) {
         setError(String(e));
       } finally {
-        busyRef.current = false;
-        if (alive.current) setBusy(false);
+        confirmingRef.current = false;
       }
     },
     [descriptions, reset, confirm]
   );
 
   useEffect(() => {
-    if (blocker.state !== "blocked" || busyRef.current) return;
+    if (blocker.state !== "blocked" || busyRef.current || confirmingRef.current)
+      return;
     let proceeded = false;
     void guardNavigation(() => {
       proceeded = true;
       blocker.proceed();
     }).finally(() => {
-      if (!proceeded) blocker.reset();
+      if (!proceeded && blocker.state === "blocked") {
+        blocker.reset();
+      }
     });
-  }, [blocker, guardNavigation, busy, operationRunning]);
+  }, [blocker, guardNavigation]);
 
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
@@ -413,9 +425,13 @@ export function SettingsDraftProvider({
         return;
       event.preventDefault();
       event.returnValue = false as unknown as string;
+      if (confirmingRef.current || busyRef.current) return;
       void guardNavigation(() => {
         closing.current = true;
         window.close();
+        window.setTimeout(() => {
+          if (alive.current) closing.current = false;
+        }, 1500);
       });
     };
     window.addEventListener("beforeunload", beforeUnload);
@@ -426,7 +442,8 @@ export function SettingsDraftProvider({
     async (values: Partial<UserPreferences>, torrentConfirmation?: string) => {
       await window.electron.updateUserPreferences(values, torrentConfirmation);
       const latest = await window.electron.getUserPreferences();
-      setSaved(latest);
+      savedRef.current = latest;
+      if (alive.current) setSaved(latest);
       onSaved?.(latest);
     },
     [onSaved]
@@ -435,18 +452,24 @@ export function SettingsDraftProvider({
   // For forms that already have their own Save button (e.g. provider tokens).
   const commit = useCallback(
     async (values: Partial<UserPreferences>, torrentConfirmation?: string) => {
-      if (busyRef.current)
+      if (busyRef.current || confirmingRef.current)
         throw new Error("A settings operation is already in progress.");
-      busyRef.current = true;
-      setBusy(true);
+      confirmingRef.current = true;
+      let changes: Partial<UserPreferences>;
       try {
         const latest = await window.electron.getUserPreferences();
-        const changes = changedSettings(latest, values);
+        changes = changedSettings(latest, values);
         if (!Object.keys(changes).length) return;
         if (!(await confirm("save", reviewSettings(changes))))
           throw new Error(
             "Changes were not saved. Keep editing or discard them."
           );
+      } finally {
+        confirmingRef.current = false;
+      }
+      busyRef.current = true;
+      setBusy(true);
+      try {
         await persist(changes, torrentConfirmation);
       } finally {
         busyRef.current = false;
@@ -466,14 +489,13 @@ export function SettingsDraftProvider({
     }
     if (
       busyRef.current ||
+      confirmingRef.current ||
       (!Object.keys(patch).length && !Object.keys(profilePatch).length)
     )
       return;
-    busyRef.current = true;
-    setBusy(true);
     setError("");
     setMessage("");
-    const submitted = { ...patch };
+    confirmingRef.current = true;
     try {
       if (
         !(await confirm(
@@ -484,6 +506,14 @@ export function SettingsDraftProvider({
         ))
       )
         return;
+    } finally {
+      confirmingRef.current = false;
+    }
+    busyRef.current = true;
+    setBusy(true);
+    const submitted = { ...patchRef.current };
+    const submittedProfile = { ...profileRef.current };
+    try {
       const latest = await window.electron.getUserPreferences();
       const conflicts = Object.keys(submitted).filter(
         (key) =>
@@ -494,15 +524,15 @@ export function SettingsDraftProvider({
         throw new Error(
           "These settings changed in another window. Discard your edits, review the current settings, and try again."
         );
-      if (Object.keys(profilePatch).length) {
+      if (Object.keys(submittedProfile).length) {
         const account = await window.electron.getMe();
         if (
           !account ||
           account.id !== profileAccount.current ||
-          Object.keys(profilePatch).some(
+          Object.keys(submittedProfile).some(
             (key) =>
               !settingsValueEqual(account[key], profileBaseline.current[key]) &&
-              !settingsValueEqual(account[key], profilePatch[key])
+              !settingsValueEqual(account[key], submittedProfile[key])
           )
         )
           throw new Error(
@@ -515,8 +545,8 @@ export function SettingsDraftProvider({
         patchRef.current = {};
         baseline.current = {};
       }
-      if (Object.keys(profilePatch).length && profileSave.current) {
-        await profileSave.current(profilePatch);
+      if (Object.keys(submittedProfile).length && profileSave.current) {
+        await profileSave.current(submittedProfile);
         setProfilePatch({});
         profileRef.current = {};
         profileBaseline.current = {};
@@ -612,6 +642,17 @@ export function SettingsDraftProvider({
         markUnsaved,
         markOperation,
         revision,
+        hasUnsavedChanges: dirty,
+        hasRunningOperation: busy || operationRunning,
+        reloadSavedPreferences: async () => {
+          const latest = await window.electron.getUserPreferences();
+          savedRef.current = latest;
+          if (alive.current) {
+            setSaved(latest);
+            setRevision((value) => value + 1);
+          }
+          onSaved?.(latest);
+        },
         profilePatch,
         stageProfile,
         footer,

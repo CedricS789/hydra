@@ -28,7 +28,7 @@ const stubs = {
   "@shared": `export const prepareDefaultDownloadPathSync=()=>({type:"noop"}); export const replaceSavedDownloadDirectoryAndSetDefault=()=>{throw Error("Unexpected path change");};`,
   "./appearance/settings-appearance": `export const SettingsAppearance=()=>null;`,
   "./download-directory-replacement-modal": `export const DownloadDirectoryReplacementModal=()=>null;`,
-  "./settings-save-manager": `export const SettingsSaveManager=props=>{globalThis.__settingsPanels.beforeManagerAction=props.beforeAction;return null;};`,
+  "./settings-save-manager": `export const SettingsSaveManager=props=>{globalThis.__settingsPanels.beforeManagerAction=props.beforeAction;if(props.mode==="versions")globalThis.__settingsPanels.versionsManagerProps=props;return null;};`,
 };
 await build({
   entryPoints: ["scripts/fixtures/settings-panels.tsx"],

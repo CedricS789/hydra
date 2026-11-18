@@ -37,7 +37,7 @@ import { useSubscription } from "@renderer/hooks/use-subscription";
 import { RetroAchievementsConnectBanner } from "@renderer/components/retro-achievements-connect-banner/retro-achievements-connect-banner";
 import "./sidebar.scss";
 import { GameLanguageSection } from "./game-language-section";
-import { isAchievementConcealed } from "@shared";
+import { isAchievementConcealed, resolveSocialPreferences } from "@shared";
 import { ControllerSupportSection } from "./controller-support-section";
 import { GameScreenshots } from "../game-screenshots/game-screenshots";
 import { LeaderboardSection } from "../leaderboard/leaderboard-section";
@@ -155,8 +155,7 @@ export function Sidebar() {
   const { t } = useTranslation("game_details");
   const { formatDateTime } = useDate();
   const { numberFormatter } = useFormat();
-  const { isEnabled: isGlobalLeaderboardsEnabled } =
-    useGlobalLeaderboardsFeature();
+  const { isGameRankingEnabled } = useGlobalLeaderboardsFeature();
   const achievementsCount = achievements?.length ?? 0;
   const shouldRenderAchievementsSection =
     (!!userDetails && achievementsCount > 0) ||
@@ -368,44 +367,54 @@ export function Sidebar() {
         </SidebarSection>
       )}
 
-      {isGlobalLeaderboardsEnabled && <LeaderboardSection />}
+      {isGameRankingEnabled && <LeaderboardSection />}
 
-      {stats && (
-        <SidebarSection title={t("stats")}>
-          <div className="stats__section">
-            <div className="stats__category">
-              <p className="stats__category-title">
-                <DownloadIcon size={18} />
-                {t("download_count")}
-              </p>
-              <p>{numberFormatter.format(stats?.downloadCount)}</p>
-            </div>
+      {stats &&
+        (() => {
+          const social = resolveSocialPreferences(userPreferences);
+          const showPlayerCount = social.showActivePlayerCounts;
+          const showRating = social.showCommunityStarRatings;
+          return (
+            <SidebarSection title={t("stats")}>
+              <div className="stats__section">
+                <div className="stats__category">
+                  <p className="stats__category-title">
+                    <DownloadIcon size={18} />
+                    {t("download_count")}
+                  </p>
+                  <p>{numberFormatter.format(stats?.downloadCount)}</p>
+                </div>
 
-            <div className="stats__category">
-              <p className="stats__category-title">
-                <PeopleIcon size={18} />
-                {t("player_count")}
-              </p>
-              <p>{numberFormatter.format(stats?.playerCount)}</p>
-            </div>
+                {showPlayerCount && (
+                  <div className="stats__category">
+                    <p className="stats__category-title">
+                      <PeopleIcon size={18} />
+                      {t("player_count")}
+                    </p>
+                    <p>{numberFormatter.format(stats?.playerCount)}</p>
+                  </div>
+                )}
 
-            <div className="stats__category">
-              <p className="stats__category-title">
-                <StarIcon size={18} />
-                {t("rating_count")}
-              </p>
-              <StarRating
-                rating={
-                  stats?.averageScore === 0
-                    ? null
-                    : (stats?.averageScore ?? null)
-                }
-                size={16}
-              />
-            </div>
-          </div>
-        </SidebarSection>
-      )}
+                {showRating && (
+                  <div className="stats__category">
+                    <p className="stats__category-title">
+                      <StarIcon size={18} />
+                      {t("rating_count")}
+                    </p>
+                    <StarRating
+                      rating={
+                        stats?.averageScore === 0
+                          ? null
+                          : (stats?.averageScore ?? null)
+                      }
+                      size={16}
+                    />
+                  </div>
+                )}
+              </div>
+            </SidebarSection>
+          );
+        })()}
 
       {myScreenshotsGame.shop !== "custom" && myScreenshotsGame.objectId ? (
         <GameScreenshots

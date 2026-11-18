@@ -48,6 +48,7 @@ import {
   preserveEpicDefaultArtwork,
 } from "@shared";
 import { mergePersistedAchievementTotals } from "../achievements/achievement-memory-store";
+import { getExcludedLibraryKeySet } from "../library-exclusions";
 import { UnlockedAchievementsCache } from "../achievements/unlocked-achievements-cache";
 import { trackAchievementBatchGame } from "../achievements/achievement-batch-games";
 import { fetchRemoteProfileGames as fetchProfileGames } from "./fetch-remote-profile-games";
@@ -403,13 +404,14 @@ const mergeRemoteGamesChunk = async (
       const gameKeys = remoteGames.map((game) =>
         levelKeys.game(game.shop, game.objectId)
       );
-      const [localGames, localShopAssets, artworkSelections] =
+      const [localGames, localShopAssets, artworkSelections, excludedKeys] =
         await Promise.all([
           gamesSublevel.getMany(gameKeys),
           gamesShopAssetsSublevel.getMany(gameKeys),
           canReconcileCustomArtwork
             ? gamesArtworkSelectionSublevel.getMany(gameKeys)
             : Promise.resolve([]),
+          getExcludedLibraryKeySet(),
         ]);
 
       const batch = db.batch();
@@ -417,6 +419,29 @@ const mergeRemoteGamesChunk = async (
       remoteGames.forEach((remoteGame, index) => {
         const gameKey = gameKeys[index];
         const localGame = localGames[index];
+
+        if (excludedKeys.has(gameKey)) {
+          if (
+            localGame &&
+            (!localGame.isDeleted ||
+              localGame.hasActiveSteamImport ||
+              localGame.hasActiveEpicImport)
+          ) {
+            batch.put(
+              gameKey,
+              {
+                ...localGame,
+                isDeleted: true,
+                hasActiveSteamImport: false,
+                hasActiveEpicImport: false,
+                epicImportScope: undefined,
+                remoteId: null,
+              },
+              { sublevel: gamesSublevel }
+            );
+          }
+          return;
+        }
 
         if (!localGame || localGame.isDeleted)
           trackAchievementBatchGame(gameKey);

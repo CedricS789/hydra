@@ -736,7 +736,13 @@
     "Return to desktop mode": "Επιστροφή στη λειτουργία επιφάνειας εργασίας",
     "Put the system to sleep": "Θέστε το σύστημα σε αναστολή",
     "Restart your device": "Επανεκκινήστε τη συσκευή σας",
-    "Shut down your device": "Τερματίστε τη συσκευή σας"
+    "Shut down your device": "Τερματίστε τη συσκευή σας",
+    "Quit Hydra": "Έξοδος από το Hydra",
+    "Close the application": "Κλείσιμο της εφαρμογής",
+    "Quit Hydra?": "Έξοδος από το Hydra;",
+    "Hydra will close. Active downloads and background services will stop.": "Το Hydra θα κλείσει. Οι ενεργές λήψεις και οι υπηρεσίες παρασκηνίου θα σταματήσουν.",
+    "Could not quit Hydra": "Δεν ήταν δυνατή η έξοδος από το Hydra",
+    "Please try again or close Hydra from the system tray.": "Δοκιμάστε ξανά ή κλείστε το Hydra από την περιοχή ειδοποιήσεων."
   },
   "format": {
     "playtime_hours_one": "{{count}} ώρα",

@@ -1,5 +1,6 @@
 import { t } from "i18next";
 import type { ChatMessageSync, User, UserPreferences } from "@types";
+import { resolveSocialPreferences } from "@shared";
 import { db, levelKeys } from "@main/level";
 import { advanceChatNotificationCursor } from "@main/services/chat/chat-unread-catch-up";
 import { ChatUnreadStore } from "@main/services/chat/chat-unread-store";
@@ -84,7 +85,8 @@ export const chatMessageEvent = async (
 
   const shouldNotify = shouldNotifyChatMessage({
     notificationsEnabled:
-      userPreferences?.chatMessageNotificationsEnabled !== false,
+      userPreferences?.chatMessageNotificationsEnabled !== false &&
+      resolveSocialPreferences(userPreferences).showChatAndMessages,
     fromMe,
     isNewMessage,
     isOpenInFocusedChatWindow:

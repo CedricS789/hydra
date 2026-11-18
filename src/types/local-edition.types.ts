@@ -1,3 +1,5 @@
+import type { GameShop } from "./game.types";
+
 export interface LudusaviGameSettings {
   enabled: boolean;
   savePaths: string[];
@@ -58,6 +60,15 @@ export interface SaveBackupVersion {
   os?: string | null;
 }
 
+export interface SaveSafetySnapshot {
+  id: string;
+  backup: string;
+  when: string;
+  files: number;
+  hasRegistry: boolean;
+  path: string;
+}
+
 export interface SaveBackupFile {
   path: string;
   bytes: number;
@@ -72,6 +83,7 @@ export interface SaveOperationPreview {
   gameKey: string;
   title: string;
   backup: string;
+  snapshotId?: string;
   files: SaveBackupFile[];
   registry: string[];
   expiresAt: number;
@@ -80,6 +92,8 @@ export interface SaveOperationPreview {
 export interface SaveOperationResult {
   message: string;
   safetyPath?: string;
+  safetySnapshotId?: string;
+  safetyBackupName?: string;
   files?: number;
   bytes?: number;
   registryKeys?: number;
@@ -130,6 +144,10 @@ export interface LudusaviBulkBackupSummary {
   failed: number;
   skippedGames: LudusaviBulkBackupOutcomeItem[];
   failures: LudusaviBulkBackupOutcomeItem[];
+  configBackup?: {
+    status: "success" | "failed";
+    message: string;
+  };
 }
 
 export interface LudusaviBulkBackupProgress {
@@ -191,4 +209,32 @@ export interface ReleaseSourceFile {
   status: "added" | "removed" | "modified";
   originalSha: string | null;
   modifiedSha: string | null;
+}
+
+export type LibraryExclusionReason =
+  | "removed"
+  | "manual"
+  | "steam-bulk"
+  | "bulk";
+
+export interface ExcludedLibraryGame {
+  shop: GameShop;
+  objectId: string;
+  title: string;
+  source?: string | null;
+  iconUrl?: string | null;
+  libraryImageUrl?: string | null;
+  reason?: LibraryExclusionReason;
+  excludedAt: number;
+}
+
+export interface ExcludedLibraryGameInput {
+  shop: GameShop;
+  objectId: string;
+  title?: string | null;
+  source?: string | null;
+  iconUrl?: string | null;
+  libraryImageUrl?: string | null;
+  reason?: LibraryExclusionReason;
+  excludedAt?: number;
 }

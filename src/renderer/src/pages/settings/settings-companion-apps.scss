@@ -1,0 +1,65 @@
+@use "../../scss/globals.scss";
+
+.companion-apps {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  min-width: 0;
+
+  &__description {
+    margin: 0;
+    font-size: globals.$hint-font-size;
+    color: globals.$subtle-color;
+    line-height: 1.5;
+    max-width: 72ch;
+  }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    border: 1px solid globals.$border-color;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  &__identity {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
+
+    small {
+      font-size: globals.$small-font-size;
+      color: globals.$subtle-color;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: globals.$hint-font-size;
+    color: globals.$subtle-color;
+    line-height: 1.5;
+    max-width: 72ch;
+  }
+
+  &__editor {
+    width: min(560px, 100%);
+  }
+
+  > button {
+    align-self: flex-start;
+  }
+}

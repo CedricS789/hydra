@@ -1,3 +1,4 @@
+import { withResetDefaults } from "../../../../shared/settings-reset";
 import { useSettingsProfile } from "@renderer/context/settings/settings-draft.context";
 import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -19,31 +20,34 @@ import { UnmuteIcon } from "@primer/octicons-react";
 
 import "./settings-general.scss";
 
-const buildForm = (preferences: UserPreferences | null) => ({
-  downloadNotificationsEnabled:
-    preferences?.downloadNotificationsEnabled ?? false,
-  repackUpdatesNotificationsEnabled:
-    preferences?.repackUpdatesNotificationsEnabled ?? false,
-  friendRequestNotificationsEnabled:
-    preferences?.friendRequestNotificationsEnabled ?? false,
-  friendStartGameNotificationsEnabled:
-    preferences?.friendStartGameNotificationsEnabled ?? true,
-  chatMessageNotificationsEnabled:
-    preferences?.chatMessageNotificationsEnabled ?? true,
-  leaderboardSlamEnabled: preferences?.leaderboardSlamEnabled ?? true,
-  leaderboardDropNotificationsEnabled:
-    preferences?.leaderboardDropNotificationsEnabled ?? true,
-  achievementNotificationsEnabled:
-    preferences?.achievementNotificationsEnabled ?? true,
-  achievementCustomNotificationsEnabled:
-    preferences?.achievementCustomNotificationsEnabled ?? true,
-  achievementCustomNotificationPosition:
-    (preferences?.achievementCustomNotificationPosition ??
-      "top-left") as AchievementCustomNotificationPosition,
-  achievementSoundVolume: Math.round(
-    (preferences?.achievementSoundVolume ?? 0.15) * 100
-  ),
-});
+const buildForm = (preferences: UserPreferences | null) => {
+  preferences = withResetDefaults(preferences);
+  return {
+    downloadNotificationsEnabled:
+      preferences?.downloadNotificationsEnabled ?? false,
+    repackUpdatesNotificationsEnabled:
+      preferences?.repackUpdatesNotificationsEnabled ?? false,
+    friendRequestNotificationsEnabled:
+      preferences?.friendRequestNotificationsEnabled ?? false,
+    friendStartGameNotificationsEnabled:
+      preferences?.friendStartGameNotificationsEnabled ?? true,
+    chatMessageNotificationsEnabled:
+      preferences?.chatMessageNotificationsEnabled ?? true,
+    leaderboardSlamEnabled: preferences?.leaderboardSlamEnabled ?? true,
+    leaderboardDropNotificationsEnabled:
+      preferences?.leaderboardDropNotificationsEnabled ?? true,
+    achievementNotificationsEnabled:
+      preferences?.achievementNotificationsEnabled ?? true,
+    achievementCustomNotificationsEnabled:
+      preferences?.achievementCustomNotificationsEnabled ?? true,
+    achievementCustomNotificationPosition:
+      (preferences?.achievementCustomNotificationPosition ??
+        "top-left") as AchievementCustomNotificationPosition,
+    achievementSoundVolume: Math.round(
+      (preferences?.achievementSoundVolume ?? 0.15) * 100
+    ),
+  };
+};
 
 export function SettingsContextNotifications() {
   const { t } = useTranslation("settings");
@@ -60,8 +64,7 @@ export function SettingsContextNotifications() {
   const [form, setForm] = useState(() => buildForm(userPreferences));
 
   const { userDetails, patchUser } = useSettingsProfile(useUserDetails());
-  const { isEnabled: isGlobalLeaderboardsEnabled } =
-    useGlobalLeaderboardsFeature();
+  const { isNotificationsGroupEnabled } = useGlobalLeaderboardsFeature();
   const savedLeaderboardNotifications =
     userDetails?.allowLeaderboardNotifications ?? true;
   const [leaderboardNotifications, setLeaderboardNotifications] = useState(
@@ -193,7 +196,7 @@ export function SettingsContextNotifications() {
         />
       </div>
 
-      {userDetails && isGlobalLeaderboardsEnabled && (
+      {userDetails && isNotificationsGroupEnabled && (
         <div className="settings-context-panel__group">
           <h3>{t("leaderboard_notifications")}</h3>
 

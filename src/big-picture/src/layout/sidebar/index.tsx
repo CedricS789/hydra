@@ -11,7 +11,12 @@ import {
   SquaresFourIcon,
   StarIcon,
 } from "@phosphor-icons/react";
-import { AuthPage, getDisplayedPlayTimeInMilliseconds } from "@shared";
+import {
+  AuthPage,
+  getDisplayedPlayTimeInMilliseconds,
+  resolveDangerZonePreferences,
+  resolveSocialPreferences,
+} from "@shared";
 import {
   type FocusEvent,
   forwardRef,
@@ -38,6 +43,7 @@ import {
   useNavigationActions,
   useSearch,
   useUserDetails,
+  useUserPreferences,
   useBigPictureToast,
 } from "../../hooks";
 import {
@@ -52,7 +58,11 @@ import {
 } from "../../stores/downloads.store";
 import type { DownloadProgress, LibraryGame } from "@types";
 import type { FocusNode, FocusOverrides, FocusRegion } from "../../services";
-import { useNavigationSnapshot, useVirtualKeyboardStore } from "../../stores";
+import {
+  useNavigationSnapshot,
+  usePowerMenuStore,
+  useVirtualKeyboardStore,
+} from "../../stores";
 import {
   BIG_PICTURE_SIDEBAR_POWER_ID,
   BIG_PICTURE_SIDEBAR_ITEM_IDS,
@@ -322,8 +332,12 @@ function filterSidebarLibraryGames(
     .sort(compareGamesByLastPlayed);
 }
 
-function SidebarRouter() {
-  const [powerMenuVisible, setPowerMenuVisible] = useState(false);
+function SidebarRouter({
+  showAccountProfileHeader,
+}: Readonly<{ showAccountProfileHeader: boolean }>) {
+  const powerMenuVisible = usePowerMenuStore((state) => state.visible);
+  const openPowerMenu = usePowerMenuStore((state) => state.open);
+  const closePowerMenu = usePowerMenuStore((state) => state.close);
   const basePath = IS_DESKTOP ? "/big-picture" : "";
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -338,7 +352,11 @@ function SidebarRouter() {
   };
   const handleExitBigPicture = () => {
     if (IS_DESKTOP) {
-      globalThis.close();
+      if (globalThis.window.electron.exitBigPictureToDesktop) {
+        void globalThis.window.electron.exitBigPictureToDesktop();
+      } else {
+        globalThis.close();
+      }
       return;
     }
 
@@ -402,7 +420,9 @@ function SidebarRouter() {
       ...sidebarItemNavigationOverrides,
       up: previousRoute
         ? getItemFocusTarget(BIG_PICTURE_SIDEBAR_ITEM_IDS[previousRoute.key])
-        : getItemFocusTarget(BIG_PICTURE_SIDEBAR_PROFILE_ID),
+        : showAccountProfileHeader
+          ? getItemFocusTarget(BIG_PICTURE_SIDEBAR_PROFILE_ID)
+          : { type: "block" },
       down: nextRoute
         ? getItemFocusTarget(BIG_PICTURE_SIDEBAR_ITEM_IDS[nextRoute.key])
         : getItemFocusTarget(BIG_PICTURE_SIDEBAR_POWER_ID),
@@ -414,7 +434,9 @@ function SidebarRouter() {
     ...sidebarItemNavigationOverrides,
     up: lastRoute
       ? getItemFocusTarget(BIG_PICTURE_SIDEBAR_ITEM_IDS[lastRoute.key])
-      : getItemFocusTarget(BIG_PICTURE_SIDEBAR_PROFILE_ID),
+      : showAccountProfileHeader
+        ? getItemFocusTarget(BIG_PICTURE_SIDEBAR_PROFILE_ID)
+        : { type: "block" },
     down: getItemFocusTarget(BIG_PICTURE_SIDEBAR_LIBRARY_FILTER_ALL_ID),
   };
 
@@ -440,14 +462,14 @@ function SidebarRouter() {
       <div className="state-wrapper">
         <FocusItem
           id={BIG_PICTURE_SIDEBAR_POWER_ID}
-          actions={{ primary: () => setPowerMenuVisible(true) }}
+          actions={{ primary: openPowerMenu }}
           navigationOverrides={powerNavigationOverrides}
           asChild
         >
           <button
             type="button"
             className="route-anchor route-anchor--extra-padding sidebar-action-button"
-            onClick={() => setPowerMenuVisible(true)}
+            onClick={openPowerMenu}
             aria-haspopup="dialog"
             aria-expanded={powerMenuVisible}
           >
@@ -461,7 +483,7 @@ function SidebarRouter() {
       {powerMenuVisible && (
         <PowerMenu
           visible
-          onClose={() => setPowerMenuVisible(false)}
+          onClose={closePowerMenu}
           onExitBigPicture={handleExitBigPicture}
         />
       )}
@@ -927,6 +949,9 @@ function Sidebar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { library, updateLibrary } = useLibrary();
+  const userPreferences = useUserPreferences();
+  const social = resolveSocialPreferences(userPreferences);
+  const dangerZone = resolveDangerZonePreferences(userPreferences);
   const runningGamesById = useBigPictureRunningGames();
   const { setFocusRegion } = useNavigationActions();
   const { showSuccessToast } = useBigPictureToast();
@@ -1100,16 +1125,28 @@ function Sidebar() {
           onFocusWithinChange={setSidebarFocusWithin}
           onHoverChange={setSidebarHovered}
         >
-          <SidebarProfile
-            library={library}
-            runningGamesById={runningGamesById}
-            notificationsOpen={notificationsOpen}
-            notificationsFocusable={sidebarExpanded}
-            onNotificationsOpenChange={setNotificationsOpen}
-            onNotificationsRestoringFocusChange={setRestoringNotificationsFocus}
+          {social.showAccountProfileHeader && (
+            <>
+              <SidebarProfile
+                library={library}
+                runningGamesById={runningGamesById}
+                notificationsOpen={
+                  social.showNotificationsMenu ? notificationsOpen : false
+                }
+                notificationsFocusable={
+                  sidebarExpanded && social.showNotificationsMenu
+                }
+                onNotificationsOpenChange={setNotificationsOpen}
+                onNotificationsRestoringFocusChange={
+                  setRestoringNotificationsFocus
+                }
+              />
+              <Divider />
+            </>
+          )}
+          <SidebarRouter
+            showAccountProfileHeader={social.showAccountProfileHeader}
           />
-          <Divider />
-          <SidebarRouter />
           <Divider />
           <SidebarLibrary
             library={library}
@@ -1130,8 +1167,16 @@ function Sidebar() {
         onToggleFavorite={handleToggleFavorite}
         onViewAchievements={handleViewAchievements}
         onOptions={handleOpenGameSettings}
-        onUninstall={requestRemoveFiles}
-        onRemoveFromLibrary={requestRemoveFromLibrary}
+        onUninstall={
+          dangerZone.enableDangerZoneRemoveGameFiles
+            ? requestRemoveFiles
+            : undefined
+        }
+        onRemoveFromLibrary={
+          dangerZone.enableDangerZoneRemoveFromLibrary
+            ? requestRemoveFromLibrary
+            : undefined
+        }
       />
 
       {downloadModalGame ? (

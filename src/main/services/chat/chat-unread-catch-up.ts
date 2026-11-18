@@ -1,4 +1,5 @@
 import type { User, UserPreferences } from "@types";
+import { resolveSocialPreferences } from "@shared";
 import { db, levelKeys } from "@main/level";
 import { logger } from "../logger";
 import { publishChatUnreadNotification } from "../notifications";
@@ -111,7 +112,8 @@ const announceMissedMessages = async (signal?: AbortSignal) => {
     .catch(() => null);
   if (
     signal?.aborted ||
-    userPreferences?.chatMessageNotificationsEnabled === false
+    userPreferences?.chatMessageNotificationsEnabled === false ||
+    !resolveSocialPreferences(userPreferences).showChatAndMessages
   ) {
     return;
   }

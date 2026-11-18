@@ -185,7 +185,11 @@ function flyToDownloads(from: DOMRect | null, imageUrl?: string | null) {
   const target = document.querySelector("[data-sidebar-downloads-icon]");
 
   // No Downloads item to fly to, or its page is open and shows the new row.
-  if (!target || target.closest(".sidebar__menu-item--active")) {
+  if (
+    !target ||
+    target.closest(".sidebar--hidden") ||
+    target.closest(".sidebar__menu-item--active")
+  ) {
     announce(DOWNLOAD_FLIGHT_CANCEL_EVENT);
     return;
   }

@@ -78,6 +78,7 @@ export * from "./tracker-list";
 export * from "./souvenirs";
 export * from "./souvenir-sync";
 export * from "./screenshot-preferences";
+export * from "./big-picture-gamepad";
 export * from "./screenshot-moderation";
 export * from "./screenshot-upload-outcome";
 export * from "./screenshots";
@@ -96,6 +97,10 @@ export * from "./local-screenshots";
 export * from "./achievement-list";
 export * from "./feature-preferences";
 export * from "./bulk-library-removal";
+export * from "./library-exclusions";
+export * from "./social-preferences";
+export * from "./danger-zone-preferences";
+export * from "./manual-playtime-warning-preferences";
 export * from "./download-source-info";
 
 export class UserNotLoggedInError extends Error {
@@ -345,7 +350,12 @@ export const formatDate = (
 export const generateAchievementCustomNotificationTest = (
   t: any,
   language?: string,
-  options: { isHidden?: boolean; isRare?: boolean; isPlatinum?: boolean } = {}
+  options: {
+    isHidden?: boolean;
+    isRare?: boolean;
+    isPlatinum?: boolean;
+    showPoints?: boolean;
+  } = {}
 ): AchievementNotificationInfo => {
   return {
     title: t("test_achievement_notification_title", {
@@ -357,10 +367,11 @@ export const generateAchievementCustomNotificationTest = (
       lng: language ?? "en",
     }),
     iconUrl: "https://cdn.losbroxas.org/favicon.svg",
-    points: 2440,
+    points: options.showPoints ? 2440 : undefined,
     isHidden: options.isHidden ?? false,
     isRare: options.isRare ?? false,
     isPlatinum: options.isPlatinum ?? false,
   };
 };
 export * from "./emulator-systems";
+export * from "./http-download-settings";

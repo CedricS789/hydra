@@ -12,6 +12,10 @@ import ts from "typescript";
 import * as libraryCategory from "./library-category.ts";
 // @ts-ignore The Node ESM test runner requires the source extension.
 import * as libraryCatalogue from "../../../../shared/library-catalogue.ts";
+// @ts-ignore The Node ESM test runner requires the source extension.
+import { resolveManualPlaytimeWarningPreferences } from "../../../../shared/manual-playtime-warning-preferences.ts";
+// @ts-ignore The Node ESM test runner requires the source extension.
+import { resolveSocialPreferences } from "../../../../shared/social-preferences.ts";
 
 const requireModule = createRequire(import.meta.url);
 const rendererPath = path.resolve(process.cwd(), "src/renderer/src");
@@ -65,7 +69,11 @@ function renderCard(
       getCatalogueImageSrcSet: () => "",
       pickCatalogueImageUrl: () => "",
     },
-    "@shared": { getDisplayedPlayTimeInMilliseconds: () => 0 },
+    "@shared": {
+      getDisplayedPlayTimeInMilliseconds: () => 0,
+      resolveManualPlaytimeWarningPreferences,
+      resolveSocialPreferences,
+    },
     "./library-category": libraryCategory,
     "@renderer/helpers": {
       CLASSICS_PS_PLATFORM_LABELS: {},
@@ -500,5 +508,82 @@ describe("visibility and playtime badge layout", () => {
       null
     );
     dom.window.close();
+  });
+
+  for (const layout of layouts) {
+    it(`${layout.component} toggles manual playtime warning icon based on showManualPlaytimeWarningIcon`, () => {
+      const withIcon = renderCard(layout, {
+        hasManuallyUpdatedPlaytime: true,
+      });
+      assert.ok(
+        withIcon.window.document.querySelector(
+          `.${layout.prefix}__manual-playtime`
+        )
+      );
+      withIcon.window.close();
+
+      const withoutIcon = renderCard(
+        layout,
+        { hasManuallyUpdatedPlaytime: true },
+        { showManualPlaytimeWarningIcon: false }
+      );
+      assert.equal(
+        withoutIcon.window.document.querySelector(
+          `.${layout.prefix}__manual-playtime`
+        ),
+        null
+      );
+      assert.ok(
+        withoutIcon.window.document.querySelector(
+          `.${layout.prefix}__playtime svg`
+        )
+      );
+      withoutIcon.window.close();
+    });
+  }
+
+  it("UserLibraryGameCard toggles manual playtime tooltip based on showManualPlaytimeWarningText", () => {
+    const withTooltip = renderCard(
+      layouts[1],
+      { hasManuallyUpdatedPlaytime: true },
+      {
+        showManualPlaytimeWarningIcon: false,
+        showManualPlaytimeWarningText: true,
+      }
+    );
+    const badgeWithTooltip = withTooltip.window.document.querySelector(
+      ".user-library-game__playtime"
+    )!;
+    assert.equal(
+      badgeWithTooltip.getAttribute("data-tooltip-content"),
+      "manual_playtime_tooltip"
+    );
+    assert.equal(
+      withTooltip.window.document.querySelector(
+        ".user-library-game__manual-playtime"
+      ),
+      null
+    );
+    withTooltip.window.close();
+
+    const withoutTooltip = renderCard(
+      layouts[1],
+      { hasManuallyUpdatedPlaytime: true },
+      {
+        showManualPlaytimeWarningIcon: true,
+        showManualPlaytimeWarningText: false,
+      }
+    );
+    const badgeWithoutTooltip = withoutTooltip.window.document.querySelector(
+      ".user-library-game__playtime"
+    )!;
+    assert.equal(badgeWithoutTooltip.getAttribute("data-tooltip-content"), null);
+    assert.equal(badgeWithoutTooltip.getAttribute("data-tooltip-id"), null);
+    assert.ok(
+      withoutTooltip.window.document.querySelector(
+        ".user-library-game__manual-playtime"
+      )
+    );
+    withoutTooltip.window.close();
   });
 });

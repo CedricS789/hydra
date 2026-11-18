@@ -64,6 +64,7 @@ export function GallerySlider() {
     (state) => state.userPreferences.value
   );
   const autoplayEnabled = userPreferences?.autoplayGameTrailers !== false;
+  const saveMuteStatus = userPreferences?.alwaysMuteTrailersByDefault !== true;
 
   const hasScreenshots = shopDetails && shopDetails.screenshots?.length;
 
@@ -381,6 +382,7 @@ export function GallerySlider() {
         item={item}
         autoPlay={autoplayEnabled && index === firstVideoIndex}
         loadOnDemand={!autoplayEnabled}
+        saveMuteStatus={saveMuteStatus}
         isFullscreen={borrowed && !!presentation?.isFullscreen}
         controlsHidden={borrowed && !!presentation?.chromeHidden}
         onHoldChromeChange={active ? setVideoHoldsChrome : undefined}

@@ -31,6 +31,7 @@ import {
   levelKeys,
 } from "@main/level";
 import { AchievementWatcherManager } from "@main/services/achievements/achievement-watcher-manager";
+import { isLibraryGameExcluded } from "@main/services/library-exclusions";
 import type {
   ClassicsDisc,
   EmulatorSystem,
@@ -181,6 +182,9 @@ export const persistEntryLocally = async (
 ) => {
   const shop = "launchbox" as const;
   const objectId = entry.objectId;
+  if (await isLibraryGameExcluded(shop, objectId)) {
+    return;
+  }
   const gameKey = levelKeys.game(shop, objectId);
   const cacheKey = levelKeys.gameShopCacheItem(shop, objectId, language);
 

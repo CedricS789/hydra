@@ -1,5 +1,8 @@
 import { LibraryGame } from "@types";
-import { getDisplayedPlayTimeInMilliseconds } from "@shared";
+import {
+  getDisplayedPlayTimeInMilliseconds,
+  resolveManualPlaytimeWarningPreferences,
+} from "@shared";
 import cn from "classnames";
 import { getLibraryPresentationImportSources } from "./library-category";
 import {
@@ -60,6 +63,8 @@ export const LibraryGameCard = memo(function LibraryGameCard({
     (state) => state.userPreferences.value
   );
   const hideBadges = userPreferences?.hideLibraryGameBadges ?? false;
+  const { showManualPlaytimeWarningIcon } =
+    resolveManualPlaytimeWarningPreferences(userPreferences);
   const hideReadySizeBadges =
     userPreferences?.hideLibraryReadySizeBadges ?? false;
   const hideClassicsBadges =
@@ -270,7 +275,8 @@ export const LibraryGameCard = memo(function LibraryGameCard({
             />
             {!hideBadges && (
               <div className="library-game-card__playtime">
-                {game.hasManuallyUpdatedPlaytime ? (
+                {game.hasManuallyUpdatedPlaytime &&
+                showManualPlaytimeWarningIcon ? (
                   <AlertFillIcon
                     size={11}
                     className="library-game-card__manual-playtime"

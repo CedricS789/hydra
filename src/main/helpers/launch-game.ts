@@ -19,6 +19,7 @@ import {
   shouldBlockGameLaunchForCloudSave,
 } from "@main/services/cloud-save";
 import {
+  BigPictureGameWindowService,
   WindowManager,
   logger,
   Umu,
@@ -30,6 +31,7 @@ import {
 } from "@main/services";
 import {
   clearGameLauncherStatuses,
+  getGameLauncherStatuses,
   sendGameLauncherStatus,
   wasGameLauncherGameDetected,
 } from "@main/services/game-launcher-status";
@@ -61,6 +63,14 @@ import {
 import type { EpicLaunchParameters } from "@main/services/epic/launch-protocol";
 import { EpicSaveFailure } from "@main/services/epic/cloud-save-protocol";
 import { getEpicCloudSaveService } from "@main/services/epic/cloud-saves";
+import { GameLaunchCoordinator } from "@main/services/game-launch-coordinator";
+import { startCompanionAppsBeforeGame } from "@main/services/companion-apps";
+import {
+  isGameRunning,
+  onTrackedGamesRunningChange,
+} from "@main/services/game-running-state";
+
+const launchCoordinator = new GameLaunchCoordinator();
 
 export interface LaunchGameOptions {
   shop: GameShop;
@@ -116,13 +126,13 @@ const ensureExecutablePermission = (executablePath: string) => {
   }
 };
 
-const launchNatively = (
+const launchNatively = async (
   executablePath: string,
   launchOptions?: string | null,
   useMangohud = false,
   useGamemode = false,
   shortcut: ExecutableShortcut | null = null
-): number | null => {
+): Promise<number | null> => {
   const workingDirectory =
     shortcut?.workingDirectory ?? path.dirname(executablePath);
   const resolvedLaunchCommand = resolveLaunchCommand({
@@ -142,7 +152,8 @@ const launchNatively = (
     resolvedLaunchCommand.args.length === 0 &&
     Object.keys(resolvedLaunchCommand.env).length === 0
   ) {
-    shell.openPath(executablePath);
+    const error = await shell.openPath(executablePath);
+    if (error) throw new Error(error);
     return null;
   }
 
@@ -167,13 +178,7 @@ const launchNatively = (
       }
     );
 
-    processRef.on("error", (error) => {
-      logger.error("Failed to launch game", error);
-    });
-
-    processRef.unref();
-
-    return processRef.pid ?? null;
+    return waitForNativeSpawn(processRef);
   }
 
   const processRef = spawn(
@@ -191,14 +196,18 @@ const launchNatively = (
     }
   );
 
-  processRef.on("error", (error) => {
-    logger.error("Failed to launch game", error);
-  });
-
-  processRef.unref();
-
-  return processRef.pid ?? null;
+  return waitForNativeSpawn(processRef);
 };
+
+const waitForNativeSpawn = (child: ReturnType<typeof spawn>): Promise<number> =>
+  new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("spawn", () => {
+      child.unref();
+      if (child.pid) resolve(child.pid);
+      else reject(new Error("game_launch_process_failed"));
+    });
+  });
 
 const launchWithWine = async (
   executablePath: string,
@@ -625,16 +634,31 @@ const launchResolvedGame = async (
   launchOptions: string | null | undefined,
   useMangohud: boolean,
   useGamemode: boolean,
-  shortcut: ExecutableShortcut | null = null
+  shortcut: ExecutableShortcut | null = null,
+  trackingExecutablePaths: string[] = []
 ) => {
+  const focusExecutablePaths = [parsedPath, ...trackingExecutablePaths];
+
   if (process.platform !== "linux") {
-    return launchNatively(
+    BigPictureGameWindowService?.notifyGameLaunchDispatching?.({
+      gameKey,
+      executablePaths: focusExecutablePaths,
+    });
+    const pid = await launchNatively(
       parsedPath,
       launchOptions,
       useMangohud,
       useGamemode,
       shortcut
     );
+    if (pid !== null) {
+      BigPictureGameWindowService?.notifyGameLaunchProcessSpawned?.(
+        gameKey,
+        pid
+      );
+    }
+    sendGameLauncherStatus(gameKey, "launch_dispatched");
+    return pid;
   }
 
   if (isWindowsExecutable(parsedPath)) {
@@ -643,6 +667,10 @@ const launchResolvedGame = async (
       return null;
     }
 
+    BigPictureGameWindowService?.notifyGameLaunchDispatching?.({
+      gameKey,
+      executablePaths: focusExecutablePaths,
+    });
     const launched = await launchWindowsBinaryOnLinux(
       gameKey,
       objectId,
@@ -652,17 +680,29 @@ const launchResolvedGame = async (
       useMangohud,
       useGamemode
     );
-    if (launched) return null;
+    if (launched) {
+      sendGameLauncherStatus(gameKey, "launch_dispatched");
+      return null;
+    }
     clearCloudSaveLaunchGuard(objectId, shop);
+    throw new Error("game_launch_process_failed");
   }
 
-  const pid = launchNatively(
+  BigPictureGameWindowService?.notifyGameLaunchDispatching?.({
+    gameKey,
+    executablePaths: focusExecutablePaths,
+  });
+  const pid = await launchNatively(
     parsedPath,
     launchOptions,
     useMangohud,
     useGamemode
   );
-  if (pid !== null) launchedGamePids.set(gameKey, pid);
+  if (pid !== null) {
+    launchedGamePids.set(gameKey, pid);
+    BigPictureGameWindowService?.notifyGameLaunchProcessSpawned?.(gameKey, pid);
+  }
+  sendGameLauncherStatus(gameKey, "launch_dispatched");
   return pid;
 };
 
@@ -762,8 +802,8 @@ const launchGameWithCloudSaveChecks = async (
   const launchGameRecord = updatedGame ?? game;
   const managedEpic = shop === "epic" && !!launchGameRecord?.epicInstallation;
 
-  clearGameLauncherStatuses(gameKey);
   await WindowManager.createGameLauncherWindow(shop, objectId);
+  sendGameLauncherStatus(gameKey, "launch_preparing");
 
   const shouldRunV2AutomaticSync = await canRunAutomaticCloudSaveSync(
     objectId,
@@ -937,6 +977,16 @@ const launchGameWithCloudSaveChecks = async (
         try {
           await markManagedEpicLaunched(prepared.session);
           getEpicCloudSaveService().assertSessionCurrent(prepared.session);
+          await startCompanionAppsBeforeGame();
+          getEpicCloudSaveService().assertSessionCurrent(prepared.session);
+          BigPictureGameWindowService?.notifyGameLaunchDispatching?.({
+            gameKey,
+            executablePaths: [
+              parsedPath,
+              prepared.parameters.executable,
+              ...(launchGameRecord.trackingExecutablePaths ?? []),
+            ],
+          });
           if (prepared.linuxContext) {
             const handle = await launchPreparedEpicLinuxGame(
               prepared.session,
@@ -962,6 +1012,11 @@ const launchGameWithCloudSaveChecks = async (
           throw error;
         }
         launchedGamePids.set(gameKey, pid);
+        BigPictureGameWindowService?.notifyGameLaunchProcessSpawned?.(
+          gameKey,
+          pid
+        );
+        sendGameLauncherStatus(gameKey, "launch_dispatched");
         return pid;
       } catch (error) {
         if (error instanceof ManagedEpicLaunchBlockedError) return null;
@@ -989,6 +1044,21 @@ const launchGameWithCloudSaveChecks = async (
 
   await new Promise((resolve) => setTimeout(resolve, LAUNCH_DELAY_IN_MS));
 
+  // Outside Steam fallbacks and compatibility retries: once per launch request.
+  if (
+    !(
+      process.platform === "linux" &&
+      isWindowsExecutable(parsedPath) &&
+      !compatibilityContext &&
+      !steamProtocolLaunch
+    )
+  ) {
+    await startCompanionAppsBeforeGame();
+  }
+
+  const trackingExecutablePaths =
+    launchGameRecord?.trackingExecutablePaths ?? [];
+
   if (steamProtocolLaunch) {
     if (launchOptions?.includes("%command%") || useMangohud || useGamemode) {
       logger.warn(
@@ -1001,6 +1071,11 @@ const launchGameWithCloudSaveChecks = async (
         }
       );
     }
+
+    BigPictureGameWindowService?.notifyGameLaunchDispatching?.({
+      gameKey,
+      executablePaths: [parsedPath, ...trackingExecutablePaths],
+    });
 
     const dispatchResult = await dispatchSteamProtocolLaunch(
       steamProtocolLaunch,
@@ -1021,7 +1096,8 @@ const launchGameWithCloudSaveChecks = async (
           launchOptions,
           useMangohud,
           useGamemode,
-          shortcut
+          shortcut,
+          trackingExecutablePaths
         );
       }
     );
@@ -1034,6 +1110,7 @@ const launchGameWithCloudSaveChecks = async (
         objectId,
         executablePath: parsedPath,
       });
+      sendGameLauncherStatus(gameKey, "launch_dispatched");
       return null;
     }
 
@@ -1054,7 +1131,8 @@ const launchGameWithCloudSaveChecks = async (
     launchOptions,
     useMangohud,
     useGamemode,
-    shortcut
+    shortcut,
+    trackingExecutablePaths
   );
 };
 
@@ -1068,7 +1146,7 @@ const hasLaunchableExecutable = (executablePath: string) => {
   }
 };
 
-export const launchGame = async (options: LaunchGameOptions) => {
+const validateAndLaunchGame = async (options: LaunchGameOptions) => {
   if (!hasLaunchableExecutable(options.executablePath)) {
     logger.warn("Game executable not found", {
       shop: options.shop,
@@ -1092,13 +1170,80 @@ export const launchGame = async (options: LaunchGameOptions) => {
           if (changed) {
             WindowManager.sendToAppWindows("on-library-batch-complete");
           }
+        })
+        .catch(() => {
+          logger.warn("Failed to refresh a missing Steam executable", {
+            objectId: options.objectId,
+          });
         });
     }
 
-    return null;
+    throw new Error("game_executable_not_found");
   }
 
+  return launchGameWithCloudSaveChecks(options);
+};
+
+export const launchGame = (options: LaunchGameOptions) => {
+  const gameKey = levelKeys.game(options.shop, options.objectId);
   return runWithCloudSaveLaunchGate(options.objectId, options.shop, () =>
-    launchGameWithCloudSaveChecks(options)
-  );
+    launchCoordinator.run(
+      gameKey,
+      async () => {
+        if (isGameRunning(options.objectId, options.shop)) {
+          return { value: null, dispatched: false };
+        }
+        const startedAt = performance.now();
+        clearGameLauncherStatuses(gameKey);
+        logger.info("[Game launch] Request received", { gameKey });
+        try {
+          const value = await validateAndLaunchGame(options);
+          const dispatched = getGameLauncherStatuses(gameKey).some(
+            ({ status }) =>
+              status === "launch_dispatched" || status === "game_started"
+          );
+          if (!dispatched) {
+            sendGameLauncherStatus(gameKey, "launch_blocked");
+            BigPictureGameWindowService?.notifyGameLaunchEnded?.(
+              gameKey,
+              false
+            );
+          }
+          logger.info("[Game launch] Preparation finished", {
+            gameKey,
+            dispatched,
+            elapsedMs: Math.round(performance.now() - startedAt),
+          });
+          return { value, dispatched };
+        } catch (error) {
+          sendGameLauncherStatus(gameKey, "launch_failed");
+          BigPictureGameWindowService?.notifyGameLaunchEnded?.(gameKey, false);
+          logger.warn("[Game launch] Request failed", {
+            gameKey,
+            errorName: error instanceof Error ? error.name : "UnknownError",
+            elapsedMs: Math.round(performance.now() - startedAt),
+          });
+          throw error;
+        }
+      },
+      {
+        isRunning: () =>
+          isGameRunning(options.objectId, options.shop) ||
+          wasGameLauncherGameDetected(gameKey),
+        subscribe: onTrackedGamesRunningChange,
+      }
+    )
+  ).catch((error: unknown) => {
+    BigPictureGameWindowService?.notifyGameLaunchEnded?.(gameKey, false);
+    if (
+      error instanceof Error &&
+      error.message === "game_launch_not_detected"
+    ) {
+      sendGameLauncherStatus(gameKey, "launch_failed");
+      logger.warn("[Game launch] Process not detected after 60 seconds", {
+        gameKey,
+      });
+    }
+    throw error;
+  });
 };

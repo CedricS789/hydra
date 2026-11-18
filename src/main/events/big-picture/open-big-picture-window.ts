@@ -4,3 +4,7 @@ import { ipcMain } from "electron";
 ipcMain.handle("openBigPictureWindow", () => {
   WindowManager.openBigPictureWindow();
 });
+
+ipcMain.handle("exitBigPictureToDesktop", () => {
+  WindowManager.exitBigPictureToDesktop();
+});

@@ -48,6 +48,7 @@ const resolveKeyboardDirection = (
 
 type HoldManagedButton = "a" | "b" | "x" | "y" | "start" | "select";
 type HoldSession = {
+  focusId?: string | null;
   isPressed: boolean;
   holdTriggered: boolean;
   pressDispatched: boolean;
@@ -190,7 +191,8 @@ export function NavigationInputProvider({
 
     if (useInputModeStore.getState().pendingGamepadFocus) {
       useInputModeStore.getState().clearPendingGamepadFocus();
-      return true;
+      const focusId = NavigationService.getInstance().getCurrentFocusId();
+      return !focusId || !NavigationService.getInstance().isNodeActive(focusId);
     }
 
     if (NavigationService.getInstance().getCurrentFocusId()) {
@@ -413,6 +415,7 @@ export function NavigationInputProvider({
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
       if (!isInputActive || isSystemSwitcherActiveRef.current) {
         return;
       }
@@ -442,6 +445,14 @@ export function NavigationInputProvider({
         event.key === "Enter" || event.key === " " || key === "spacebar";
 
       if (isPrimaryKey && !event.repeat) {
+        // Native controls must activate the control with DOM focus, rather
+        // than the last item used by the controller.
+        const active = document.activeElement;
+        if (
+          active instanceof HTMLElement &&
+          active.matches("button, a[href], input, select, textarea")
+        )
+          return;
         event.preventDefault();
         if (!triggerPrimary(event)) {
           triggerScreenPress("a", event);
@@ -699,6 +710,7 @@ export function NavigationInputProvider({
       }
 
       if (isPressed && !session.isPressed) {
+        session.focusId = NavigationService.getInstance().getCurrentFocusId();
         session.isPressed = true;
         session.holdTriggered = false;
         session.pressDispatched = false;
@@ -714,6 +726,11 @@ export function NavigationInputProvider({
         }
 
         session.timerId = globalThis.window.setTimeout(() => {
+          if (
+            session.focusId !==
+            NavigationService.getInstance().getCurrentFocusId()
+          )
+            return;
           const wasHandled = dispatchHold(button);
 
           if (wasHandled) {
@@ -738,7 +755,12 @@ export function NavigationInputProvider({
             globalThis.window.clearTimeout(session.timerId);
           }
 
-          if (!session.holdTriggered && !session.pressDispatched) {
+          if (
+            !session.holdTriggered &&
+            !session.pressDispatched &&
+            session.focusId ===
+              NavigationService.getInstance().getCurrentFocusId()
+          ) {
             dispatchPress(button);
           }
 
@@ -775,10 +797,6 @@ export function NavigationInputProvider({
     recoverGamepadFocusOrFallback,
     triggerBackAction,
   ]);
-
-  useEffect(() => {
-    resetHoldSessions();
-  }, [currentFocusId, resetHoldSessions]);
 
   useEffect(() => {
     warnedConflictsRef.current.clear();

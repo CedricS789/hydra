@@ -29,6 +29,7 @@ import { persistGamePlaytime } from "@main/services/process-watcher";
 import { logger } from "@main/services/logger";
 import { killWindowsProcessTree } from "@main/helpers/kill-windows-process-tree";
 import { WindowManager } from "@main/services/window-manager";
+import { BigPictureGameWindowService } from "@main/services/big-picture-game-window";
 import { isRecompilationCloudSaveEnabled } from "./recompilation-features";
 import { getRecompilationInstallDirectory } from "./recompilation-paths";
 import {
@@ -213,6 +214,7 @@ const endSession = (session: RecompilationSession) => {
   if (session.portProcessWatch) clearInterval(session.portProcessWatch);
   deleteEmulatorGameRunning(portKey);
   deleteRecompilationGameRunning(portKey);
+  BigPictureGameWindowService.notifyGameClosed(portKey);
   return Math.max(0, performance.now() - session.startedAt);
 };
 
@@ -303,8 +305,13 @@ export const startRecompilationSession = async (
       }),
   };
   sessions.set(portKey, session);
+  BigPictureGameWindowService.notifyGameLaunchDispatching({
+    gameKey: portKey,
+    pid: child.pid ?? null,
+  });
   setEmulatorGameRunning(portKey);
   setRecompilationGameRunning(portKey, baseKey, ref.slug);
+  BigPictureGameWindowService.notifyGameLaunchDetected(portKey);
   // Started before the wait for the library, so a port that exits right away
   // still has its trophies read when the session finishes.
   session.trophyWatcher = startRecompilationTrophyWatcher(ref, baseKey);

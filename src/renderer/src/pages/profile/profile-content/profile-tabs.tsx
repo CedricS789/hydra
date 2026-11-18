@@ -20,6 +20,7 @@ interface ProfileTabsProps {
   reviewsTotalCount: number;
   souvenirsCount: number;
   screenshotsCount: number;
+  showReviews: boolean;
   showScreenshots: boolean;
   showMissions: boolean;
   onTabChange: (tab: ProfileTabType) => void;
@@ -36,6 +37,7 @@ export function ProfileTabs({
   reviewsTotalCount,
   souvenirsCount,
   screenshotsCount,
+  showReviews,
   showScreenshots,
   showMissions,
   onTabChange,
@@ -44,9 +46,17 @@ export function ProfileTabs({
 
   const tabs: ProfileTabDefinition[] = [
     { id: "library", label: t("library"), count: 0 },
-    { id: "reviews", label: t("user_reviews"), count: reviewsTotalCount },
-    { id: "souvenirs", label: t("souvenirs"), count: souvenirsCount },
   ];
+
+  if (showReviews) {
+    tabs.push({
+      id: "reviews",
+      label: t("user_reviews"),
+      count: reviewsTotalCount,
+    });
+  }
+
+  tabs.push({ id: "souvenirs", label: t("souvenirs"), count: souvenirsCount });
 
   if (showScreenshots) {
     tabs.push({

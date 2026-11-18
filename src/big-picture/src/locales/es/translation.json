@@ -727,7 +727,13 @@
     "Return to desktop mode": "Volver al modo de escritorio",
     "Put the system to sleep": "Poner el sistema en suspensión",
     "Restart your device": "Reiniciar tu dispositivo",
-    "Shut down your device": "Apagar tu dispositivo"
+    "Shut down your device": "Apagar tu dispositivo",
+    "Quit Hydra": "Salir de Hydra",
+    "Close the application": "Cerrar la aplicación",
+    "Quit Hydra?": "¿Salir de Hydra?",
+    "Hydra will close. Active downloads and background services will stop.": "Hydra se cerrará. Las descargas activas y los servicios en segundo plano se detendrán.",
+    "Could not quit Hydra": "No se pudo cerrar Hydra",
+    "Please try again or close Hydra from the system tray.": "Inténtalo de nuevo o cierra Hydra desde la bandeja del sistema."
   },
   "format": {
     "similar_games": "Juegos similares",

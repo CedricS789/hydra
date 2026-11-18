@@ -2,9 +2,17 @@ import localEdition from "../../shared/local-edition.json";
 import { is } from "@electron-toolkit/utils";
 import { isStaging } from "@main/constants";
 import { db, gamesSublevel, levelKeys } from "@main/level";
-import icon from "@resources/icon.png?asset";
+import pngIcon from "@resources/icon.png?asset";
+import winIcoIcon from "@resources/icon.ico?asset";
 import trayIconDark from "@resources/tray-icon-dark.png?asset";
 import trayIcon from "@resources/tray-icon.png?asset";
+import { resolveWindowIconOption } from "./window-icon";
+import {
+  activateBigPictureWindowTransition,
+  restoreMainWindowForBigPictureExit,
+} from "./big-picture-window-transition";
+import { BigPictureGameFocusHandoff } from "./big-picture-game-focus";
+import { NativeAddon } from "./native-addon";
 import {
   AUTH_WINDOW_CONTENT_HEIGHT,
   AUTH_WINDOW_CONTENT_WIDTH,
@@ -45,6 +53,7 @@ import path from "node:path";
 import UserAgent from "user-agents";
 import { HydraApi } from "./hydra-api";
 import { logger } from "./logger";
+import { GamepadWakeService } from "./gamepad-wake";
 import {
   addSteamGridDbCacheControl,
   isSteamGridDbArtworkRequest,
@@ -74,6 +83,7 @@ const CHAT_WINDOW_MIN_SIZE = { width: 400, height: 420 };
 
 interface CreateMainWindowOptions {
   forceBigPicture?: boolean;
+  forceDesktop?: boolean;
 }
 
 export class WindowManager {
@@ -81,6 +91,9 @@ export class WindowManager {
   private static gameLauncherWindowInstance: Electron.BrowserWindow | null =
     null;
   private static bigPicture: Electron.BrowserWindow | null = null;
+  private static bigPictureSuspendedForGame: "minimize" | "hide" | null = null;
+  private static bigPictureExitedToMain = false;
+  private static openBigPicturePromise: Promise<void> | null = null;
   private static friendsWindow: Electron.BrowserWindow | null = null;
   private static markFriendsWindowReady: (() => void) | null = null;
   private static chatWindow: Electron.BrowserWindow | null = null;
@@ -100,6 +113,19 @@ export class WindowManager {
   private static retroAchievementsConnectionWindow: Electron.BrowserWindow | null =
     null;
   private static deferredMainMaximize = false;
+  private static forceQuitUnload = false;
+
+  public static allowQuitUnload() {
+    this.forceQuitUnload = true;
+  }
+
+  private static attachQuitUnloadBypass(window: BrowserWindow) {
+    window.webContents.on("will-prevent-unload", (event) => {
+      if (this.forceQuitUnload) {
+        event.preventDefault();
+      }
+    });
+  }
 
   private static isArtworkRendererRequest(
     webContentsId: number | undefined
@@ -137,13 +163,26 @@ export class WindowManager {
   private static readonly MIN_WINDOW_WIDTH = 1024;
   private static readonly MIN_WINDOW_HEIGHT = 600;
 
+  private static getWindowIconOption(): Pick<
+    Electron.BrowserWindowConstructorOptions,
+    "icon"
+  > {
+    const windowIcon = resolveWindowIconOption({
+      platform: process.platform,
+      isPackaged: app.isPackaged,
+      pngIcon,
+      winIcoIcon,
+    });
+
+    return windowIcon ? { icon: windowIcon } : {};
+  }
+
   private static initialConfigInitializationMainWindow: Electron.BrowserWindowConstructorOptions =
     {
       width: WindowManager.DEFAULT_WINDOW_WIDTH,
       height: WindowManager.DEFAULT_WINDOW_HEIGHT,
       minWidth: WindowManager.MIN_WINDOW_WIDTH,
       minHeight: WindowManager.MIN_WINDOW_HEIGHT,
-      icon,
       // Centers the traffic lights in the title bar.
       trafficLightPosition: { x: 16, y: 13 },
       show: false,
@@ -241,24 +280,27 @@ export class WindowManager {
     }
   }
 
-  private static disableMainWindowWhileBigPictureIsOpen() {
-    const main = this.mainWindow;
+  private static restoreMainWindowBeforeBigPictureCloses(
+    bigPicture: Electron.BrowserWindow | null = this.bigPicture,
+    preserveForeground?: boolean
+  ) {
+    const result = restoreMainWindowForBigPictureExit({
+      mainWindow: this.mainWindow,
+      bigPicture,
+      deferredMainMaximize: WindowManager.deferredMainMaximize,
+      preserveForeground,
+      focusFromBackground: (window) => this.focusWindowFromBackground(window),
+    });
 
-    if (!main || main.isDestroyed()) return;
+    if (result.consumedDeferredMaximize) {
+      WindowManager.deferredMainMaximize = false;
+    }
 
-    main.setFocusable(false);
-    main.setIgnoreMouseEvents(true);
-    main.hide();
-  }
+    if (result.restored) {
+      this.bigPictureExitedToMain = true;
+    }
 
-  private static restoreMainWindowAfterBigPictureCloses() {
-    const main = this.mainWindow;
-
-    if (!main || main.isDestroyed()) return;
-
-    main.setIgnoreMouseEvents(false);
-    main.setFocusable(true);
-    main.setSkipTaskbar(false);
+    return result.restored;
   }
 
   public static get appWindows() {
@@ -372,10 +414,12 @@ export class WindowManager {
 
     const mainWindow = new BrowserWindow({
       ...this.initialConfigInitializationMainWindow,
+      ...this.getWindowIconOption(),
       ...this.getMainWindowFrameOptions(),
       webPreferences: this.getDecoratedWindowWebPreferences(),
     });
     this.mainWindowInstance = mainWindow;
+    this.attachQuitUnloadBypass(mainWindow);
 
     this.deferredMainMaximize = false;
 
@@ -391,7 +435,9 @@ export class WindowManager {
     mainWindow.on("unmaximize", emitMaximizeState);
 
     const shouldLaunchInBigPicture =
-      options?.forceBigPicture || Boolean(userPreferences?.launchInBigPicture);
+      !options?.forceDesktop &&
+      (options?.forceBigPicture ||
+        Boolean(userPreferences?.launchInBigPicture));
 
     if (shouldLaunchInBigPicture) {
       mainWindow.setOpacity(0);
@@ -546,9 +592,226 @@ export class WindowManager {
     );
   }
 
-  public static async openBigPictureWindow() {
-    if (this.bigPicture) {
-      this.bigPicture.focus();
+  public static isBigPictureFocused() {
+    return Boolean(
+      this.bigPicture &&
+        !this.bigPicture.isDestroyed() &&
+        this.bigPicture.isFocused()
+    );
+  }
+
+  private static focusWindowFromBackground(window: BrowserWindow) {
+    if (window.isDestroyed()) return;
+    if (window.isMinimized()) window.restore();
+    window.show();
+    if (process.platform === "win32") {
+      // Windows blocks SetForegroundWindow from background processes; pulsing
+      // alwaysOnTop + app.focus({ steal: true }) brings Big Picture to front reliably.
+      window.setAlwaysOnTop(true, "screen-saver");
+      app.focus({ steal: true });
+      window.focus();
+      window.setAlwaysOnTop(false);
+    } else {
+      app.focus({ steal: true });
+      window.focus();
+    }
+  }
+
+  public static async exitBigPictureToDesktop() {
+    this.bigPictureSuspendedForGame = null;
+    const hasMainWindow = Boolean(
+      this.mainWindow && !this.mainWindow.isDestroyed()
+    );
+
+    if (!hasMainWindow) {
+      await this.createMainWindow({ forceDesktop: true });
+      const createdMain = this.mainWindow;
+      const currentBigPicture = this.bigPicture;
+      if (
+        createdMain &&
+        !createdMain.isDestroyed() &&
+        currentBigPicture &&
+        !currentBigPicture.isDestroyed()
+      ) {
+        if (createdMain.isVisible()) {
+          this.restoreMainWindowBeforeBigPictureCloses(currentBigPicture);
+          currentBigPicture.close();
+          return;
+        }
+        const closeAfterMainReady = () => {
+          if (!currentBigPicture.isDestroyed()) {
+            this.restoreMainWindowBeforeBigPictureCloses(currentBigPicture);
+            currentBigPicture.close();
+          }
+        };
+        createdMain.once("ready-to-show", closeAfterMainReady);
+        createdMain.once("closed", () => {
+          createdMain.removeListener("ready-to-show", closeAfterMainReady);
+          if (!currentBigPicture.isDestroyed()) {
+            currentBigPicture.close();
+          }
+        });
+        return;
+      }
+    }
+
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.restoreMainWindowBeforeBigPictureCloses(this.bigPicture);
+    }
+
+    if (this.bigPicture && !this.bigPicture.isDestroyed()) {
+      this.bigPicture.close();
+    }
+  }
+
+  private static readWin32WindowHandle(
+    window: BrowserWindow | null | undefined
+  ): string | null {
+    if (process.platform !== "win32" || !window || window.isDestroyed()) {
+      return null;
+    }
+
+    const buffer = window.getNativeWindowHandle();
+    if (buffer.length >= 8) {
+      return buffer.readBigInt64LE(0).toString();
+    }
+    if (buffer.length >= 4) {
+      return buffer.readUInt32LE(0).toString();
+    }
+    return null;
+  }
+
+  public static getBigPictureNativeHandle(): string | null {
+    return this.readWin32WindowHandle(this.bigPictureWindow);
+  }
+
+  public static getGameLauncherNativeHandle(): string | null {
+    return this.readWin32WindowHandle(this.gameLauncherWindow);
+  }
+
+  public static getBigPictureSuspendedForGame() {
+    return this.bigPictureSuspendedForGame;
+  }
+
+  public static yieldBigPictureForGameLaunch() {
+    const bigPicture = this.bigPictureWindow;
+    if (!bigPicture) return;
+
+    if (process.platform === "win32") {
+      NativeAddon.allowWindowsSetForegroundWindow();
+    }
+    if (this.gameLauncherWindow && !this.gameLauncherWindow.isDestroyed()) {
+      this.gameLauncherWindow.setAlwaysOnTop(false);
+    }
+    bigPicture.setAlwaysOnTop(false);
+    BigPictureGameFocusHandoff.markInternalWindowTransition();
+    bigPicture.blur();
+  }
+
+  public static suspendBigPictureForGame(mode: "minimize" | "hide") {
+    const bigPicture = this.bigPictureWindow;
+    if (!bigPicture) return;
+
+    if (process.platform === "win32") {
+      NativeAddon.allowWindowsSetForegroundWindow();
+    }
+    if (this.gameLauncherWindow && !this.gameLauncherWindow.isDestroyed()) {
+      this.gameLauncherWindow.setAlwaysOnTop(false);
+    }
+    bigPicture.setAlwaysOnTop(false);
+    BigPictureGameFocusHandoff.markInternalWindowTransition();
+
+    if (mode === "minimize") {
+      if (!bigPicture.isVisible()) {
+        bigPicture.showInactive();
+      }
+      if (!bigPicture.isMinimized()) {
+        bigPicture.minimize();
+      }
+    } else {
+      bigPicture.hide();
+    }
+
+    this.bigPictureSuspendedForGame = mode;
+  }
+
+  public static restoreBigPictureAfterGame() {
+    if (!this.bigPictureSuspendedForGame) return;
+    this.bigPictureSuspendedForGame = null;
+
+    const bigPicture = this.bigPictureWindow;
+    if (!bigPicture) return;
+
+    if (bigPicture.isMinimized()) {
+      bigPicture.restore();
+    }
+    bigPicture.show();
+    bigPicture.setFullScreen(true);
+    this.focusWindowFromBackground(bigPicture);
+  }
+
+  public static async openBigPictureWindow(options?: { focusSteal?: boolean }) {
+    if (this.openBigPicturePromise) {
+      await this.openBigPicturePromise;
+      if (this.bigPicture && !this.bigPicture.isDestroyed()) {
+        activateBigPictureWindowTransition({
+          bigPicture: this.bigPicture,
+          mainWindow: this.mainWindow,
+          focusSteal: options?.focusSteal,
+          hadForegroundAtStart: true,
+          mainWasVisible: Boolean(
+            this.mainWindow &&
+              !this.mainWindow.isDestroyed() &&
+              this.mainWindow.isVisible()
+          ),
+          focusFromBackground: (window) =>
+            this.focusWindowFromBackground(window),
+        });
+      }
+      return;
+    }
+
+    const promise = this.openBigPictureWindowInternal(options);
+    this.openBigPicturePromise = promise;
+    try {
+      await promise;
+    } finally {
+      if (this.openBigPicturePromise === promise) {
+        this.openBigPicturePromise = null;
+      }
+    }
+  }
+
+  private static async openBigPictureWindowInternal(options?: {
+    focusSteal?: boolean;
+  }) {
+    const mainAtStart = this.mainWindow;
+    const hadForegroundAtStart = Boolean(
+      (mainAtStart && !mainAtStart.isDestroyed() && mainAtStart.isFocused()) ||
+        (this.bigPicture &&
+          !this.bigPicture.isDestroyed() &&
+          this.bigPicture.isFocused())
+    );
+    const mainWasVisible = Boolean(
+      mainAtStart && !mainAtStart.isDestroyed() && mainAtStart.isVisible()
+    );
+
+    this.bigPictureSuspendedForGame = null;
+    this.bigPictureExitedToMain = false;
+
+    const activateExistingBigPicture = () => {
+      activateBigPictureWindowTransition({
+        bigPicture: this.bigPicture,
+        mainWindow: this.mainWindow,
+        focusSteal: options?.focusSteal,
+        hadForegroundAtStart,
+        mainWasVisible,
+        focusFromBackground: (window) => this.focusWindowFromBackground(window),
+      });
+    };
+
+    if (this.bigPicture && !this.bigPicture.isDestroyed()) {
+      activateExistingBigPicture();
       return;
     }
 
@@ -558,9 +821,14 @@ export class WindowManager {
       })
       .catch(() => null);
 
+    if (this.bigPicture && !this.bigPicture.isDestroyed()) {
+      activateExistingBigPicture();
+      return;
+    }
+
     const mainWindow = this.mainWindow;
     const targetDisplay =
-      mainWindow && !mainWindow.isDestroyed()
+      mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()
         ? screen.getDisplayMatching(mainWindow.getBounds())
         : screen.getPrimaryDisplay();
     const targetBounds = targetDisplay.bounds;
@@ -571,7 +839,7 @@ export class WindowManager {
       width: targetBounds.width,
       height: targetBounds.height,
       backgroundColor: "#0a0a0a",
-      icon,
+      ...this.getWindowIconOption(),
       frame: false,
       show: false,
       webPreferences: {
@@ -579,6 +847,7 @@ export class WindowManager {
         sandbox: false,
       },
     });
+    this.attachQuitUnloadBypass(this.bigPicture);
 
     this.bigPicture.removeMenu();
 
@@ -595,27 +864,51 @@ export class WindowManager {
     this.loadWindowURL(this.bigPicture, bigPictureInitialHash);
 
     this.bigPicture.once("ready-to-show", () => {
-      const main = this.mainWindow;
-      if (main && !main.isDestroyed()) {
-        main.setOpacity(1);
-        this.disableMainWindowWhileBigPictureIsOpen();
+      const bigPicture = this.bigPicture;
+      if (!bigPicture || bigPicture.isDestroyed()) return;
+      GamepadWakeService.setBigPictureOpen(true);
+      activateBigPictureWindowTransition({
+        bigPicture,
+        mainWindow: this.mainWindow,
+        focusSteal: options?.focusSteal,
+        hadForegroundAtStart,
+        mainWasVisible,
+        focusFromBackground: (window) => this.focusWindowFromBackground(window),
+      });
+    });
+
+    this.bigPicture.on("focus", () => {
+      if (BigPictureGameFocusHandoff.isInInternalWindowTransition()) return;
+      // User manually returned to Big Picture (Alt-Tab, taskbar, or tray);
+      // do not override their choice when the game later closes.
+      this.bigPictureSuspendedForGame = null;
+      BigPictureGameFocusHandoff.onBigPictureManualFocus();
+    });
+
+    this.bigPicture.on("close", () => {
+      if (
+        !this.forceQuitUnload &&
+        !this.bigPictureExitedToMain &&
+        this.mainWindow &&
+        !this.mainWindow.isDestroyed()
+      ) {
+        this.restoreMainWindowBeforeBigPictureCloses(this.bigPicture);
       }
-      this.bigPicture?.show();
-      this.bigPicture?.setFullScreen(true);
-      this.bigPicture?.focus();
     });
 
     this.bigPicture.on("closed", () => {
+      const wasRestored = this.bigPictureExitedToMain;
       this.bigPicture = null;
-      const main = this.mainWindow;
-      if (main && !main.isDestroyed()) {
-        this.restoreMainWindowAfterBigPictureCloses();
-        if (WindowManager.deferredMainMaximize) {
-          main.maximize();
-          WindowManager.deferredMainMaximize = false;
-        }
-        main.show();
-        main.focus();
+      this.bigPictureSuspendedForGame = null;
+      this.bigPictureExitedToMain = false;
+      GamepadWakeService.setBigPictureOpen(false);
+      if (
+        !this.forceQuitUnload &&
+        !wasRestored &&
+        this.mainWindow &&
+        !this.mainWindow.isDestroyed()
+      ) {
+        this.restoreMainWindowBeforeBigPictureCloses(null, true);
       }
     });
   }
@@ -639,7 +932,7 @@ export class WindowManager {
       maximizable: false,
       backgroundColor: "#1c1c1c",
       frame: this.hasNativeWindowDecorations,
-      icon,
+      ...this.getWindowIconOption(),
       webPreferences: this.getDecoratedWindowWebPreferences(),
       show: false,
     });
@@ -780,7 +1073,7 @@ export class WindowManager {
       fullscreenable: false,
       backgroundColor: "#1c1c1c",
       frame: this.hasNativeWindowDecorations,
-      icon,
+      ...this.getWindowIconOption(),
       webPreferences: this.getDecoratedWindowWebPreferences(),
       show: false,
     });
@@ -1243,7 +1536,7 @@ export class WindowManager {
       maximizable: false,
       resizable: false,
       frame: false,
-      icon,
+      ...this.getWindowIconOption(),
       backgroundColor: "#1c1c1c",
       webPreferences: {
         preload: path.join(__dirname, "../preload/index.mjs"),
@@ -1330,7 +1623,7 @@ export class WindowManager {
       resizable: false,
       minimizable: layout.minimizable,
       frame: layout.frame,
-      icon,
+      ...this.getWindowIconOption(),
       webPreferences: this.getDecoratedWindowWebPreferences(),
     });
 
@@ -1408,7 +1701,7 @@ export class WindowManager {
         minHeight: 540,
         backgroundColor: "#1c1c1c",
         titleBarStyle: process.platform === "linux" ? "default" : "hidden",
-        icon,
+        ...this.getWindowIconOption(),
         trafficLightPosition: { x: 16, y: 16 },
         titleBarOverlay: {
           symbolColor: "#DADBE1",
@@ -1467,16 +1760,26 @@ export class WindowManager {
 
   public static async createGameLauncherWindow(shop: string, objectId: string) {
     if (this.gameLauncherWindow) {
-      this.gameLauncherWindow.close();
-      this.gameLauncherWindowInstance = null;
+      this.closeGameLauncherWindow();
     }
 
-    const display = screen.getPrimaryDisplay();
-    const { width: displayWidth, height: displayHeight } = display.bounds;
+    const bigPicture = this.bigPictureWindow;
+    const display =
+      bigPicture && bigPicture.isVisible()
+        ? screen.getDisplayMatching(bigPicture.getBounds())
+        : screen.getPrimaryDisplay();
+    const {
+      x: displayX,
+      y: displayY,
+      width: displayWidth,
+      height: displayHeight,
+    } = display.bounds;
 
-    const x = Math.round((displayWidth - this.GAME_LAUNCHER_WINDOW_WIDTH) / 2);
+    const x = Math.round(
+      displayX + (displayWidth - this.GAME_LAUNCHER_WINDOW_WIDTH) / 2
+    );
     const y = Math.round(
-      (displayHeight - this.GAME_LAUNCHER_WINDOW_HEIGHT) / 2
+      displayY + (displayHeight - this.GAME_LAUNCHER_WINDOW_HEIGHT) / 2
     );
 
     const gameLauncherWindow = new BrowserWindow({
@@ -1490,7 +1793,7 @@ export class WindowManager {
       fullscreenable: false,
       frame: false,
       backgroundColor: "#1c1c1c",
-      icon,
+      ...this.getWindowIconOption(),
       skipTaskbar: false,
       webPreferences: {
         preload: path.join(__dirname, "../preload/index.mjs"),
@@ -1508,7 +1811,9 @@ export class WindowManager {
     );
 
     gameLauncherWindow.on("closed", () => {
-      this.gameLauncherWindowInstance = null;
+      if (this.gameLauncherWindowInstance === gameLauncherWindow) {
+        this.gameLauncherWindowInstance = null;
+      }
     });
 
     if (!app.isPackaged || isStaging) {
@@ -1518,18 +1823,33 @@ export class WindowManager {
 
   public static showGameLauncherWindow() {
     if (this.gameLauncherWindow && !this.gameLauncherWindow.isDestroyed()) {
+      if (this.isBigPictureOpen()) {
+        // Float above fullscreen Big Picture without stealing OS foreground
+        // focus so closing the popup later cannot bounce focus back to BP.
+        this.gameLauncherWindow.setAlwaysOnTop(true, "floating");
+        this.gameLauncherWindow.showInactive();
+        return;
+      }
       this.gameLauncherWindow.show();
     }
   }
 
   public static closeGameLauncherWindow() {
-    if (this.gameLauncherWindow) {
-      this.gameLauncherWindow.close();
-      this.gameLauncherWindowInstance = null;
+    const gameLauncher = this.gameLauncherWindow;
+    if (!gameLauncher) return;
+    this.gameLauncherWindowInstance = null;
+    if (gameLauncher.isDestroyed()) return;
+
+    if (this.isBigPictureOpen()) {
+      BigPictureGameFocusHandoff.markInternalWindowTransition();
+      gameLauncher.setAlwaysOnTop(false);
+      gameLauncher.setFocusable(false);
+      gameLauncher.hide();
     }
+    gameLauncher.close();
   }
 
-  public static openMainWindow() {
+  public static openMainWindow(options?: CreateMainWindowOptions) {
     if (this.bigPicture && !this.bigPicture.isDestroyed()) {
       this.bigPicture.focus();
       return;
@@ -1542,7 +1862,7 @@ export class WindowManager {
       }
       this.mainWindow.focus();
     } else {
-      this.createMainWindow();
+      this.createMainWindow(options);
     }
   }
 
@@ -1559,13 +1879,19 @@ export class WindowManager {
   }
 
   public static redirectToMainWindow(hash: string) {
-    this.redirect(hash);
-
     if (this.bigPicture && !this.bigPicture.isDestroyed()) {
-      this.bigPicture.close();
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.loadMainWindowURL(hash);
+        void this.exitBigPictureToDesktop();
+      } else {
+        void this.exitBigPictureToDesktop().then(() => {
+          this.loadMainWindowURL(hash);
+        });
+      }
       return;
     }
 
+    this.redirect(hash);
     this.openMainWindow();
   }
 
@@ -1606,6 +1932,10 @@ export class WindowManager {
       tray = new Tray(trayIcon);
     }
 
+    const openFromTray = () => {
+      this.openMainWindow({ forceDesktop: true });
+    };
+
     const updateSystemTray = async () => {
       const games = await gamesSublevel
         .values()
@@ -1639,12 +1969,16 @@ export class WindowManager {
             lng: language,
           }),
           type: "normal",
+          click: openFromTray,
+        },
+        {
+          label: t("open_big_picture", {
+            ns: "system_tray",
+            lng: language,
+          }),
+          type: "normal",
           click: () => {
-            if (this.mainWindow) {
-              this.mainWindow.show();
-            } else {
-              this.createMainWindow();
-            }
+            void this.openBigPictureWindow({ focusSteal: true });
           },
         },
         {
@@ -1681,25 +2015,13 @@ export class WindowManager {
     if (process.platform === "win32") {
       await updateSystemTray();
 
-      tray.addListener("double-click", () => {
-        if (this.mainWindow) {
-          this.mainWindow.show();
-        } else {
-          this.createMainWindow();
-        }
-      });
+      tray.addListener("double-click", openFromTray);
 
       tray.addListener("right-click", showContextMenu);
     } else if (process.platform === "linux") {
       await updateSystemTray();
 
-      tray.addListener("click", () => {
-        if (this.mainWindow) {
-          this.mainWindow.show();
-        } else {
-          this.createMainWindow();
-        }
-      });
+      tray.addListener("click", openFromTray);
 
       tray.addListener("right-click", showContextMenu);
     } else {

@@ -11,6 +11,7 @@ import { NotificationOptions, toXmlString } from "./xml";
 import { logger } from "../logger";
 import { WindowManager } from "../window-manager";
 import type { Game, UserPreferences, UserProfile } from "@types";
+import { resolveSocialPreferences } from "@shared";
 import { db, levelKeys, themesSublevel } from "@main/level";
 import { restartAndInstallUpdate } from "@main/events/autoupdater/restart-and-install-update";
 import { SystemPath } from "../system-path";
@@ -246,7 +247,11 @@ export const publishNewFriendRequestNotification = async (
   );
 
   if (signal?.aborted) return;
-  if (!userPreferences?.friendRequestNotificationsEnabled) return;
+  if (
+    !userPreferences?.friendRequestNotificationsEnabled ||
+    !resolveSocialPreferences(userPreferences).showFriends
+  )
+    return;
 
   const notificationIcon =
     (user?.profileImageUrl

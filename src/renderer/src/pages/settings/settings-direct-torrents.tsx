@@ -36,11 +36,22 @@ export function SettingsDirectTorrents({ children }: { children: ReactNode }) {
 
   return (
     <section className="settings-direct-torrents">
-      <h3>{t("direct_torrents_title")}</h3>
-      <p role="status">
-        {t(enabled ? "direct_torrents_on" : "direct_torrents_off")}
+      <div className="settings-direct-torrents__header">
+        <h3>{t("direct_torrents_title")}</h3>
+        <p
+          role="status"
+          className={`settings-direct-torrents__status ${
+            enabled
+              ? "settings-direct-torrents__status--enabled"
+              : "settings-direct-torrents__status--protected"
+          }`}
+        >
+          {t(enabled ? "direct_torrents_on" : "direct_torrents_off")}
+        </p>
+      </div>
+      <p className="settings-direct-torrents__description">
+        {t("direct_torrents_description")}
       </p>
-      <p>{t("direct_torrents_description")}</p>
       {error && (
         <p role="alert" className="settings-direct-torrents__error">
           {error}
@@ -55,25 +66,19 @@ export function SettingsDirectTorrents({ children }: { children: ReactNode }) {
           {t("direct_torrents_disable")}
         </Button>
       )}
-      <details
-        onToggle={(event) => {
-          if (!event.currentTarget.open) {
-            setAcknowledged(false);
-            setConfirmation("");
-          }
-        }}
-      >
-        <summary>{t("direct_torrents_advanced")}</summary>
-        <div className="settings-direct-torrents__advanced">
-          {!enabled ? (
-            <>
-              <p>{t("direct_torrents_warning")}</p>
-              <CheckboxField
-                label={t("direct_torrents_acknowledge")}
-                checked={acknowledged}
-                disabled={working}
-                onChange={(event) => setAcknowledged(event.target.checked)}
-              />
+      <div className="settings-direct-torrents__advanced">
+        {!enabled ? (
+          <>
+            <p className="settings-direct-torrents__description">
+              {t("direct_torrents_warning")}
+            </p>
+            <CheckboxField
+              label={t("direct_torrents_acknowledge")}
+              checked={acknowledged}
+              disabled={working}
+              onChange={(event) => setAcknowledged(event.target.checked)}
+            />
+            <div className="settings-direct-torrents__confirm-input">
               <TextField
                 label={t("direct_torrents_confirmation", {
                   phrase: DIRECT_TORRENT_CONFIRMATION,
@@ -84,22 +89,22 @@ export function SettingsDirectTorrents({ children }: { children: ReactNode }) {
                 spellCheck={false}
                 onChange={(event) => setConfirmation(event.target.value)}
               />
-              <Button
-                disabled={
-                  working ||
-                  !acknowledged ||
-                  confirmation !== DIRECT_TORRENT_CONFIRMATION
-                }
-                onClick={() => void changeAccess(true)}
-              >
-                {t("direct_torrents_enable")}
-              </Button>
-            </>
-          ) : (
-            children
-          )}
-        </div>
-      </details>
+            </div>
+            <Button
+              disabled={
+                working ||
+                !acknowledged ||
+                confirmation !== DIRECT_TORRENT_CONFIRMATION
+              }
+              onClick={() => void changeAccess(true)}
+            >
+              {t("direct_torrents_enable")}
+            </Button>
+          </>
+        ) : (
+          children
+        )}
+      </div>
     </section>
   );
 }

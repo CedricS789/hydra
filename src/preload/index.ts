@@ -9,6 +9,7 @@ import type {
   DownloadProgress,
   UserPreferences,
   ScreenshotInputStatus,
+  BigPictureGamepadWakeStatus,
   AppUpdaterEvent,
   StartGameDownloadPayload,
   GameRunning,
@@ -1025,6 +1026,26 @@ contextBridge.exposeInMainWorld("electron", {
 
   /* User preferences */
   getUserPreferences: () => ipcRenderer.invoke("getUserPreferences"),
+  getSettingsResetStatus: (
+    target: import("../shared/settings-reset").SettingsResetTarget
+  ) => ipcRenderer.invoke("getSettingsResetStatus", target),
+  previewSettingsReset: (
+    target: import("../shared/settings-reset").SettingsResetTarget,
+    restoring: boolean
+  ) => ipcRenderer.invoke("previewSettingsReset", target, restoring),
+  applySettingsReset: (
+    token: string,
+    acknowledged: boolean,
+    phrase: string,
+    torrentConfirmation?: string
+  ) =>
+    ipcRenderer.invoke(
+      "applySettingsReset",
+      token,
+      acknowledged,
+      phrase,
+      torrentConfirmation
+    ),
   updateUserPreferences: (
     preferences: Partial<UserPreferences>,
     directTorrentConfirmation?: string
@@ -1364,6 +1385,27 @@ contextBridge.exposeInMainWorld("electron", {
     targets: { shop: GameShop; objectId: string }[],
     confirmation?: string
   ) => ipcRenderer.invoke("bulkRemoveGamesFromLibrary", targets, confirmation),
+  getExcludedLibraryGames: () => ipcRenderer.invoke("getExcludedLibraryGames"),
+  excludeLibraryGames: (
+    inputs: import("../types").ExcludedLibraryGameInput[]
+  ) => ipcRenderer.invoke("excludeLibraryGames", inputs),
+  unexcludeLibraryGames: (
+    targets: { shop: GameShop; objectId: string }[],
+    options?: { restoreToLibrary?: boolean }
+  ) => ipcRenderer.invoke("unexcludeLibraryGames", targets, options),
+  clearExcludedLibraryGames: () =>
+    ipcRenderer.invoke("clearExcludedLibraryGames"),
+  onExcludedLibraryGamesUpdated: (
+    cb: (entries: import("../types").ExcludedLibraryGame[]) => void
+  ) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      entries: import("../types").ExcludedLibraryGame[]
+    ) => cb(entries);
+    ipcRenderer.on("on-excluded-library-games-updated", listener);
+    return () =>
+      ipcRenderer.removeListener("on-excluded-library-games-updated", listener);
+  },
   removeGame: (shop: GameShop, objectId: string) =>
     ipcRenderer.invoke("removeGame", shop, objectId),
   deleteGameFolder: (
@@ -1371,6 +1413,13 @@ contextBridge.exposeInMainWorld("electron", {
     objectId: string,
     options?: { deleteSourceArchive?: boolean; keepEpicUpdateFiles?: boolean }
   ) => ipcRenderer.invoke("deleteGameFolder", shop, objectId, options),
+  inspectGameUninstall: (shop: GameShop, objectId: string) =>
+    ipcRenderer.invoke("inspectGameUninstall", shop, objectId),
+  uninstallGame: (
+    shop: GameShop,
+    objectId: string,
+    options: import("../types").ExecuteGameUninstallOptions
+  ) => ipcRenderer.invoke("uninstallGame", shop, objectId, options),
   recheckInstalledExecutable: (shop: GameShop, objectId: string) =>
     ipcRenderer.invoke("recheckInstalledExecutable", shop, objectId),
   hasSourceArchive: (shop: GameShop, objectId: string) =>
@@ -1741,6 +1790,14 @@ contextBridge.exposeInMainWorld("electron", {
   openSourceBrowser: (
     request: import("../types/source-browser.types").SourceBrowserRequest
   ) => ipcRenderer.invoke("openSourceBrowser", request),
+  onSourceBrowserOpened: (cb: (requestKey: string) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, requestKey: string) =>
+      cb(requestKey);
+    ipcRenderer.on("on-source-browser-opened", listener);
+    return () => {
+      ipcRenderer.removeListener("on-source-browser-opened", listener);
+    };
+  },
   getSourceWebsiteProfiles: () =>
     ipcRenderer.invoke("getSourceWebsiteProfiles"),
   saveSourceWebsiteProfile: (
@@ -1962,8 +2019,15 @@ contextBridge.exposeInMainWorld("electron", {
   ) => ipcRenderer.invoke("saveLudusaviGameSettings", key, patch),
   runLudusaviLocalBackup: (key: string, preview: boolean) =>
     ipcRenderer.invoke("runLudusaviLocalBackup", key, preview),
-  runLudusaviLocalBulkBackup: (includeDisabled = false) =>
-    ipcRenderer.invoke("runLudusaviLocalBulkBackup", includeDisabled),
+  runLudusaviLocalBulkBackup: (
+    includeDisabled = false,
+    includeHydraConfig = false
+  ) =>
+    ipcRenderer.invoke(
+      "runLudusaviLocalBulkBackup",
+      includeDisabled,
+      includeHydraConfig
+    ),
   onLudusaviStateChanged: (cb: () => void) => {
     const listener = () => cb();
     ipcRenderer.on("on-ludusavi-state-changed", listener);
@@ -1981,12 +2045,12 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("addDetectedSaveGame", request),
   listSaveBackupVersions: (key: string) =>
     ipcRenderer.invoke("listSaveBackupVersions", key),
-  previewSaveRestore: (key: string, version: string) =>
-    ipcRenderer.invoke("previewSaveRestore", key, version),
+  previewSaveRestore: (key: string, version: string, snapshotId?: string) =>
+    ipcRenderer.invoke("previewSaveRestore", key, version, snapshotId),
   confirmSaveOperation: (token: string) =>
     ipcRenderer.invoke("confirmSaveOperation", token),
-  validateSaveBackup: (key: string, version: string) =>
-    ipcRenderer.invoke("validateSaveBackup", key, version),
+  validateSaveBackup: (key: string, version: string, snapshotId?: string) =>
+    ipcRenderer.invoke("validateSaveBackup", key, version, snapshotId),
   previewSaveCloudTransfer: (key: string, direction: "upload" | "download") =>
     ipcRenderer.invoke("previewSaveCloudTransfer", key, direction),
   getSaveAdvancedConfig: () => ipcRenderer.invoke("getSaveAdvancedConfig"),
@@ -1997,6 +2061,34 @@ contextBridge.exposeInMainWorld("electron", {
   updateSaveManifest: () => ipcRenderer.invoke("updateSaveManifest"),
   openFullSaveManager: (key?: string) =>
     ipcRenderer.invoke("openFullSaveManager", key),
+  getHydraConfigBackupState: () =>
+    ipcRenderer.invoke("getHydraConfigBackupState"),
+  backupHydraConfig: (preview = false) =>
+    ipcRenderer.invoke("backupHydraConfig", preview),
+  validateHydraConfigBackup: (version: string, snapshotId?: string) =>
+    ipcRenderer.invoke("validateHydraConfigBackup", version, snapshotId),
+  previewHydraConfigRestore: (version: string, snapshotId?: string) =>
+    ipcRenderer.invoke("previewHydraConfigRestore", version, snapshotId),
+  confirmHydraConfigRestore: (
+    request: import("../shared/hydra-config-backup").HydraConfigRestoreRequest
+  ) => ipcRenderer.invoke("confirmHydraConfigRestore", request),
+  previewHydraConfigCloudTransfer: (direction: "upload" | "download") =>
+    ipcRenderer.invoke("previewHydraConfigCloudTransfer", direction),
+  confirmHydraConfigCloudTransfer: (token: string) =>
+    ipcRenderer.invoke("confirmHydraConfigCloudTransfer", token),
+  onHydraConfigRestored: (
+    cb: (
+      sections: import("../shared/hydra-config-backup").HydraConfigSectionId[]
+    ) => void
+  ) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      sections: import("../shared/hydra-config-backup").HydraConfigSectionId[]
+    ) => cb(sections);
+    ipcRenderer.on("on-hydra-config-restored", listener);
+    return () =>
+      ipcRenderer.removeListener("on-hydra-config-restored", listener);
+  },
   getLocalReleases: (force = false) =>
     ipcRenderer.invoke("getLocalReleases", force),
   getReleaseSourceChanges: (tag: string) =>
@@ -2470,8 +2562,28 @@ contextBridge.exposeInMainWorld("electron", {
 
   /* Big Picture */
   openBigPictureWindow: () => ipcRenderer.invoke("openBigPictureWindow"),
+  exitBigPictureToDesktop: () => ipcRenderer.invoke("exitBigPictureToDesktop"),
+  getBigPictureGamepadWakeStatus: (): Promise<BigPictureGamepadWakeStatus> =>
+    ipcRenderer.invoke("getBigPictureGamepadWakeStatus"),
+  onBigPictureGamepadWakeStatusChange: (
+    cb: (status: BigPictureGamepadWakeStatus) => void
+  ) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      status: BigPictureGamepadWakeStatus
+    ) => cb(status);
+    ipcRenderer.on("on-big-picture-gamepad-wake-status-change", listener);
+    return () =>
+      ipcRenderer.removeListener(
+        "on-big-picture-gamepad-wake-status-change",
+        listener
+      );
+  },
+  openWindowsGameBarSettings: (): Promise<boolean> =>
+    ipcRenderer.invoke("openWindowsGameBarSettings"),
   executeSystemPowerAction: (action: SystemPowerAction) =>
     ipcRenderer.invoke("executeSystemPowerAction", action),
+  quitApp: () => ipcRenderer.invoke("quitApp"),
 
   /* Friends */
   openFriendsWindow: () => ipcRenderer.invoke("openFriendsWindow"),

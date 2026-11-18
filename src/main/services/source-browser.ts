@@ -27,6 +27,7 @@ import {
   sourceNavigationDecision,
   sourceGamePageKind,
   sourceSearchQuery,
+  sourceBrowserRequestKey,
 } from "../../shared/source-browser-policy";
 import { WindowManager } from "./window-manager";
 import { assertMultipartHosterDownloadsEnabled } from "./download/multipart-hoster-feature";
@@ -178,15 +179,7 @@ export async function openSourceBrowser(
   )
     throw new Error("Missing source or game context.");
   const sourceId = websiteProfileId;
-  const requestKey = JSON.stringify([
-    sourceId,
-    request.shop,
-    request.objectId,
-    request.gameTitle,
-    request.readOnly === true,
-    request.repack.title,
-    request.repack.sourcePageUrl ?? "",
-  ]);
+  const requestKey = sourceBrowserRequestKey(request);
   const generation = profileGeneration;
   const profile = (await getSourceWebsiteProfiles())[sourceId] ?? null;
   await assertSourceBrowserEnabled();
@@ -370,7 +363,7 @@ export async function openSourceBrowser(
   view.webContents.setWindowOpenHandler(({ url }) => {
     if (!collect(url) && permitNavigation(url))
       setError(
-        "A website requested a popup. Use the link context menu to open it in this window, or Open in browser."
+        "A website requested a popup. Right-click the link to open it in this window, or use Open in browser."
       );
     return { action: "deny" };
   });
@@ -615,6 +608,9 @@ export async function openSourceBrowser(
   } catch {
     finish(null);
     throw new Error("Source browser controls could not load.");
+  }
+  if (!done && !event.sender.isDestroyed()) {
+    event.sender.send("on-source-browser-opened", requestKey);
   }
   if (exact) load(exact);
   else if (profile)

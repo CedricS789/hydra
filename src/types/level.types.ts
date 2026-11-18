@@ -6,6 +6,11 @@ import type {
   ScreenshotGamepadButton,
   ScreenshotHotkeyBinding,
 } from "./screenshot.types";
+import type {
+  BigPictureGameWindowMode,
+  BigPictureGamepadWakeMode,
+  BigPictureHomeButtonAction,
+} from "./big-picture.types";
 import type { ProfileVisibility } from "./index";
 import type {
   EpicDownloadMetadata,
@@ -205,6 +210,8 @@ export interface DownloadDirectoryPreference {
 }
 
 export interface UserPreferences {
+  companionAppsEnabled?: boolean;
+  companionApps?: import("./companion-app.types").CompanionApp[];
   downloadsPath?: string | null;
   defaultWinePrefixPath?: string | null;
   downloadDirectories?: DownloadDirectoryPreference[];
@@ -248,6 +255,7 @@ export interface UserPreferences {
   enableAchievementSouvenirs?: boolean;
   achievementScreenshotsPath?: string;
   autoplayGameTrailers?: boolean;
+  alwaysMuteTrailersByDefault?: boolean;
   hideToTrayOnGameStart?: boolean;
   useNativeWindowDecorations?: boolean;
   enableNewDownloadOptionsBadges?: boolean;
@@ -256,7 +264,21 @@ export interface UserPreferences {
   bigPictureVirtualKeyboardEnabled?: boolean;
   bigPictureDiagnosticsEnabled?: boolean;
   bigPictureDiagnosticsPosition?: BigPictureDiagnosticsPosition;
+  bigPictureGamepadWakeEnabled?: boolean;
+  bigPictureGamepadWakeMode?: BigPictureGamepadWakeMode;
+  bigPictureGamepadWakeCombo?: ScreenshotGamepadButton[];
+  bigPictureHomeButtonAction?: BigPictureHomeButtonAction;
+  bigPictureGameWindowMode?: BigPictureGameWindowMode;
+  bigPictureControllerLedEnabled?: boolean;
+  bigPictureControllerLedColor?: string;
+  bigPictureControllerLedCustomColors?: string[];
   maxDownloadSpeedBytesPerSecond?: number | null;
+  httpParallelDownloadsEnabled?: boolean;
+  httpParallelConnections?: number;
+  httpRangeSizeMb?: number;
+  httpStallTimeoutSeconds?: number;
+  httpCheckpointIntervalSeconds?: number;
+  httpMaxRetryAttempts?: number;
   torrentNetworkInterface?: string | null;
   globalTrackers?: string[];
   appendGlobalTrackers?: boolean;
@@ -287,10 +309,41 @@ export interface UserPreferences {
   hideCommunityScreenshots?: boolean;
   enableClassics?: boolean;
   enableTransferGame?: boolean;
+  showHydraAchievementPoints?: boolean;
   enableSourceBrowser?: boolean;
   downloadOptionInteraction?: import("../shared/download-option-interaction").DownloadOptionInteraction;
   sourceWebsiteSearchOrder?: string[];
   firstRunGuideCompleted?: boolean;
+  showLeaderboardsAndRankings?: boolean;
+  showGlobalLeaderboards?: boolean;
+  showGameRankingCard?: boolean;
+  showLeaderboardAlerts?: boolean;
+  showLeaderboardMetricPlaytime?: boolean;
+  showLeaderboardMetricAchievements?: boolean;
+  showLeaderboardMetricGames?: boolean;
+  showLeaderboardMetricStreak?: boolean;
+  showLeaderboardMetricSessions?: boolean;
+  showLeaderboardMetricSouvenirs?: boolean;
+  showLeaderboardMetricReviews?: boolean;
+  showLeaderboardMetricFriends?: boolean;
+  showOtherPlayersPlaytime?: boolean;
+  showActivePlayerCounts?: boolean;
+  showCommunityReviews?: boolean;
+  showCommunityStarRatings?: boolean;
+  showFriendsAndChat?: boolean;
+  showFriends?: boolean;
+  showChatAndMessages?: boolean;
+  showNotificationsMenu?: boolean;
+  showAccountProfileHeader?: boolean;
+  enableDangerZone?: boolean;
+  enableDangerZoneChangePlaytime?: boolean;
+  enableDangerZoneResetPlaytime?: boolean;
+  enableDangerZoneResetAchievements?: boolean;
+  enableDangerZoneRemoveGameFiles?: boolean;
+  enableDangerZoneRemoveFromLibrary?: boolean;
+  enableDangerZoneDeleteScreenshots?: boolean;
+  showManualPlaytimeWarningIcon?: boolean;
+  showManualPlaytimeWarningText?: boolean;
 }
 
 export interface NetworkInterface {

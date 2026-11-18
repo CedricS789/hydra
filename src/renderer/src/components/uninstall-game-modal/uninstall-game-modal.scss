@@ -1,0 +1,78 @@
+@use "../../scss/globals.scss";
+
+.uninstall-game-modal {
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: calc(globals.$spacing-unit * 1.5);
+  }
+
+  &__loading,
+  &__notice {
+    font-size: globals.$body-font-size;
+    color: globals.$body-color;
+  }
+
+  &__warning {
+    padding: globals.$spacing-unit calc(globals.$spacing-unit * 1.5);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 193, 7, 0.35);
+    background-color: rgba(255, 193, 7, 0.08);
+    color: globals.$body-color;
+    font-size: globals.$body-font-size;
+    line-height: 1.4;
+  }
+
+  &__warning--danger {
+    border-color: rgba(220, 53, 69, 0.4);
+    background-color: rgba(220, 53, 69, 0.08);
+  }
+
+  &__target-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: globals.$spacing-unit calc(globals.$spacing-unit * 1.5);
+    border-radius: 6px;
+    border: 1px solid globals.$border-color;
+    background-color: rgba(255, 255, 255, 0.03);
+  }
+
+  &__target-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: globals.$spacing-unit;
+    font-size: globals.$small-font-size;
+    color: globals.$muted-color;
+  }
+
+  &__path {
+    font-family: monospace;
+    font-size: globals.$small-font-size;
+    color: globals.$body-color;
+    word-break: break-all;
+    user-select: text;
+  }
+
+  &__methods {
+    display: flex;
+    flex-direction: column;
+    gap: globals.$spacing-unit;
+  }
+
+  &__options {
+    display: flex;
+    flex-direction: column;
+    gap: globals.$spacing-unit;
+  }
+
+  &__actions {
+    display: flex;
+    width: 100%;
+    justify-content: flex-end;
+    align-items: center;
+    gap: globals.$spacing-unit;
+    margin-top: globals.$spacing-unit;
+  }
+}

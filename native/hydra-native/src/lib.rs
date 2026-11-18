@@ -99,6 +99,42 @@ pub fn get_windows_foreground_window() -> Option<NativeForegroundWindow> {
 }
 
 #[napi(object)]
+pub struct NativeWindowCandidate {
+    pub window_handle: String,
+    pub process_id: u32,
+    pub area: f64,
+    pub is_minimized: bool,
+    pub is_tool_window: bool,
+}
+
+#[napi]
+pub fn allow_windows_set_foreground_window(process_id: Option<u32>) -> bool {
+    window_order::allow_set_foreground_window(process_id)
+}
+
+#[napi]
+pub fn find_windows_by_process_ids(process_ids: Vec<u32>) -> Vec<NativeWindowCandidate> {
+    window_order::find_windows_by_process_ids(&process_ids)
+        .into_iter()
+        .map(|candidate| NativeWindowCandidate {
+            window_handle: candidate.window_handle,
+            process_id: candidate.process_id,
+            area: candidate.area as f64,
+            is_minimized: candidate.is_minimized,
+            is_tool_window: candidate.is_tool_window,
+        })
+        .collect()
+}
+
+#[napi]
+pub fn focus_windows_window(
+    window_handle: String,
+    lower_window_handle: Option<String>,
+) -> bool {
+    window_order::focus_window(&window_handle, lower_window_handle.as_deref())
+}
+
+#[napi(object)]
 pub struct NativeScreenRect {
     pub left: i32,
     pub top: i32,

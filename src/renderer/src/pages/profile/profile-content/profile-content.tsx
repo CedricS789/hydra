@@ -29,6 +29,7 @@ import {
   AuthPage,
   findSouvenirByNotificationTarget,
   isAchievementSouvenirsEnabled,
+  resolveSocialPreferences,
   useSouvenirContentWarning,
 } from "@shared";
 import { LockedProfile } from "./locked-profile";
@@ -172,15 +173,19 @@ export function ProfileContent() {
   const { isFeatureEnabled, Feature } = useFeature();
   const isScreenshotsEnabled = isFeatureEnabled(Feature.Screenshots);
   const attemptedDeepLinkPagesRef = useRef(new Set<string>());
-  const souvenirsEnabled = useAppSelector((state) =>
-    isAchievementSouvenirsEnabled(
-      state.userPreferences.value?.enableAchievementSouvenirs,
-      window.electron.platform
-    )
+  const userPreferences = useAppSelector(
+    (state) => state.userPreferences.value
   );
-  const disableNsfwAlert = useAppSelector(
-    (state) => state.userPreferences.value?.disableNsfwAlert === true
+  const social = useMemo(
+    () => resolveSocialPreferences(userPreferences),
+    [userPreferences]
   );
+  const canShowReviews = isMe || social.showCommunityReviews;
+  const souvenirsEnabled = isAchievementSouvenirsEnabled(
+    userPreferences?.enableAchievementSouvenirs,
+    window.electron.platform
+  );
+  const disableNsfwAlert = userPreferences?.disableNsfwAlert === true;
   const [sortBy, setSortBy] = useState<SortOption>(readStoredProfileSort);
 
   const prefetchedSortBy = useRef(readStoredProfileSort()).current;
@@ -482,6 +487,12 @@ export function ProfileContent() {
     }
   }, [activeTab, isScreenshotsEnabled]);
 
+  useEffect(() => {
+    if (!canShowReviews && activeTab === "reviews") {
+      setActiveTab("library");
+    }
+  }, [activeTab, canShowReviews]);
+
   const fetchUserReviews = useCallback(async () => {
     if (!userProfile?.id) return;
 
@@ -671,6 +682,7 @@ export function ProfileContent() {
             activeTab={activeTab}
             reviewsTotalCount={reviewsTotalCount}
             souvenirsCount={souvenirsTotal}
+            showReviews={canShowReviews}
             showMissions={canShowMissions}
             screenshotsCount={
               screenshotsTotal ?? userProfile.screenshotCount ?? 0
@@ -706,7 +718,7 @@ export function ProfileContent() {
                 />
               )}
 
-              {activeTab === "reviews" && (
+              {activeTab === "reviews" && canShowReviews && (
                 <ReviewsTab
                   reviews={reviews}
                   isLoadingReviews={isLoadingReviews}
@@ -797,16 +809,17 @@ export function ProfileContent() {
                 <RecentGamesBox />
               </ProfileSection>
             )}
-            {(userProfile?.friends.length > 0 || isMe) && (
-              <ProfileSection
-                title={t("friends")}
-                count={userStats?.friendsCount || userProfile.friends.length}
-                action={<FriendsBoxAddButton />}
-                defaultOpen={true}
-              >
-                <FriendsBox />
-              </ProfileSection>
-            )}
+            {social.showFriends &&
+              (userProfile?.friends.length > 0 || isMe) && (
+                <ProfileSection
+                  title={t("friends")}
+                  count={userStats?.friendsCount || userProfile.friends.length}
+                  action={<FriendsBoxAddButton />}
+                  defaultOpen={true}
+                >
+                  <FriendsBox />
+                </ProfileSection>
+              )}
             <ReportProfile />
           </div>
         )}

@@ -1,3 +1,4 @@
+import { withResetDefaults } from "../../../../shared/settings-reset";
 import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import { useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -20,32 +21,36 @@ import type { UserPreferences } from "@types";
 
 import "./settings-context-content-gameplay.scss";
 
-const buildForm = (preferences: UserPreferences | null) => ({
-  autoplayGameTrailers: preferences?.autoplayGameTrailers ?? true,
-  disableNsfwAlert: preferences?.disableNsfwAlert ?? false,
-  showSensitiveScreenshots: preferences?.showSensitiveScreenshots ?? false,
-  showHiddenAchievementsDescription:
-    preferences?.showHiddenAchievementsDescription ?? false,
-  enableSteamAchievements: preferences?.enableSteamAchievements ?? false,
-  enableAchievementSouvenirs: isAchievementSouvenirsEnabled(
-    preferences?.enableAchievementSouvenirs,
-    window.electron.platform
-  ),
-  enableNewDownloadOptionsBadges:
-    preferences?.enableNewDownloadOptionsBadges ?? true,
-  hideClassicsBookmark: preferences?.hideClassicsBookmark ?? false,
-  classicsUseHeroLayout: preferences?.classicsUseHeroLayout ?? false,
-  hideLibraryGameBadges: preferences?.hideLibraryGameBadges ?? false,
-  hideLibraryReadySizeBadges: preferences?.hideLibraryReadySizeBadges ?? false,
-  hideLibraryClassicsBadges: preferences?.hideLibraryClassicsBadges ?? false,
-  hideSteamLibraryBadges: preferences?.hideSteamLibraryBadges ?? false,
-  hideEpicLibraryBadges: preferences?.hideEpicLibraryBadges ?? false,
-  hideLibraryAchievementProgress:
-    preferences?.hideLibraryAchievementProgress ?? false,
-  autoplayAnimatedArtwork: preferences?.autoplayAnimatedArtwork ?? false,
-  persistFiltersAndSorting: preferences?.persistFiltersAndSorting ?? false,
-  enableClassics: isClassicsEnabled(preferences),
-});
+const buildForm = (preferences: UserPreferences | null) => {
+  preferences = withResetDefaults(preferences);
+  return {
+    autoplayGameTrailers: preferences?.autoplayGameTrailers ?? true,
+    disableNsfwAlert: preferences?.disableNsfwAlert ?? false,
+    showSensitiveScreenshots: preferences?.showSensitiveScreenshots ?? false,
+    showHiddenAchievementsDescription:
+      preferences?.showHiddenAchievementsDescription ?? false,
+    enableSteamAchievements: preferences?.enableSteamAchievements ?? false,
+    enableAchievementSouvenirs: isAchievementSouvenirsEnabled(
+      preferences?.enableAchievementSouvenirs,
+      window.electron.platform
+    ),
+    enableNewDownloadOptionsBadges:
+      preferences?.enableNewDownloadOptionsBadges ?? true,
+    hideClassicsBookmark: preferences?.hideClassicsBookmark ?? false,
+    classicsUseHeroLayout: preferences?.classicsUseHeroLayout ?? false,
+    hideLibraryGameBadges: preferences?.hideLibraryGameBadges ?? false,
+    hideLibraryReadySizeBadges:
+      preferences?.hideLibraryReadySizeBadges ?? false,
+    hideLibraryClassicsBadges: preferences?.hideLibraryClassicsBadges ?? false,
+    hideSteamLibraryBadges: preferences?.hideSteamLibraryBadges ?? false,
+    hideEpicLibraryBadges: preferences?.hideEpicLibraryBadges ?? false,
+    hideLibraryAchievementProgress:
+      preferences?.hideLibraryAchievementProgress ?? false,
+    autoplayAnimatedArtwork: preferences?.autoplayAnimatedArtwork ?? false,
+    persistFiltersAndSorting: preferences?.persistFiltersAndSorting ?? false,
+    enableClassics: isClassicsEnabled(preferences),
+  };
+};
 
 export function SettingsContextContentGameplay() {
   const { t } = useTranslation("settings");

@@ -501,5 +501,58 @@ describe("library catalogue presentation", () => {
         false
       );
     });
+
+    it("targets installed removal for non-Steam standalone games when enabled", () => {
+      const steam = makeSteamGame({ executablePath: "C:\\Games\\Foo\\foo.exe" });
+      assert.equal(getRemoveFilesTarget(steam, true, false, false), null);
+      assert.deepEqual(getRemoveFilesTarget(steam, true, false, true), {
+        kind: "installed",
+        game: steam,
+      });
+    });
+
+    it("waits on pending Steam executable probes before treating a Steam game as installed", () => {
+      const steam = makeSteamGame({ executablePath: "C:\\Steam\\foo.exe" });
+      assert.equal(getRemoveFilesTarget(steam, true, null, true), null);
+    });
+
+    it("upgrades non-Epic installed Hydra downloads to installed target when enabled", () => {
+      const game = makeSteamGame({
+        executablePath: "C:\\Games\\MyRepack\\game.exe",
+        download: makeDownload(),
+      });
+      assert.deepEqual(getRemoveFilesTarget(game, true, false, true), {
+        kind: "installed",
+        game,
+      });
+    });
+
+    it("keeps LaunchBox games excluded from installed folder targets", () => {
+      const classics = makeGame({
+        shop: "launchbox",
+        objectId: "lb-1",
+        executablePath: "C:\\ROMs\\PS2\\game.iso",
+      });
+      assert.equal(getRemoveFilesTarget(classics, true, false, true), null);
+    });
+
+    it("compares installed targets by shop and objectId", () => {
+      const game = makeGame({ executablePath: "C:\\Games\\Foo\\foo.exe" });
+
+      assert.equal(
+        isSameRemoveFilesTarget(
+          { kind: "installed", game },
+          { kind: "installed", game: { ...game } }
+        ),
+        true
+      );
+      assert.equal(
+        isSameRemoveFilesTarget(
+          { kind: "installed", game },
+          { kind: "installed", game: { ...game, objectId: "other" } }
+        ),
+        false
+      );
+    });
   });
 });

@@ -1,4 +1,3 @@
-import localEdition from "../../../../../../shared/local-edition.json";
 import {
   CheckCircleIcon,
   EyeClosedIcon,
@@ -181,10 +180,7 @@ function AchievementRowStats({
           achievement.globalUnlockPercentage,
           i18n.language
         );
-  const points =
-    !localEdition.hideHydraPoints && showPoints
-      ? achievement.points
-      : undefined;
+  const points = showPoints ? achievement.points : undefined;
 
   if (!unlockPercentage && points == null) return null;
 

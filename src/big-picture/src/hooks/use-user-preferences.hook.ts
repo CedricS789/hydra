@@ -1,6 +1,7 @@
 import { useSettingsDraft } from "@renderer/context/settings/settings-draft.context";
 import type { UserPreferences } from "@types";
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
+import { withResetDefaults } from "../../../shared/settings-reset";
 
 type ElectronPreferencesBridge = {
   getUserPreferences?: () => Promise<UserPreferences | null>;
@@ -67,5 +68,9 @@ const getSnapshot = () => lastKnownPreferences;
 
 export function useUserPreferences() {
   const saved = useSyncExternalStore(subscribe, getSnapshot);
-  return useSettingsDraft()?.preferences ?? saved;
+  const preferences = useSettingsDraft()?.preferences ?? saved;
+  return useMemo(
+    () => (preferences ? withResetDefaults(preferences) : null),
+    [preferences]
+  );
 }
